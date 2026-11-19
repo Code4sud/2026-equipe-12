@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <script>
+    // Servie aussi sur /p/<code> : on ramène les liens relatifs à la racine du site.
+    (function () {
+      var m = location.pathname.match(/^(.*\/)p\/[^\/]*\/?$/);
+      if (m) { var b = document.createElement("base"); b.href = m[1]; document.head.appendChild(b); }
+    })();
+  </script>
+  <title>Potentiel caché — ton téléphone</title>
+  <meta name="description" content="Rejoins la partie, réponds aux problèmes et gagne tes compétences.">
+  <meta name="theme-color" content="#e2572b">
+  <link rel="stylesheet" href="jeu.css">
+  <link rel="stylesheet" href="joueur.css">
+</head>
+<body class="telephone">
+  <header class="tel-entete">
+    <span class="marque">Potentiel caché</span>
+    <span id="code-partie" class="code-partie"></span>
+    <span id="connexion" class="statut-connexion" data-etat="attente">Connexion…</span>
+  </header>
+
+  <main id="ecran" class="contenu tel-ecran" tabindex="-1">
+    <div class="pile centre tel-chargement">
+      <p class="points-attente" aria-hidden="true"><span></span><span></span><span></span></p>
+      <p>Chargement…</p>
+    </div>
+  </main>
+
+  <p id="annonce" class="visuellement-cache" aria-live="polite"></p>
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <nav id="demo-barre" class="demo-barre" aria-label="Mode démo" hidden>
+    <button type="button" class="bouton discret" data-demo="precedent" aria-label="Vue précédente">◀</button>
+    <span id="demo-etiquette" class="demo-etiquette"></span>
+    <button type="button" class="bouton discret" data-demo="lecture" aria-pressed="false">Lecture auto</button>
+    <button type="button" class="bouton discret" data-demo="suivant" aria-label="Vue suivante">▶</button>
+  </nav>
+
+  <noscript><p class="contenu">Active JavaScript pour jouer.</p></noscript>
+  <script type="module" src="js/joueur.js"></script>
+</body>
+</html>
