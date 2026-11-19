@@ -1,4 +1,4 @@
-// Worker « Potentiel caché » : routes HTTP (SPEC §2.2), WebSocket → Durable Object.
+// Worker « Déclic » : routes HTTP (SPEC §2.2), WebSocket → Durable Object.
 // Les fichiers statiques (public/) sont servis directement par Static Assets ;
 // le worker ne passe en premier que pour /api/* et /p/* (voir wrangler.jsonc).
 import { analyser } from "./analyse.js";

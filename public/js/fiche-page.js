@@ -71,7 +71,7 @@ async function demarrer() {
   fiche.hidden = false;
   message("");
   const pseudo = donnees.pseudo ?? donnees.joueur?.pseudo ?? donnees.moi?.pseudo;
-  if (pseudo) document.title = `Fiche de ${pseudo} — Potentiel caché`;
+  if (pseudo) document.title = `Fiche de ${pseudo} — Déclic`;
   const imprimer = $("#imprimer");
   imprimer.disabled = false;
   imprimer.addEventListener("click", () => window.print());

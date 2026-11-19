@@ -1,4 +1,4 @@
-// Configuration Cloudflare Workers de « Potentiel caché ».
+// Configuration Cloudflare Workers de « Déclic ».
 // Développement local : `npm run dev` (wrangler dev). Production : `npx wrangler deploy`.
 {
   "$schema": "./node_modules/wrangler/config-schema.json",

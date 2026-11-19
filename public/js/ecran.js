@@ -1087,7 +1087,7 @@ function demarrerEcran() {
     // Lien partagé ou recopié (sans clé) : inutile de demander au serveur.
     accesRefuse();
   } else {
-    document.title = `Partie ${code} — Potentiel caché`;
+    document.title = `Partie ${code} — Déclic`;
     connecter();
   }
 

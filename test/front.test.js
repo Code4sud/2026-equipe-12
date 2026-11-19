@@ -265,11 +265,12 @@ test("jeu.css : l'attribut hidden masque toujours (bouton Dicter, statut de conn
   assert.match(lire("public/jeu.css"), /\[hidden\]\s*\{\s*display:\s*none\s*!important;?\s*\}/);
 });
 
-test("joueur.css : « ✓ C'est moi » coché lisible en mode sombre", () => {
+test("joueur.css : « ✓ C'est moi » coché lisible (texte sur --succes)", () => {
   const css = lire("public/joueur.css");
-  const m = css.match(/@media \(prefers-color-scheme: dark\) \{\s*\.tel-garde \[data-garder="1"\]\[aria-pressed="true"\] \{ color: (#[0-9a-f]{6}); \} \}/);
-  assert.ok(m, "règle sombre présente");
-  assert.ok(contraste(m[1], "#4fd194") >= 4.5, "texte sur --succes sombre (#4fd194)");
+  const m = css.match(/\.tel-garde \[data-garder="1"\]\[aria-pressed="true"\] \{[^}]*color: (#[0-9a-f]{6}); \}/);
+  assert.ok(m, "règle présente");
+  const succes = lire("public/jeu.css").match(/--succes: (#[0-9a-f]{6});/)[1];
+  assert.ok(contraste(m[1], succes) >= 4.5, `texte sur --succes (${succes})`);
 });
 
 test("metiersProches : zone 1-2 proche du profil mise en avant, puis zone 3", () => {
