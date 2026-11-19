@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500" role="img" aria-labelledby="cd-titre cd-desc">
+  <title id="cd-titre">Un conflit sur le serveur de discussion</title>
+  <desc id="cd-desc">Sur un écran d'ordinateur, deux bulles de discussion s'opposent dans une application de chat. Sur le bureau, deux manettes de jeu ; à côté, un serveur de jeu.</desc>
+  <!-- Pièce -->
+  <rect width="800" height="500" fill="#faf7f2"/>
+  <rect width="800" height="350" fill="#e4eef3"/>
+  <rect y="350" width="800" height="150" fill="#f1e4d0"/>
+  <!-- Étagère et plante -->
+  <rect x="40" y="110" width="140" height="10" rx="4" fill="#b97a45"/>
+  <rect x="58" y="72" width="34" height="38" rx="6" fill="#e2572b"/>
+  <rect x="100" y="80" width="14" height="30" rx="3" fill="#4a8fbf"/>
+  <rect x="118" y="76" width="14" height="34" rx="3" fill="#f2c14e"/>
+  <rect x="136" y="84" width="14" height="26" rx="3" fill="#6fb38a"/>
+  <!-- Bureau -->
+  <ellipse cx="400" cy="470" rx="300" ry="12" fill="#3b3f58" opacity="0.12"/>
+  <rect x="150" y="340" width="16" height="130" rx="5" fill="#3b3f58"/>
+  <rect x="604" y="340" width="16" height="130" rx="5" fill="#3b3f58"/>
+  <rect x="110" y="320" width="550" height="24" rx="8" fill="#d79a62"/>
+  <!-- Écran -->
+  <rect x="370" y="270" width="40" height="52" fill="#3b3f58"/>
+  <rect x="330" y="312" width="120" height="12" rx="6" fill="#3b3f58"/>
+  <rect x="190" y="60" width="400" height="220" rx="16" fill="#3b3f58"/>
+  <rect x="204" y="74" width="372" height="192" rx="8" fill="#2f4a6b"/>
+  <!-- Barre latérale : salons (logos génériques) -->
+  <rect x="204" y="74" width="54" height="192" rx="8" fill="#26394f"/>
+  <path d="M218 88 h26 a6 6 0 0 1 6 6 v14 a6 6 0 0 1 -6 6 h-14 l-8 7 v-7 h-4 a6 6 0 0 1 -6 -6 v-14 a6 6 0 0 1 6 -6 z" fill="#e2572b"/>
+  <circle cx="231" cy="146" r="14" fill="#6fb38a"/>
+  <circle cx="231" cy="184" r="14" fill="#f2c14e"/>
+  <circle cx="231" cy="222" r="14" fill="#9aa0b4"/>
+  <!-- Liste de messages en fond -->
+  <g fill="#4a6a8d">
+    <circle cx="282" cy="96" r="10"/>
+    <rect x="298" y="90" width="120" height="10" rx="5"/>
+    <circle cx="282" cy="244" r="10"/>
+    <rect x="298" y="238" width="160" height="10" rx="5"/>
+  </g>
+  <!-- Bulle gauche (orange) -->
+  <path d="M276 120 h112 a14 14 0 0 1 14 14 v42 a14 14 0 0 1 -14 14 h-80 l-22 18 l4 -18 h-14 a14 14 0 0 1 -14 -14 v-42 a14 14 0 0 1 14 -14 z" fill="#e2572b"/>
+  <path d="M300 156 q7 -18 14 0 q7 18 14 0 q7 -18 14 0 q7 18 14 0 q7 -18 14 0" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="370" y="136" width="8" height="24" rx="4" fill="#ffffff"/>
+  <circle cx="374" cy="170" r="5" fill="#ffffff"/>
+  <!-- Bulle droite (bleue), tournée vers la gauche -->
+  <path d="M556 140 h-112 a14 14 0 0 0 -14 14 v42 a14 14 0 0 0 14 14 h80 l22 18 l-4 -18 h14 a14 14 0 0 0 14 -14 v-42 a14 14 0 0 0 -14 -14 z" fill="#8cc7e6"/>
+  <path d="M450 176 q7 -18 14 0 q7 18 14 0 q7 -18 14 0 q7 18 14 0 q7 -18 14 0" fill="none" stroke="#2f4a6b" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="526" y="156" width="8" height="24" rx="4" fill="#2f4a6b"/>
+  <circle cx="530" cy="190" r="5" fill="#2f4a6b"/>
+  <!-- Éclair entre les bulles -->
+  <path d="M414 118 l-14 30 h14 l-10 30 l26 -38 h-14 l10 -22 z" fill="#f2c14e"/>
+  <!-- Manette gauche -->
+  <g transform="rotate(-10 230 318)">
+    <path d="M190 300 h80 q22 0 26 24 q4 24 -14 24 q-12 0 -20 -12 h-64 q-8 12 -20 12 q-18 0 -14 -24 q4 -24 26 -24 z" fill="#4a8fbf"/>
+    <rect x="200" y="314" width="18" height="6" rx="2" fill="#ffffff"/>
+    <rect x="206" y="308" width="6" height="18" rx="2" fill="#ffffff"/>
+    <circle cx="256" cy="312" r="4" fill="#f2c14e"/>
+    <circle cx="266" cy="322" r="4" fill="#e2572b"/>
+  </g>
+  <!-- Manette droite -->
+  <g transform="rotate(8 540 318)">
+    <path d="M500 300 h80 q22 0 26 24 q4 24 -14 24 q-12 0 -20 -12 h-64 q-8 12 -20 12 q-18 0 -14 -24 q4 -24 26 -24 z" fill="#6fb38a"/>
+    <rect x="510" y="314" width="18" height="6" rx="2" fill="#ffffff"/>
+    <rect x="516" y="308" width="6" height="18" rx="2" fill="#ffffff"/>
+    <circle cx="566" cy="312" r="4" fill="#f2c14e"/>
+    <circle cx="576" cy="322" r="4" fill="#e2572b"/>
+  </g>
+  <!-- Serveur de jeu -->
+  <ellipse cx="715" cy="472" rx="60" ry="9" fill="#3b3f58" opacity="0.15"/>
+  <rect x="660" y="230" width="110" height="240" rx="10" fill="#3b3f58"/>
+  <g fill="#4d5371">
+    <rect x="672" y="248" width="86" height="40" rx="5"/>
+    <rect x="672" y="298" width="86" height="40" rx="5"/>
+    <rect x="672" y="348" width="86" height="40" rx="5"/>
+  </g>
+  <g fill="#6fb38a">
+    <circle cx="686" cy="268" r="5"/>
+    <circle cx="686" cy="318" r="5"/>
+  </g>
+  <circle cx="686" cy="368" r="5" fill="#e2572b"/>
+  <g stroke="#9aa0b4" stroke-width="4" stroke-linecap="round">
+    <line x1="702" y1="268" x2="744" y2="268"/>
+    <line x1="702" y1="318" x2="744" y2="318"/>
+    <line x1="702" y1="368" x2="744" y2="368"/>
+  </g>
+  <!-- Logo générique de chat sur le serveur -->
+  <path d="M694 408 h42 a8 8 0 0 1 8 8 v20 a8 8 0 0 1 -8 8 h-24 l-12 10 v-10 h-6 a8 8 0 0 1 -8 -8 v-20 a8 8 0 0 1 8 -8 z" fill="#e2572b"/>
+  <g fill="#ffffff">
+    <circle cx="704" cy="426" r="3.5"/>
+    <circle cx="715" cy="426" r="3.5"/>
+    <circle cx="726" cy="426" r="3.5"/>
+  </g>
+  <!-- Câble serveur -> écran -->
+  <path d="M660 440 q-40 0 -50 -40 q-8 -40 -20 -60" fill="none" stroke="#9aa0b4" stroke-width="5" stroke-linecap="round"/>
+  <!-- Ondes réseau -->
+  <g fill="none" stroke="#4a8fbf" stroke-width="5" stroke-linecap="round">
+    <path d="M700 200 q15 -15 30 0"/>
+    <path d="M690 186 q25 -25 50 0"/>
+  </g>
+  <circle cx="715" cy="212" r="5" fill="#4a8fbf"/>
+</svg>
