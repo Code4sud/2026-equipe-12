@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ma fiche personnage — Potentiel caché</title>
+  <meta name="description" content="Fiche personnage imprimable : compétences gardées pendant la partie, repères RIASEC, métiers à découvrir et questions pour le psy.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="page-fiche">
+  <main>
+    <div class="barre-fiche sans-impression">
+      <a class="secondaire bouton-lien" href="fiche-papier.html">Fiche papier vierge</a>
+      <button type="button" id="imprimer" class="principal" disabled>Imprimer / PDF</button>
+    </div>
+    <p id="statut" class="statut sans-impression" role="status" aria-live="polite">Je prépare ta fiche…</p>
+    <article id="fiche" class="fiche" hidden></article>
+  </main>
+  <footer class="pied sans-impression">
+    <p>Rien n'est conservé après la partie. Compétences issues du référentiel <a href="https://www.data.gouv.fr/datasets/repertoire-operationnel-des-metiers-et-des-emplois-rome" target="_blank" rel="noopener">ROME 4.0</a> (France Travail). L'outil éclaire, il ne décide pas : pas de score, pas de classement.</p>
+  </footer>
+  <script type="module" src="js/fiche-page.js"></script>
+</body>
+</html>
