@@ -14,7 +14,7 @@ Une partie se joue à 1 à 6 joueurs autour d'un **écran commun**, chacun avec 
 2. **Un problème illustré** s'affiche. Chacun valide « J'ai lu », le groupe discute à voix haute (minuteur), puis chacun répond **en privé** sur son téléphone.
 3. **Il n'y a ni bonne ni mauvaise réponse.** Seuls « je ne sais pas » et la violence sont refusés, au joueur concerné seulement, qui réécrit sa réponse.
 4. **Chaque joueur reçoit une compétence** tirée de sa réponse, avec sa propre phrase comme preuve. Il la garde ou non.
-5. À la fin : une **fiche imprimable** avec les compétences gardées, le profil d'intérêts RIASEC et des métiers proches (O\*NET, ESCO).
+5. À la fin : une **fiche imprimable** (3 pages A4) qui **complète le Rapport des Possibles** du Centre, sur son modèle : les compétences révélées avec leurs preuves (ce que le rapport ne contient pas, pour le 4e temps de l'entretien), les intérêts RIASEC classés par ordre, et le champ des possibles rangé par les 5 zones de métiers du rapport, avec un lien vers orientation-regionsud.fr pour les formations et les salaires.
 
 **Mode solo** : le bouton « Jouer seul » de l'accueil lance une partie sur un seul appareil (téléphone ou PC), sans animateur ni écran commun : la situation s'affiche sur l'appareil, pas de discussion ni de minuteur, et la même fiche à la fin.
 

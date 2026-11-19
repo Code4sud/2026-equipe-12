@@ -183,3 +183,24 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   details.metier > *:not(summary) { display: block; }
 }
 .bouton-lien { display: inline-block; padding: 10px 20px; border-radius: 99px; border: 2px solid var(--bord); text-decoration: none; color: var(--texte); background: var(--surface); }
+
+/* Fiche sur le modèle du Rapport des Possibles : intérêts classés, zones de métiers. */
+.interets { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 8px; counter-reset: interet; }
+.interet { border-left: 5px solid var(--type); padding: 4px 0 4px 10px; counter-increment: interet; }
+.interet p { margin: 0 0 2px; }
+.interet strong::before { content: counter(interet) ". "; }
+.puce-type { display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 50%; background: var(--type); color: #fff; font-weight: 800; font-size: 0.85em; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.zone { margin: 10px 0 4px; break-inside: avoid; }
+.zone h4 { margin: 6px 0 2px; }
+.encart-lien { margin: 6px 0; padding: 8px 12px; border-radius: 10px; background: var(--citation); font-size: 0.95em; }
+
+@media print {
+  .bloc-metiers .metiers { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .bloc-metiers .metier { padding: 6px 8px; }
+  .bloc-metiers .metier p { margin: 2px 0 0; font-size: 9.5pt; }
+  .zone { margin: 6px 0 2px; }
+  .zone h4 { margin: 4px 0 0; }
+  .zone > .discret { margin: 0 0 4px; }
+  .bloc-metiers .source { font-size: 7pt; }
+  .interet p { font-size: 10pt; }
+}

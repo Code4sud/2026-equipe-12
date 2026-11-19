@@ -3,8 +3,8 @@
 // Fonctions PURES : elles renvoient des chaînes HTML où tout texte venant des
 // données (pseudo, preuve, mots…) est échappé. Utilisables dans Node pour les tests.
 
-import { metiersProches, typesDominants } from "./metiers-proches.js";
-import { RIASEC, echapper, reperesRiasec, poidsRiasec, puceRiasec, blocRiasec, typeDe, codeDe, indexMacros } from "./riasec.js";
+import { metiersProches, metiersParZone, typesDominants } from "./metiers-proches.js";
+import { RIASEC, echapper, reperesRiasec, poidsRiasec, puceRiasec, blocInteretsOrdonnes, typeDe, codeDe, indexMacros } from "./riasec.js";
 
 const TYPES_ESCO = {
   exactMatch: "correspondance exacte",
@@ -143,6 +143,62 @@ export function ligneCompetence(c, rome, contexte = "") {
     </li>`;
 }
 
+// Les 5 zones de métiers du Rapport des Possibles (même base O*NET, mêmes zones),
+// avec les durées qu'il affiche.
+export const ZONES_METIERS = {
+  1: { titre: "1re zone · Métiers accessibles en 0 à 6 mois", texte: "Une courte formation suffit, souvent sur le terrain. Le bac n'est pas toujours nécessaire." },
+  2: { titre: "2e zone · Métiers accessibles en 3 mois à 2 ans", texte: "Niveau CAP, BEP ou bac, souvent en alternance." },
+  3: { titre: "3e zone · Métiers accessibles en 1 à 4 ans", texte: "Des études après le bac : BTS, BUT ou licence professionnelle." },
+  4: { titre: "4e zone · Métiers accessibles en 2 à 6 ans", texte: "Une licence ou un master, parfois avec un concours." },
+  5: { titre: "5e zone · Métiers accessibles en 4 à 10 ans", texte: "Les études les plus longues : doctorat ou spécialisation après le master." },
+};
+
+/** La première phrase d'une description (fiche courte, lisible). « etc. » ne coupe pas la phrase. */
+export function resume(texte, max = 170) {
+  const t = String(texte ?? "").trim().replace(/\betc\.\s*\)/g, "etc.)");
+  // Fin de phrase : un point (ou ! ?) suivi d'une espace et d'une majuscule, sauf après « etc ».
+  const m = t.match(/^.*?(?<!\betc)[.!?](?=\s+[A-ZÀ-Ý]|$)/s);
+  const premiere = (m ? m[0] : t).trim();
+  return premiere.length > max ? `${premiere.slice(0, max).replace(/\s+\S*$/, "").replace(/[,;:(]$/, "")}…` : premiere;
+}
+
+/** Carte courte d'un métier pour le champ des possibles : titre, types, deux phrases. */
+function carteMetierCourte(m, { ouvert = true } = {}) {
+  const entete = `<strong>${echapper(m.titre)}</strong>
+        <span class="puces">${(Array.isArray(m.riasec) ? typesDominants(m) : []).map(puceRiasec).join("")}</span>`;
+  const corps = m.description ? `<p>${echapper(resume(m.description))}</p>` : "";
+  return ouvert
+    ? `<article class="metier ouvert"><p class="metier-entete">${entete}</p>${corps}</article>`
+    : `<details class="metier"><summary>${entete}</summary>${corps}</details>`;
+}
+
+/**
+ * « Ton champ des possibles par zone de métiers » : métiers proches du profil
+ * d'intérêts des compétences, rangés par les 5 zones du Rapport des Possibles.
+ */
+export function blocChampDesPossibles(competences, onet, rome, o = {}) {
+  if (!onet?.metiers?.length) return "";
+  const { parType } = reperesRiasec(competences, rome);
+  const zones = metiersParZone(poidsRiasec(parType), onet.metiers, { parZone: o.parZone ?? 2 });
+  if (!zones) return "";
+  const licence = typeof onet.licence === "string" && /^https:\/\//.test(onet.licence) ? onet.licence : null;
+  const sections = [1, 2, 3, 4, 5].map((z) => `<div class="zone">
+      <h4>${echapper(ZONES_METIERS[z].titre)}</h4>
+      <p class="discret">${echapper(ZONES_METIERS[z].texte)}</p>
+      ${zones[z].length
+        ? `<div class="metiers">${zones[z].map((m) => carteMetierCourte(m, { ouvert: o.ouvert ?? true })).join("")}</div>`
+        : `<p class="discret">Pas de métier proche dans cette zone cette fois.</p>`}
+    </div>`).join("");
+  return `<section class="bloc bloc-metiers">
+    <h3>3. Ton champ des possibles par zone de métiers</h3>
+    <p class="discret">Des métiers dont le profil d'intérêts ressemble à celui de tes compétences, rangés par zones comme dans ton Rapport des Possibles. Ce sont des pistes à explorer : aucune porte n'est fermée.</p>
+    <p class="encart-lien">Formations, salaires et débouchés près de chez toi : cherche ces métiers sur
+      <a href="https://www.orientation-regionsud.fr/" target="_blank" rel="noopener">orientation-regionsud.fr</a> (la borne de l'Agora des métiers).</p>
+    ${sections}
+    <p class="discret source">${echapper(onet.source ?? "")}${licence ? ` <a href="${echapper(licence)}" target="_blank" rel="noopener">CC BY 4.0</a>` : ""}</p>
+  </section>`;
+}
+
 /** Questions pour l'encart « Pour le psy » : à partir des compétences et des types dominants. */
 export function questionsPsy(competences, rome) {
   const qs = [];
@@ -153,13 +209,16 @@ export function questionsPsy(competences, rome) {
   if (libelles[1]) qs.push(`« ${libelles[1]} » : où est-ce que tu t'en sers en dehors du jeu ?`);
   const { dominants } = reperesRiasec(competences, rome);
   for (const k of dominants) qs.push(RIASEC[k].question);
-  qs.push("Dans la partie, qu'est-ce qui t'a donné envie d'en savoir plus ?");
-  qs.push("Parmi les métiers à découvrir, lequel tu aimerais aller voir de plus près ?");
+  qs.push("Parmi les métiers de ton Rapport des Possibles, lesquels demandent ces compétences ?");
+  qs.push("Qu'est-ce qui compte le plus pour toi dans un futur métier ?");
   return qs.slice(0, 6);
 }
 
 /**
- * Fiche personnage complète (HTML).
+ * Fiche complète (HTML), sur le modèle du Rapport des Possibles du Centre :
+ * 1. tes compétences révélées (ce que le rapport ne contient pas : le support du
+ * 4e temps de l'entretien), 2. tes intérêts classés par ordre, 3. ton champ des
+ * possibles par zone, puis l'encart pour le psy ou le conseiller.
  * @param {object} brut  réponse de l'API (voir normaliserFiche)
  * @param {{rome?:object, onet?:object, date?:string, metiersOuverts?:boolean, psy?:boolean}} o
  */
@@ -175,35 +234,31 @@ export function rendreFiche(brut, o = {}) {
     ? `<ul class="competences">${f.jeu.map((c) => ligneCompetence(c, rome, titreProbleme(c, f))).join("")}</ul>`
     : `<p class="discret">Pas encore de compétence gagnée en jeu.</p>`;
   const psy = o.psy === false ? "" : `<section class="bloc encart-psy">
-      <h3>Pour le psy</h3>
-      <p class="discret">Chaque compétence a été gardée par le jeune. Les preuves sont ses propres mots ou ses choix pendant le jeu. Ni score, ni niveau, ni classement : c'est un point de départ pour l'échange.</p>
+      <h3>Pour le psy ou le conseiller</h3>
+      <p>Ce document <strong>complète le Rapport des Possibles</strong> : le rapport présente les intérêts, les aptitudes et la personnalité ; ici, ce sont des <strong>compétences et des activités transversales</strong>, à relier au projet du jeune pendant l'analyse (4e temps de l'entretien).</p>
+      <p class="discret">Chaque compétence a été gardée par le jeune. La preuve, ce sont ses propres mots pendant le jeu. Compétences du référentiel ROME 4.0 (France Travail). Ni score, ni niveau, ni classement.</p>
       <p><strong>Questions pour en parler :</strong></p>
       <ol>${questionsPsy(toutes, rome).map((q) => `<li>${echapper(q)}</li>`).join("")}</ol>
     </section>`;
+  const interets = toutes.length ? blocInteretsOrdonnes(toutes, rome, { titre: "2. Tes intérêts, classés par ordre" }) : "";
   return `<header class="fiche-entete">
       <div>
-        <p class="surtitre">Déclic · fiche personnage${date ? ` · ${echapper(date)}` : ""}${f.code ? ` · partie ${echapper(f.code)}` : ""}</p>
+        <p class="surtitre">Déclic · complément à ton Rapport des Possibles${date ? ` · ${echapper(date)}` : ""}${f.code ? ` · partie ${echapper(f.code)}` : ""}</p>
         <h2><span class="avatar" aria-hidden="true">${echapper(f.avatar)}</span> ${echapper(f.pseudo || "Mon personnage")}</h2>
+        <p class="discret">Ton Rapport des Possibles parle de tes intérêts, de tes aptitudes et de ta personnalité. Ici, ce sont les compétences que tu as montrées toi-même, avec tes propres mots.</p>
       </div>
     </header>
     <section class="bloc">
-      <h3>Ce que je sais déjà faire</h3>
+      <h3>1. Tes compétences révélées</h3>
+      <h4>Ce que tu sais déjà faire</h4>
       ${listeDepart}
-    </section>
-    <section class="bloc">
-      <h3>Compétences gagnées pendant le jeu</h3>
+      <h4>Ce que tu as montré pendant le jeu</h4>
       ${listeJeu}
     </section>
-    ${toutes.length ? blocRiasec(toutes, rome, {
-      libelle: (c) => c.libelle ?? c.libelle_rome ?? codeDe(c),
-      intro: "Chaque compétence du ROME a souvent une couleur d'intérêt (France Travail). Voici les couleurs de tes compétences. C'est un repère pour en parler, pas un résultat de test.",
-      absent: "Pas apparu pendant la partie, ce qui ne veut pas dire absent.",
-      dominantsIntro: "Tes compétences parlent surtout de :",
-      questions: false,
-    }) : ""}
-    ${onet ? blocMetiers(toutes, onet, rome, { ouvert: o.metiersOuverts ?? true }) : ""}
+    ${interets}
+    ${onet ? blocChampDesPossibles(toutes, onet, rome, { ouvert: o.metiersOuverts ?? true }) : ""}
     ${psy}
     <footer class="fiche-pied">
-      Rien n'est conservé après la partie. Compétences : ${echapper(rome?.source ?? "ROME 4.0 (France Travail)")}. L'outil éclaire, il ne décide pas.
+      Ces compétences viennent d'un jeu et de tes propres mots : ce sont des pistes de réflexion, pas un résultat de test, et elles peuvent être incomplètes. Tu restes l'expert·e de ton vécu. Compétences : ${echapper(rome?.source ?? "ROME 4.0 (France Travail)")}.
     </footer>`;
 }

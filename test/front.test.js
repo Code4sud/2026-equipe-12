@@ -7,12 +7,12 @@ import { readFileSync } from "node:fs";
 
 import {
   RIASEC, ORDRE_RIASEC, SANS_TYPE, echapper, riasecDe, typeDe, reperesRiasec, poidsRiasec,
-  blocRiasec, legendeRiasec, puceRiasec,
+  blocRiasec, blocInteretsOrdonnes, legendeRiasec, puceRiasec,
 } from "../public/js/riasec.js";
 import {
   rendreFiche, normaliserFiche, blocMetiers, blocEsco, lienEsco, questionsPsy, ligneCompetence,
 } from "../public/js/fiche.js";
-import { metiersProches, typesDominants } from "../public/js/metiers-proches.js";
+import { metiersProches, metiersParZone, typesDominants } from "../public/js/metiers-proches.js";
 
 const lire = (p) => readFileSync(new URL(`../${p}`, import.meta.url), "utf-8");
 const ROME = JSON.parse(lire("public/data/rome.json"));
@@ -146,7 +146,10 @@ test("rendreFiche : pseudo, avatar et preuves échappés (aucune balise injecté
   assert.ok(!html.includes(`" onmouseover="`));
   assert.ok(html.includes("&lt;script&gt;"));
   assert.ok(html.includes("Pour le psy"));
-  assert.ok(html.includes("Métiers à découvrir"));
+  assert.ok(html.includes("Ton champ des possibles par zone de métiers"), "métiers rangés comme dans le Rapport des Possibles");
+  assert.ok(html.includes("Rapport des Possibles"), "la fiche se présente comme un complément du rapport");
+  assert.ok(html.includes("Tes intérêts, classés par ordre"));
+  assert.ok(html.includes("https://www.orientation-regionsud.fr/"), "lien vers la borne de l'Agora (salaires, formations)");
   assert.ok(html.includes("pastille-blanche"), "savoir-être sans RIASEC → pastille blanche");
   assert.ok(!/gommette/i.test(html), "plus de gommettes sur la fiche");
   assert.ok(!/\bfaux\b|mauvaise réponse/i.test(html));
@@ -155,7 +158,7 @@ test("rendreFiche : pseudo, avatar et preuves échappés (aucune balise injecté
 test("rendreFiche : fonctionne sans données (rome/onet absents, aucune compétence)", () => {
   const html = rendreFiche({ pseudo: "Sam", competences: [] });
   assert.ok(html.includes("Sam"));
-  assert.ok(!html.includes("Métiers à découvrir"));
+  assert.ok(!html.includes("champ des possibles par zone"));
   const sansPsy = rendreFiche({ pseudo: "Sam", competences: [] }, { psy: false });
   assert.ok(!sansPsy.includes("Pour le psy"));
 });
@@ -421,4 +424,25 @@ test("téléphone : pas de reconnexion après 4001/4002/4008/4009 ; décalage d'
   const maintenantServeur = 100_000 + 5_000 + 30_000; // Date.now() du téléphone + décalage
   assert.equal(totalMinuteur(vue, null, maintenantServeur), 120_000);
   assert.equal(vue.minuteurFin - maintenantServeur, 85_000);
+});
+
+test("metiersParZone : 5 zones du Rapport des Possibles, 3 métiers au plus par zone, triés par proximité", () => {
+  const z = metiersParZone({ S: 4, A: 2 }, ONET.metiers);
+  assert.deepEqual(Object.keys(z), ["1", "2", "3", "4", "5"]);
+  for (const k of Object.keys(z)) {
+    assert.ok(z[k].length <= 3);
+    assert.ok(z[k].every((m) => Number(m.zone) === Number(k)), `zone ${k}`);
+    assert.ok(z[k].every((m, i, a) => i === 0 || a[i - 1].proximite >= m.proximite));
+  }
+  assert.ok(Object.values(z).some((l) => l.length > 0));
+  assert.equal(metiersParZone({}, ONET.metiers), null);
+});
+
+test("blocInteretsOrdonnes : types classés par ordre, description, compétences, absents nommés", () => {
+  const html = blocInteretsOrdonnes([comp({ code: "1D101" }), comp({ code: "1A102" }), comp({ code: "3E205" })], ROME);
+  sansBalise(html);
+  assert.ok(html.indexOf("Social") < html.indexOf("Réaliste"), "le plus présent en premier");
+  assert.ok(html.includes(RIASEC.S.description));
+  assert.ok(/Pas apparus pendant la partie/.test(html));
+  assert.equal(blocInteretsOrdonnes([], ROME), "");
 });
