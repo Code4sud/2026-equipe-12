@@ -24,11 +24,8 @@ Une partie = 2 à 6 joueurs autour d'une table + un **écran commun** (PC ou pro
 3. **Problèmes** : par défaut 3 problèmes par partie, tirés de `public/data/problemes.json`. Pour chaque problème :
    1. **Présentation** : l'écran commun affiche l'illustration et la situation, et le MJ la lit à voix haute (synthèse vocale du navigateur).
    2. **Phase d'échange** (minuteur, 120 s par défaut) : les joueurs **discutent à voix haute** entre eux. Rien n'est saisi.
-   3. **Réponse** (minuteur, 90 s par défaut) : chacun écrit **sa** réponse sur son téléphone. **Elle est privée** : seul son auteur la voit (et le MJ IA la lit). L'écran commun affiche seulement « 3/4 ont répondu », **sans les noms**. **Pas de joker** : un joueur doit répondre. Si le minuteur se termine, la réponse est vide.
-   4. **Évaluation par le MJ IA** : est-ce qu'**au moins une** réponse résout le problème ?
-      - **Oui** → « Problème résolu ! ». L'écran affiche la **solution commune** formulée par le MJ, **sans dire qui a trouvé** ni qui s'est trompé.
-      - **Non** → le MJ donne **un indice** (pris parmi ceux écrits à l'avance), **sans dire qui s'est trompé**. Puis **nouvel échange** (minuteur), puis **4 propositions** : chacun choisit la sienne sur son téléphone, en privé. Ensuite le MJ affiche la bonne solution. On passe au problème suivant **dans tous les cas**.
-   5. **Compétences** : quand on passe au problème suivant, **chaque joueur reçoit UNE compétence** (une seule par problème), **même s'il n'a pas trouvé**. L'IA la tire de **ses** réponses à ce problème. Personne n'est jamais notifié d'avoir mal répondu. Le joueur la voit sur son téléphone, avec sa phrase comme preuve, et choisit « Je la garde / Pas moi ». S'il la garde, il la recopie sur sa fiche papier avec la gommette de la couleur RIASEC.
+   3. **Réponse** (minuteur, 90 s par défaut) : chacun écrit **sa** réponse sur son téléphone. **Elle est privée** : seul son auteur la voit (et le MJ IA la lit). L'écran commun affiche seulement qui a répondu, jamais quoi. **Il n'y a ni bonne ni mauvaise réponse.** Seules deux réponses sont refusées, **au joueur concerné seulement** (les autres ne voient rien et ne sont jamais relancés) : « je ne sais pas » (rien d'autre que de l'hésitation, ou vide) et la violence ; il reçoit un message bienveillant et réécrit (« Toutes les idées comptent ! … », « Ici, on cherche une solution sans violence… »). On boucle ainsi jusqu'à ce que tout le monde ait donné une vraie réponse ; l'animateur peut passer sans attendre (un absent a une réponse vide).
+   4. **Compétences** : dès que tout le monde a répondu, **chaque joueur reçoit UNE compétence** (une seule par problème). L'IA la tire de **sa** réponse. Pas d'évaluation « résolu / pas résolu », pas d'indice, pas de choix parmi 4 propositions (décision du 19/11/2026). Le joueur la voit sur son téléphone, avec sa phrase comme preuve, et choisit « Je la garde / Pas moi ». S'il la garde, il la recopie sur sa fiche papier avec la gommette de la couleur RIASEC.
 4. **Fin** : chaque joueur voit **sa fiche** sur son téléphone : compétences de départ et compétences gagnées en jeu, avec leurs preuves, ses repères RIASEC, des métiers à découvrir (O*NET + ESCO), un lien pour imprimer sa fiche et la fiche pour le psy. L'écran commun affiche un message de fin **collectif**, sans aucune comparaison entre joueurs.
 
 **Jamais affiché nulle part** : le mot « faux », « mauvaise réponse », un score, un classement, ou qui a trouvé. Le contenu d'une réponse n'est montré qu'à son auteur.
@@ -113,14 +110,13 @@ Tous les messages sont du JSON `{ t: "<type>", ... }`.
 | joueur | `{ t:"rejoindre", pseudo, avatar }` | phase `accueil` (pseudo : 1 à 20 caractères après nettoyage (NFC, sans caractères de contrôle ni invisibles comme U+200B ou U+202E, espaces réduits), avec au moins une lettre ou un chiffre ; unique sans tenir compte de la casse ni des accents ; avatar : un des `AVATARS`) |
 | joueur | `{ t:"recit", texte }` | phase `creation` (10 à 1000 caractères) |
 | joueur | `{ t:"valider_depart", garder:[bool,…] }` | phase `creation`, après l'analyse |
-| joueur | `{ t:"lu" }` | phases `presentation` (la situation) et `indice` : « J'ai lu ». Quand **tous** les joueurs ont lu, la partie passe d'elle-même à `echange` / `echange2` |
-| joueur | `{ t:"reponse", texte }` | phase `reponse` (0 à 500 caractères, une fois ; renvoyer remplace la réponse tant que la phase n'est pas finie) |
-| joueur | `{ t:"choix", index }` | phase `choix` (0 à 3) |
+| joueur | `{ t:"lu" }` | phase `presentation` : « J'ai lu ». Quand **tous** les joueurs ont lu, la partie passe d'elle-même à `echange` |
+| joueur | `{ t:"reponse", texte }` | phase `reponse` (0 à 500 caractères ; renvoyer remplace la réponse tant que la phase n'est pas finie). **Refusée** (erreur au joueur seul, état inchangé) si c'est « je ne sais pas » / vide (`estSansReponse`) ou violent (`estViolente`) : voir `refusReponse` de `src/texte.js` |
 | joueur | `{ t:"garder_competence", garder:bool }` | phase `competences` (compétence du problème en cours) |
 | joueur | `{ t:"garder_competence", garder:bool, problemeIndex }` | **à tout moment** dès que le joueur a reçu la compétence de ce problème, jusqu'à la fin **comprise** (phase `fin`) : sert surtout pour une compétence restée sans réponse (`gardee:null`) quand l'écran est passé au problème suivant, listée dans `moi.competencesEnAttente`. Le joueur peut aussi changer d'avis. Une réponse pour un ancien problème ne fait jamais avancer la partie |
 | joueur | `{ t:"garder_competence", garder:bool, departIndex }` | **à tout moment**, jusqu'à la fin **comprise**, pour une compétence de **départ** déjà dans ses compétences (`problemeIndex:null`) : surtout celles mises en attente (`gardee:null`) quand l'animateur a clos la création avant que le joueur valide (voir §3.1). `departIndex` = identifiant stable de la compétence (sa position dans `depart.propositions`, fixée à `analyse_faite`). Ne fait jamais avancer la partie ; refusé avec un `problemeIndex` en même temps |
 | écran | `{ t:"demarrer" }` | `accueil` → `creation` (≥ 1 joueur ; 2 recommandés) |
-| écran | `{ t:"suivant" }` | passe à l'étape suivante quand l'étape le permet (voir §3). En `evaluation`, et en `competences` tant que l'attribution n'est pas arrivée, il **relance l'étape avec le MJ de secours** (mock, immédiat) : l'animateur n'est jamais bloqué par un MJ IA lent ou perdu |
+| écran | `{ t:"suivant" }` | passe à l'étape suivante quand l'étape le permet (voir §3). En `competences`, tant que l'attribution n'est pas arrivée, il **relance l'étape avec le MJ de secours** (mock, immédiat) : l'animateur n'est jamais bloqué par un MJ IA lent ou perdu |
 | écran | `{ t:"fin_minuteur" }` | termine le minuteur en cours et passe à la suite (même si le temps est déjà écoulé) |
 | écran | `{ t:"reglages", dureeEchange?, dureeReponse? }` | phase `accueil` seulement |
 
@@ -141,7 +137,6 @@ export const AVATARS = ["🦊","🐼","🦁","🐸","🐙","🦉","🐢","🐝",
 - `evenement` = un message client enrichi `{ ...msg, role, joueurId }` **ou** un événement interne :
   - `{ t:"minuteur_fini" }` : l'alarme du minuteur. Elle **ne fait jamais avancer la partie** : elle met `tempsEcoule:true` (une seule fois). On attend que tout le monde ait répondu (`reponse`, `choix`), ou l'animateur (`fin_minuteur` / `suivant`)
   - `{ t:"analyse_faite", joueurId, competences }` (création du personnage ; accepté aussi **après** `creation` si le joueur était encore en `analyse` quand l'animateur a clos la création : ses propositions deviennent alors directement des compétences de départ en attente)
-  - `{ t:"evaluation_faite", tourId, resultat }`
   - `{ t:"attribution_faite", problemeIndex, competences: { [joueurId]: competence } }`
   - `{ t:"erreur_ia", tourId|joueurId }` → dernier recours quand l'IA **et** le mock échouent : récit → 0 proposition (le joueur peut valider ; après `creation` : `depart.etat:"valide"`, 0 compétence de départ) ; évaluation → `indice` ; attribution → chaque joueur reçoit la compétence de participation (jamais sans compétence)
 - `effets` = une liste d'actions que le DO exécute **après** avoir persisté le nouvel état :
@@ -157,10 +152,7 @@ export const AVATARS = ["🦊","🐼","🦁","🐸","🐙","🦉","🐢","🐝",
 ### 3.1 Phases
 
 ```
-accueil → creation → [ presentation → echange → reponse → evaluation
-                        ├─ résolu   → solution ───────────────────────────┐
-                        └─ pas résolu → indice → echange2 → choix → solution ┘
-                       → competences ] × nbProblemes → fin
+accueil → creation → [ presentation → echange → reponse → competences ] × nbProblemes → fin
 ```
 
 | Phase | Entrée | Sortie |
@@ -169,12 +161,7 @@ accueil → creation → [ presentation → echange → reponse → evaluation
 | `creation` | | dès que **tous** les joueurs ont validé leurs compétences de départ, **ou** écran `suivant`. Dans ce cas, un joueur dont l'analyse est prête (`a_valider`) mais qui n'a pas validé ne perd rien : ses propositions deviennent des compétences de départ **en attente** (`problemeIndex:null`, `gardee:null`, `departIndex`), `depart.etat:"valide"` ; il les garde ou les retire plus tard (`garder_competence` avec `departIndex`, listées dans `moi.competencesEnAttente`). Un joueur encore en `analyse` : son `analyse_faite` est accepté hors `creation` et donne de même des compétences en attente. Un joueur qui n'a rien écrit n'a aucune compétence de départ |
 | `presentation` | chaque joueur valide « J'ai lu » | **tous** ont lu, **ou** écran `suivant` |
 | `echange` | minuteur `dureeEchange` | écran `fin_minuteur`/`suivant` (à 0, `tempsEcoule` : on attend l'animateur) |
-| `reponse` | minuteur `dureeReponse` | tous ont répondu, **ou** écran `fin_minuteur`/`suivant` → effet `evaluer` (les absents : réponse vide). À 0, `tempsEcoule` : les joueurs peuvent encore répondre |
-| `evaluation` | « Le MJ réfléchit… » | `evaluation_faite` : `resolu` → `solution` ; sinon → `indice`. Écran `suivant` = relance avec le MJ de secours |
-| `indice` | chaque joueur valide « J'ai lu » | **tous** ont lu, **ou** écran `suivant` → `echange2` |
-| `echange2` | minuteur `dureeEchange` | écran `fin_minuteur`/`suivant` → `choix` |
-| `choix` | minuteur `dureeReponse` | tous ont choisi, **ou** écran `fin_minuteur`/`suivant` → `solution` |
-| `solution` | affiche la solution (synthèse du MJ si résolu, sinon `probleme.solution.resume`) | écran `suivant` → effet `attribuer`, phase `competences` (en attente) |
+| `reponse` | minuteur `dureeReponse` | tous ont donné une vraie réponse, **ou** écran `fin_minuteur`/`suivant` → effet `attribuer`, phase `competences` (les absents : réponse vide). À 0, `tempsEcoule` : les joueurs peuvent encore répondre |
 | `competences` | « Le MJ prépare vos compétences… » puis affichage | `attribution_faite` → chaque joueur voit sa compétence ; quand **tous** ont répondu `garder_competence`, **ou** écran `suivant` → problème suivant (`presentation`) ou `fin`. Avant l'attribution, écran `suivant` = relance avec le MJ de secours. Une compétence restée sans réponse reste modifiable ensuite (`garder_competence` avec `problemeIndex`) |
 | `fin` | effet `nettoyer` | — |
 
@@ -189,9 +176,8 @@ Un joueur qui rejoint après `accueil` est refusé (« La partie a déjà commen
   problemes: [ids tirés], problemeIndex, tour /*1|2*/, tourId /*string unique*/,
   minuteurFin: epoch|null, minuteurDebut: epoch|null,
   joueurs: { [id]: { id, pseudo, avatar, connecte, recit, depart:{ etat:"attente"|"analyse"|"a_valider"|"valide", propositions:[…], gardees:[…] },
-                     reponses: { [problemeIndex]: { tour1: texte|null, choix: index|null } },
+                     reponses: { [problemeIndex]: { tour1: texte|null, lu: bool } },
                      competences: [ { problemeIndex|null, departIndex? /* compétences de départ */, code, libelle, mots, preuve, typePreuve:"vecu"|"jeu"|"participation", riasec, gardee: bool|null } ] } },
-  evaluation: { resolu, synthese, indiceIndex } | null,
   attribution: { [id]: competence } | null,
 }
 ```
@@ -199,7 +185,7 @@ Un joueur qui rejoint après `accueil` est refusé (« La partie a déjà commen
 ### 3.3 Vues (`vue(etat, role, joueurId)`)
 
 - **écran** : `{ code, phase, problemeIndex, nbProblemes, probleme:{ id,titre,situation,question,illustration } | null, minuteurFin, minuteurDebut, minuteurDuree, joueurs:[{ pseudo, avatar, connecte, aFini }]` (`aFini` : ce joueur a-t-il lu / validé / répondu / choisi / gardé sa compétence dans la phase en cours, `null` si la phase n'attend rien des joueurs ; décision de Pierre du 19/11/2026 : l'animateur doit voir **qui** il attend, jamais **ce que** le joueur a répondu), `compte:{ repondu, total }` (rempli en `creation`, `presentation`, `reponse`, `indice`, `choix` et `competences`), `tempsEcoule` (minuteur à 0, la partie attend), `reglages`, `attenteIA` (le MJ travaille), `evaluation:{ resolu, synthese|null }` (pendant `solution`), `indice` (pendant `indice` et après), `choix:[textes]` (pendant `choix`, **sans** dire lequel est correct), `solution` (pendant `solution`), `fin:{ nbCompetencesTotal }` }. **Jamais** le texte d'une réponse, jamais quel joueur a trouvé, jamais les compétences d'un joueur nommé.
-- **joueur** : `{ code, phase, moi:{ id, pseudo, avatar, depart, aLu, maReponse, monChoix, competenceDuProbleme, competencesEnAttente, competences }, probleme…, minuteurFin, minuteurDebut, minuteurDuree, tempsEcoule, compte, indice, choix, solution, fin:{ lienFiche } }` : uniquement **ses** données à lui.
+- **joueur** : `{ code, phase, moi:{ id, pseudo, avatar, depart, aLu, maReponse, competenceDuProbleme, competencesEnAttente, competences }, probleme…, minuteurFin, minuteurDebut, minuteurDuree, tempsEcoule, compte, indice, choix, solution, fin:{ lienFiche } }` : uniquement **ses** données à lui.
   - `competencesEnAttente` : ses compétences encore sans réponse (`gardee:null`), **hors** `competenceDuProbleme` (déjà affichée) : compétences de jeu (chacune porte son `problemeIndex`, à renvoyer dans `garder_competence`) et compétences de départ mises en attente quand l'animateur a clos la création (`problemeIndex:null` + `departIndex`, à renvoyer dans `garder_competence`), celles de départ en premier. Le téléphone les propose avec le même bloc « Cette compétence t'attend » (« Je la garde / Pas moi ») à tout moment, y compris en phase `fin`. La fiche (`fiche.js`) ne montre une compétence qu'une fois gardée (`gardee:true`).
 - **Minuteur (les deux vues)** : `minuteurFin` (epoch ms du serveur), `minuteurDebut` (epoch ms du serveur) et `minuteurDuree` (ms, = `minuteurFin - minuteurDebut`), tous `null` hors `echange`/`reponse`/`echange2`/`choix`. Le client calcule `total = minuteurDuree` et `reste = minuteurFin - (Date.now() + decalage)` avec le `decalage` du dernier `{ t:"etat", serveur }` (§2.3) : le cercle reste juste après un rechargement de la page et ne dépend pas de l'horloge du téléphone.
 

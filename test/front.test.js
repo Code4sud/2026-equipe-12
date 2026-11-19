@@ -299,8 +299,9 @@ test("minuteur du téléphone : anneau juste après un rechargement en cours de 
   assert.equal(totalMinuteur({ phase: "reponse", minuteurFin: fin, minuteurDebut: fin - 90_000 }, maintenant, maintenant), 90_000);
   // Avec la durée (ms) envoyée par src/jeu.js, ou les réglages.
   assert.equal(totalMinuteur({ phase: "reponse", minuteurFin: fin, minuteurDuree: 90_000 }, maintenant, maintenant), 90_000);
-  assert.equal(totalMinuteur({ phase: "echange2", minuteurFin: fin, reglages: { dureeEchange: 120, dureeReponse: 90 } }, maintenant, maintenant), 120_000);
-  assert.equal(dureePhase("choix", { dureeReponse: 45 }), 45);
+  assert.equal(totalMinuteur({ phase: "echange", minuteurFin: fin, reglages: { dureeEchange: 120, dureeReponse: 90 } }, maintenant, maintenant), 120_000);
+  assert.equal(dureePhase("reponse", { dureeReponse: 45 }), 45);
+  assert.equal(dureePhase("choix", { dureeReponse: 45 }), null, "plus de choix parmi 4");
   assert.equal(dureePhase("solution", { dureeReponse: 45 }), null);
   // Jamais moins que le temps restant ; null sans minuteur.
   assert.equal(totalMinuteur({ phase: "reponse", minuteurFin: fin, minuteurDuree: 10_000 }, maintenant, maintenant), 20_000);

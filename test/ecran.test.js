@@ -20,15 +20,17 @@ test("compteReponses anonyme", () => {
   assert.deepEqual(E.compteReponses({ joueurs: [{ aRepondu: true }, { aRepondu: false }] }), { repondu: 1, total: 2 });
 });
 test("minuteur", () => {
-  assert.equal(E.dureePhase("echange2", { dureeEchange: 60 }), 60);
-  assert.equal(E.dureePhase("choix"), 90);
+  assert.equal(E.dureePhase("echange", { dureeEchange: 60 }), 60);
+  assert.equal(E.dureePhase("reponse"), 90);
+  assert.equal(E.dureePhase("choix"), null, "plus de choix parmi 4");
   assert.equal(E.progressionMinuteur(1000 + 45_000, 90_000, 1000), 0.5);
   assert.equal(E.progressionMinuteur(0, 90_000, 1000), 0);
 });
 test("chaque phase de la démo se rend, sans fuite ni mot interdit", () => {
   const vues = E.vuesDemo(0);
   const phases = new Set(vues.map((v) => v.phase));
-  for (const p of ["accueil","creation","presentation","echange","reponse","evaluation","solution","indice","echange2","choix","competences","fin"]) assert.ok(phases.has(p), p);
+  for (const p of ["accueil","creation","presentation","echange","reponse","competences","fin"]) assert.ok(phases.has(p), p);
+  for (const p of ["evaluation","solution","indice","echange2","choix"]) assert.ok(!phases.has(p), `plus de phase ${p}`);
   for (const v of vues) {
     const html = E.rendreScene(v, { origine: "http://x" });
     assert.ok(html.length > 50, v.phase);
@@ -36,18 +38,9 @@ test("chaque phase de la démo se rend, sans fuite ni mot interdit", () => {
     assert.ok(E.commandesPour(v));
   }
 });
-test("choix : jamais de marque correct", () => {
-  const html = E.rendreScene({ phase: "choix", choix: [{ texte: "a", correct: false }, { texte: "b", correct: true }, "c", "d"], joueurs: [] });
-  assert.doesNotMatch(html, /correct/i);
-  assert.equal((html.match(/class="numero"/g) || []).length, 4);
-});
 test("échappement des pseudos (XSS)", () => {
   const html = E.rendreScene({ phase: "accueil", code: "ABCD", joueurs: [{ pseudo: "<img src=x onerror=alert(1)>", avatar: "🦊" }] }, { origine: "" });
   assert.doesNotMatch(html, /<img src=x/);
-});
-test("solution : synthèse si résolu, sinon resume", () => {
-  assert.equal(E.texteSolution({ evaluation: { resolu: true, synthese: "S" }, solution: "R" }), "S");
-  assert.equal(E.texteSolution({ evaluation: { resolu: false, synthese: null }, solution: { resume: "R" } }), "R");
 });
 test("commandes par phase", () => {
   assert.equal(E.commandesPour({ phase: "accueil", joueurs: [] })[0].desactive, true);

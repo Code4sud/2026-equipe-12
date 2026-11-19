@@ -90,10 +90,6 @@ function etatConnexion(e, texte) {
 const points = `<span class="points-attente" aria-hidden="true"><span></span><span></span><span></span></span>`;
 const texteDe = (x) => (typeof x === "string" ? x : x?.texte ?? x?.resume ?? "");
 
-function texteSolution(v) {
-  if (v.evaluation?.resolu && v.evaluation.synthese) return v.evaluation.synthese;
-  return texteDe(v.solution);
-}
 
 function htmlMinuteur(v) {
   if (!v.minuteurFin) return "";
@@ -224,15 +220,13 @@ function ecranPour(v) {
           ${rappelQuestion(v)}`,
       };
     case "echange":
-    case "echange2":
       return {
         cle: `${v.phase}:${pi}:${!!v.tempsEcoule}`,
         titre: "Discutez à voix haute",
         html: `<div class="pile centre large">
             <p class="tel-emoji" aria-hidden="true">🗣️</p>
-            <h1>${v.phase === "echange2" ? "On en reparle !" : "Discutez à voix haute"}</h1>
+            <h1>Discutez à voix haute</h1>
             <p>Rien à écrire pour l'instant. Dites ce que vous feriez, toutes les idées comptent.</p>
-            ${v.phase === "echange2" && v.indice ? `<p class="tel-indice">💡 ${echapper(texteDe(v.indice))}</p>` : ""}
             ${htmlMinuteur(v)}
             ${v.tempsEcoule ? `<p class="tel-temps-ecoule" role="status">⏰ Temps écoulé. L'animateur lance la suite.</p>` : ""}
           </div>
@@ -240,45 +234,6 @@ function ecranPour(v) {
       };
     case "reponse":
       return ecranReponse(v, pi);
-    case "evaluation":
-      return {
-        cle: `evaluation:${pi}`,
-        titre: "Le MJ lit vos réponses",
-        html: `<div class="pile centre large">
-            <p class="tel-emoji" aria-hidden="true">🤔</p>
-            <h1>Le MJ lit vos réponses…</h1>
-            ${points}
-            <p class="discret">Regarde l'écran.</p>
-          </div>`,
-      };
-    case "indice":
-      return {
-        cle: `indice:${pi}:${!!moi.aLu}`,
-        titre: "Un coup de pouce du MJ",
-        html: `<div class="pile centre large">
-            <p class="tel-emoji" aria-hidden="true">💡</p>
-            <h1>Un coup de pouce du MJ</h1>
-            ${v.indice ? `<p class="tel-indice">${echapper(texteDe(v.indice))}</p>` : ""}
-            <p>Regarde l'écran : vous allez en reparler ensemble.</p>
-            ${boutonLu(v)}
-          </div>`,
-      };
-    case "choix":
-      return ecranChoix(v, pi);
-    case "solution": {
-      const resolu = !!v.evaluation?.resolu;
-      const texte = texteSolution(v);
-      return {
-        cle: `solution:${pi}:${resolu}`,
-        titre: resolu ? "Problème résolu" : "Une façon de s'en sortir",
-        html: `<div class="pile centre large">
-            <p class="tel-emoji" aria-hidden="true">${resolu ? "🎉" : "🧭"}</p>
-            <h1>${resolu ? "Problème résolu !" : "Une façon de s'en sortir"}</h1>
-            ${texte ? `<p class="tel-solution">${echapper(texte)}</p>` : ""}
-            <p class="discret">Juste après, tu gagnes une compétence.</p>
-          </div>`,
-      };
-    }
     case "competences":
       return ecranCompetence(v, pi);
     case "fin":
@@ -491,27 +446,6 @@ function ecranReponse(v, pi) {
   };
 }
 
-function ecranChoix(v, pi) {
-  const choix = Array.isArray(v.choix) ? v.choix : [];
-  return {
-    cle: `choix:${pi}:${choix.length}:${!!v.tempsEcoule}`,
-    titre: "Choisis une proposition",
-    html: `<div class="pile">
-        <div class="rangee tel-titre-minuteur">
-          <h1>Ton choix</h1>
-          ${htmlMinuteur(v)}
-        </div>
-        ${Number.isInteger(v.moi?.monChoix) ? "" : htmlTempsEcoule(v, "Le temps est écoulé, mais on t'attend : choisis une proposition.")}
-        <p class="aide">Choisis la proposition qui te semble la meilleure. 🔒 Personne d'autre ne voit ton choix.</p>
-        <div class="tel-choix" role="group" aria-label="Les 4 propositions">
-          ${choix.map((c, i) => `<button type="button" class="bouton tel-choix-bouton" data-action="choix" data-index="${i}" aria-pressed="false">
-              <span class="numero" aria-hidden="true">${i + 1}</span><span>${echapper(texteDe(c))}</span></button>`).join("")}
-        </div>
-        <p class="discret" data-choix-statut></p>
-        ${htmlCompte(v)}
-      </div>`,
-  };
-}
 
 function ecranCompetence(v, pi) {
   const c = v.moi.competenceDuProbleme;
@@ -585,7 +519,7 @@ function ecranFin(v) {
 
 // Écrans où le joueur n'a rien d'autre à faire : on lui rappelle les compétences
 // qu'il n'a pas encore gardées ou retirées (l'animateur a pu passer à la suite).
-const PHASES_AVEC_ATTENTE = new Set(["presentation", "echange", "echange2", "evaluation", "indice", "solution", "competences", "fin"]);
+const PHASES_AVEC_ATTENTE = new Set(["presentation", "echange", "competences", "fin"]);
 
 function blocEnAttente(v) {
   if (!PHASES_AVEC_ATTENTE.has(v?.phase) || !v.moi?.pseudo) return { cle: "", html: "" };
@@ -657,14 +591,8 @@ function majDynamique() {
   const v = etat.vue;
   if (v?.compte) {
     const { repondu = 0, total = 0 } = v.compte;
-    const verbe = v.phase === "choix" ? "ont choisi" : ["presentation", "indice"].includes(v.phase) ? "ont lu" : "ont répondu";
+    const verbe = v.phase === "presentation" ? "ont lu" : "ont répondu";
     ecranEl.querySelectorAll("[data-compte]").forEach((el) => (el.textContent = `${repondu}/${total} ${verbe}`));
-  }
-  if (v?.phase === "choix") {
-    const mon = v.moi?.monChoix;
-    ecranEl.querySelectorAll('[data-action="choix"]').forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.index) === mon)));
-    const s = ecranEl.querySelector("[data-choix-statut]");
-    if (s) s.textContent = Number.isInteger(mon) ? "C'est noté. Tu peux encore changer d'avis." : "";
   }
   ecranEl.querySelectorAll("[data-envoi]").forEach((b) => (b.disabled = etat.envoiEnCours));
   majMinuteurs();
@@ -836,9 +764,6 @@ ecranEl.addEventListener("click", (e) => {
       etat.brouillons[`reponse-${v.problemeIndex ?? 0}`] = v.moi.maReponse ?? "";
       rafraichir();
       break;
-    case "choix":
-      envoyer({ t: "choix", index: Number(b.dataset.index) });
-      break;
     case "lu":
       envoyerAvecAttente({ t: "lu" });
       break;
@@ -992,20 +917,14 @@ const DEMO_COMPETENCE = {
   code: "6B318", libelle: "Collecter et analyser des données, des informations", mots: "Tu as pensé à chercher les infos avant d'agir.",
   preuve: "on regarde sur internet combien ça coûte", typePreuve: "jeu", riasec: ["C"], problemeIndex: 0, gardee: null,
 };
-const DEMO_CHOIX = [
-  "Le laisser tel quel et voir plus tard",
-  "Comparer les prix et regarder si une protection d'écran suffit pour l'instant",
-  "Lui prêter ton téléphone pour la semaine",
-  "Chercher un tuto pour changer l'écran tout de suite",
-];
 
 function scenesDemo() {
   const moi = (x = {}) => ({
     id: "demo-lina", pseudo: "Lina", avatar: "🦊",
     depart: { etat: "valide", propositions: DEMO_PROPOSITIONS, gardees: [DEMO_PROPOSITIONS[0]] },
-    maReponse: null, monChoix: null, competenceDuProbleme: null, competences: [], ...x,
+    maReponse: null, competenceDuProbleme: null, competences: [], ...x,
   });
-  const base = (phase, x = {}) => ({ code: "DEMO", phase, problemeIndex: 0, nbProblemes: 3, probleme: DEMO_PROBLEME, minuteurFin: null, compte: null, indice: null, choix: null, solution: null, ...x });
+  const base = (phase, x = {}) => ({ code: "DEMO", phase, problemeIndex: 0, nbProblemes: 3, probleme: DEMO_PROBLEME, minuteurFin: null, compte: null, ...x });
   const dans = (s) => Date.now() + s * 1000;
   return [
     ["Rejoindre", () => base("accueil", { probleme: null, moi: null })],
@@ -1018,12 +937,6 @@ function scenesDemo() {
     ["Échange", () => base("echange", { moi: moi(), minuteurFin: dans(120) })],
     ["Réponse", () => base("reponse", { moi: moi(), minuteurFin: dans(90), compte: { repondu: 1, total: 4 } })],
     ["Réponse envoyée", () => base("reponse", { moi: moi({ maReponse: "On regarde sur internet combien ça coûte et on met une protection en attendant." }), minuteurFin: dans(42), compte: { repondu: 3, total: 4 } })],
-    ["Le MJ réfléchit", () => base("evaluation", { moi: moi() })],
-    ["Indice", () => base("indice", { moi: moi(), indice: "Avant de payer, il existe peut-être une solution moins chère." })],
-    ["Nouvel échange", () => base("echange2", { moi: moi(), indice: "Avant de payer, il existe peut-être une solution moins chère.", minuteurFin: dans(120) })],
-    ["4 propositions", () => base("choix", { moi: moi(), choix: DEMO_CHOIX, minuteurFin: dans(90), compte: { repondu: 2, total: 4 } })],
-    ["Solution (résolu)", () => base("solution", { moi: moi(), evaluation: { resolu: true, synthese: "Bonne idée de l'équipe : comparer les prix et protéger l'écran en attendant." } })],
-    ["Solution (avec indice)", () => base("solution", { moi: moi(), evaluation: { resolu: false, synthese: null }, solution: "Comparer les prix des réparations et protéger l'écran en attendant." })],
     ["Compétences : préparation", () => base("competences", { moi: moi() })],
     ["Compétence gagnée", () => base("competences", { moi: moi({ competenceDuProbleme: { ...DEMO_COMPETENCE } }) })],
     ["Compétence gardée", () => base("competences", { moi: moi({ competenceDuProbleme: { ...DEMO_COMPETENCE, gardee: true } }) })],
@@ -1094,10 +1007,6 @@ function actionDemo(msg) {
     case "reponse":
       if (typeof v.moi.maReponse !== "string" && v.compte) v.compte.repondu++;
       v.moi.maReponse = msg.texte;
-      break;
-    case "choix":
-      if (!Number.isInteger(v.moi.monChoix) && v.compte) v.compte.repondu++;
-      v.moi.monChoix = msg.index;
       break;
     case "garder_competence": {
       if (Number.isInteger(msg.departIndex)) {

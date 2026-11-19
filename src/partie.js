@@ -445,7 +445,6 @@ export class Partie extends DurableObject {
           await this.ctx.storage.put("nettoyage", effet.fin);
           break;
         case "analyser_recit":
-        case "evaluer":
         case "attribuer":
           // Échéance du chien de garde, PERSISTÉE avant l'appel : elle survit à un redémarrage.
           this.gardes[cleIA(effet)] = maintenant + DELAI_GARDE_IA_MS;
@@ -510,9 +509,7 @@ export class Partie extends DurableObject {
       evenement =
         effet.type === "analyser_recit"
           ? { t: "erreur_ia", joueurId: effet.joueurId }
-          : effet.type === "evaluer"
-            ? { t: "erreur_ia", tourId: effet.tourId }
-            : { t: "erreur_ia" }; // attribution : jeu.js donne la participation à chacun
+          : { t: "erreur_ia" }; // attribution : jeu.js donne la participation à chacun
     }
     // Les résultats périmés (autre tour, autre problème, autre phase) sont refusés par jeu.js.
     await this.traiter(evenement);
@@ -555,17 +552,6 @@ export class Partie extends DurableObject {
           joueurId: effet.joueurId,
           competences: res.competences.slice(0, 3).map(versCompetenceDepart),
         };
-      }
-      case "evaluer": {
-        const entree = { probleme: effet.probleme, reponses: effet.reponses, pseudos: this.pseudos() };
-        let resultat;
-        try {
-          resultat = await mj.evaluer(entree);
-        } catch (err) {
-          console.warn("[partie] évaluation impossible, bascule sur le mock :", err?.message ?? err);
-          resultat = await mjMock({ rome }).evaluer(entree);
-        }
-        return { t: "evaluation_faite", tourId: effet.tourId, resultat };
       }
       case "attribuer": {
         const entree = { probleme: effet.probleme, historique: effet.historique, pseudos: this.pseudos() };
