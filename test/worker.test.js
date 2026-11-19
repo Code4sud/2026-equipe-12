@@ -59,11 +59,11 @@ test("lireReglages : valeurs par défaut et valides", () => {
   assert.deepEqual(lireReglages({}), { reglages: {} });
   assert.deepEqual(lireReglages({ nbProblemes: 2, dureeEchange: 20, dureeReponse: 30 }), {
     reglages: { nbProblemes: 2, dureeEchange: 20, dureeReponse: 30 },
-  });
+  });  assert.deepEqual(lireReglages({ nbProblemes: 3, solo: true }), { reglages: { nbProblemes: 3, solo: true } });
 });
 
 test("lireReglages : refuse les valeurs hors bornes, en français", () => {
-  for (const corps of [{ nbProblemes: 0 }, { nbProblemes: 7 }, { nbProblemes: 2.5 }, { nbProblemes: "3" }, { dureeEchange: 2 }, { dureeReponse: 99999 }, [], "x"]) {
+  for (const corps of [{ nbProblemes: 0 }, { nbProblemes: 7 }, { nbProblemes: 2.5 }, { nbProblemes: "3" }, { dureeEchange: 2 }, { dureeReponse: 99999 }, { solo: "oui" }, [], "x"]) {
     const r = lireReglages(corps);
     assert.ok(r.erreur, JSON.stringify(corps));
     assert.equal(typeof r.erreur, "string");

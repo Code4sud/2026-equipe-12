@@ -798,3 +798,43 @@ test("garder_competence : une compétence restée sans réponse reste modifiable
   assert.equal(e.joueurs.b.competences.find((c) => c.problemeIndex === 0).gardee, true);
   ko(e, J("b", { t: "garder_competence", garder: true })); // en fin, problemeIndex obligatoire
 });
+
+// ───────────────────────── Mode solo ─────────────────────────
+
+test("solo : un seul joueur, démarre seul, pas de discussion ni de minuteur, puis compétences et fin", () => {
+  let e = creerEtat({ code: "SOLO", problemes: PROBLEMES, nbProblemes: 2, graine: 42, solo: true });
+  assert.equal(e.solo, true);
+  e = ok(e, J("a", { t: "rejoindre", pseudo: "Lina", avatar: "🦊" })).etat;
+  assert.equal(e.phase, "creation", "pas d'animateur : la création commence tout de suite");
+  ko(e, J("b", { t: "rejoindre", pseudo: "Sam", avatar: "🐼" })); // un seul joueur
+  e = ok(e, J("a", { t: "recit", texte: "Je garde mon petit frère le mercredi." })).etat;
+  e = ok(e, { t: "analyse_faite", joueurId: "a", competences: [{ code: "1A102", libelle: "Garde", mots: "m", preuve: "Je garde mon petit frère", riasec: ["S"] }] }).etat;
+  e = ok(e, J("a", { t: "valider_depart", garder: [true] })).etat;
+  assert.equal(e.phase, "presentation");
+  const v = vue(e, "joueur", "a");
+  assert.equal(v.solo, true);
+  assert.ok(v.probleme.situation && v.probleme.question, "la situation s'affiche sur l'appareil du joueur");
+
+  for (let k = 0; k < 2; k++) {
+    let r = ok(e, J("a", { t: "lu" }), T0);
+    assert.equal(r.etat.phase, "reponse", "pas de phase de discussion en solo");
+    assert.equal(r.etat.minuteurFin, null, "pas de minuteur en solo");
+    assert.equal(vue(r.etat, "joueur", "a").minuteurFin, null);
+    ko(r.etat, J("a", { t: "reponse", texte: "je sais pas" })); // même règle qu'en groupe
+    r = ok(r.etat, J("a", { t: "reponse", texte: "Je demande de l'aide à un adulte" }));
+    assert.equal(r.etat.phase, "competences");
+    assert.ok(r.effets.some((x) => x.type === "attribuer"));
+    e = ok(r.etat, { t: "attribution_faite", problemeIndex: k, competences: { a: { code: "6D102", libelle: "Esprit d'équipe", mots: "Tu demandes de l'aide.", preuve: "Je demande de l'aide", typePreuve: "jeu", riasec: [] } } }).etat;
+    e = ok(e, J("a", { t: "garder_competence", garder: true }), T0 + k).etat;
+  }
+  assert.equal(e.phase, "fin");
+  assert.equal(e.joueurs.a.competences.filter((c) => c.problemeIndex !== null).length, 2);
+});
+
+test("solo : une partie de groupe ne change pas (Démarrer reste à l'animateur)", () => {
+  let e = nouvellePartie();
+  assert.equal(e.solo, false);
+  e = ok(e, J("a", { t: "rejoindre", pseudo: "Lina", avatar: "🦊" })).etat;
+  assert.equal(e.phase, "accueil");
+  assert.equal(vue(e, "ecran").solo, false);
+});

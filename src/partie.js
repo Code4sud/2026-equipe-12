@@ -108,14 +108,14 @@ export class Partie extends DurableObject {
    * transmettre UNE fois au créateur), ou false si ce code est déjà utilisé (le
    * worker retente alors avec un autre code).
    */
-  async init({ code, nbProblemes, dureeEchange, dureeReponse } = {}) {
+  async init({ code, nbProblemes, dureeEchange, dureeReponse, solo = false } = {}) {
     if (this.etat) return false;
     const graine = crypto.getRandomValues(new Uint32Array(1))[0];
     const maintenant = Date.now();
     const cleEcran = crypto.randomUUID();
     // `cleEcran` vit dans l'état persisté, mais vue() et fiche() construisent leurs
     // objets champ par champ : elle n'en sort jamais.
-    const etat = { ...creerEtat({ code, problemes, nbProblemes, dureeEchange, dureeReponse, graine, maintenant }), cleEcran };
+    const etat = { ...creerEtat({ code, problemes, nbProblemes, dureeEchange, dureeReponse, graine, maintenant, solo }), cleEcran };
     this.etat = etat;
     await this.ctx.storage.put({ etat, activite: maintenant });
     await this.ctx.storage.setAlarm(maintenant + DELAI_ABANDON_MS);
