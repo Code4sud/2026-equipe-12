@@ -1,0 +1,22 @@
+{
+  "name": "potentiel-cache",
+  "private": true,
+  "type": "module",
+  "description": "Équipe 12 — Potentiel caché : le jeu de rôle des compétences (Cloudflare Workers + Durable Objects)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "node --test \"test/**/*.test.js\"",
+    "simulate": "node scripts/simulate.mjs",
+    "check": "wrangler deploy --dry-run --outdir .wrangler/dry",
+    "build": "node scripts/build-pages.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.10.0"
+  },
+  "devDependencies": {
+    "wrangler": "4.127.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

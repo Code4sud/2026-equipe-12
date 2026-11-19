@@ -1,0 +1,4 @@
+# Copie ce fichier en .dev.vars (jamais commité) pour utiliser Claude en local.
+# Sans clé, le MJ « mock » déterministe prend le relais : le jeu reste jouable.
+ANTHROPIC_API_KEY=
+# MJ_MODE=mock

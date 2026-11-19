@@ -1,0 +1,7 @@
+# En-têtes de sécurité des pages statiques (Cloudflare Static Assets).
+# Les réponses du worker (/api/*, /p/*) les ajoutent elles-mêmes (src/worker.js).
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), geolocation=(), payment=(), microphone=(self)

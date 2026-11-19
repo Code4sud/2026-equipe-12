@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="logo-titre logo-desc">
+  <title id="logo-titre">Potentiel caché</title>
+  <desc id="logo-desc">Logo : une étoile orange, à moitié cachée sous un voile qui se soulève, se révèle en brillant.</desc>
+  <defs>
+    <clipPath id="logo-cadre">
+      <rect width="512" height="512" rx="112"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#logo-cadre)">
+    <rect width="512" height="512" fill="#2f4a6b"/>
+    <!-- Halo -->
+    <circle cx="256" cy="262" r="200" fill="#38557a"/>
+    <circle cx="256" cy="262" r="152" fill="#436387"/>
+    <!-- Étoile -->
+    <path d="M256 120 L294.8 216.6 L398.7 223.7 L318.8 290.4 L344.2 391.4 L256 336 L167.8 391.4 L193.2 290.4 L113.3 223.7 L217.2 216.6 Z" fill="#e2572b" stroke="#e2572b" stroke-width="20" stroke-linejoin="round"/>
+    <path d="M256 160 L282 226 L256 226 Z" fill="#f08a5d"/>
+    <!-- Voile qui se soulève -->
+    <path d="M-10 214 Q130 196 196 300 Q244 380 318 522 L-10 522 Z" fill="#faf7f2"/>
+    <path d="M196 300 Q244 380 318 522 L352 522 Q272 392 240 300 Q224 252 196 300 Z" fill="#e3d2b8"/>
+    <path d="M40 300 Q110 300 150 360 M30 380 Q100 380 140 450" fill="none" stroke="#f1e4d0" stroke-width="10" stroke-linecap="round"/>
+    <!-- Éclats -->
+    <path d="M404 82 l9 25 l25 9 l-25 9 l-9 25 l-9 -25 l-25 -9 l25 -9 z" fill="#f2c14e"/>
+    <path d="M440 300 l6 16 l16 6 l-16 6 l-6 16 l-6 -16 l-16 -6 l16 -6 z" fill="#f2c14e"/>
+    <path d="M128 98 l5 14 l14 5 l-14 5 l-5 14 l-5 -14 l-14 -5 l14 -5 z" fill="#faf7f2"/>
+    <circle cx="352" cy="140" r="6" fill="#faf7f2"/>
+  </g>
+</svg>
