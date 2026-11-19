@@ -22,7 +22,7 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Partie"] }],
 
-  // MJ_MODE : "auto" = Claude si le secret ANTHROPIC_API_KEY est présent, sinon MJ mock ;
+  // MJ_MODE : "auto" = IA OpenAI (gpt-5-nano) si le secret OPENAI_API_KEY est présent, sinon MJ mock ;
   // "mock" = toujours le MJ mock déterministe (démo de secours, simulation).
   // La clé se met dans .dev.vars en local (voir .dev.vars.example), jamais ici.
   "vars": { "MJ_MODE": "auto" },

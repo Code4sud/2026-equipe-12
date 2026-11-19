@@ -10,9 +10,6 @@
     "check": "wrangler deploy --dry-run --outdir .wrangler/dry",
     "build": "node scripts/build-pages.mjs"
   },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^1.10.0"
-  },
   "devDependencies": {
     "wrangler": "4.127.0"
   },

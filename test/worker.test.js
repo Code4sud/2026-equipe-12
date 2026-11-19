@@ -546,7 +546,7 @@ test("Partie : chien de garde en création (récit resté « en analyse ») et e
 
 test("Partie : « Suivant » pendant que le MJ réfléchit relance tout de suite avec le MJ de secours", async () => {
   const { ctx, partie, ecran, a, envoyer } = await partieEnReponse("BCDK");
-  // MJ « Claude » qui ne répond jamais.
+  // MJ IA qui ne répond jamais.
   partie.mj = { evaluer: () => new Promise(() => {}), attribuer: () => new Promise(() => {}) };
   await envoyer(a, { t: "reponse", texte: "On éteint le téléphone et on le fait sécher" });
   assert.equal(partie.etat.phase, "evaluation");
@@ -805,11 +805,11 @@ test("lireJson : Content-Length vérifié avant lecture, flux coupé dès que la
   assert.equal(r.status, 413);
 });
 
-test("analyse : le timeout est une limite TOTALE (signal d'abandon), relance du SDK comprise", async () => {
+test("analyse : le timeout est une limite TOTALE (signal d'abandon)", async () => {
   let signal = null;
   const client = {
-    beta: {
-      messages: {
+    chat: {
+      completions: {
         create: (params, options) =>
           new Promise((_, rejeter) => {
             signal = options?.signal;
@@ -820,28 +820,27 @@ test("analyse : le timeout est une limite TOTALE (signal d'abandon), relance du 
   };
   const debut = Date.now();
   await assert.rejects(analyser("Je garde mon petit frère le mercredi.", { rome, client, timeout: 50 }), /aborted/);
-  assert.ok(signal, "un signal est passé au SDK");
+  assert.ok(signal, "un signal est passé au client");
   assert.ok(Date.now() - debut < 2000);
 });
 
 test("analyse : citation d'un ou deux mots écartée (« citation trop courte ») ; libellés accentués", async () => {
   const recit = "Je garde mon petit frère le mercredi après l'école.";
   const client = {
-    beta: {
-      messages: {
+    chat: {
+      completions: {
         create: async () => ({
-          stop_reason: "end_turn",
-          model: "claude-opus-5-5",
-          content: [{
-            type: "text",
-            text: JSON.stringify({
+          model: "gpt-5-nano",
+          choices: [{
+            finish_reason: "stop",
+            message: { refusal: null, content: JSON.stringify({
               competences: [
                 { code_rome: "1A102", situation: "Garde", citation: "je", mots_du_jeune: "Tu gardes.", question_psy: "?" },
                 { code_rome: "1A102", situation: "Garde", citation: "Je garde mon petit frère", mots_du_jeune: "Tu gardes.", question_psy: "?" },
               ],
               pistes_entretien: [],
               a_approfondir: [],
-            }),
+            }) },
           }],
         }),
       },

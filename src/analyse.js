@@ -6,12 +6,11 @@
 // et la clé API sont passés en paramètres.
 //
 //   analyser(recit, { apiKey, rome, max, mode })
-//     - avec apiKey (et mode ≠ "mock") : Claude, puis garde-fous côté serveur ;
+//     - avec apiKey (et mode ≠ "mock") : IA OpenAI (gpt-5-nano), puis garde-fous côté serveur ;
 //     - sans clé, ou mode "mock" : MODE MOCK déterministe (mots-clés), même format.
-import Anthropic from "@anthropic-ai/sdk";
+import { appelerJSON, creerClient } from "./openai.js";
 import { accentuerLibelle, propositionAutour } from "./texte.js";
 
-const MODELE = "claude-opus-5-5";
 /** Nombre minimal de mots d'une citation-preuve (règle « 3 à 25 mots » du prompt). */
 export const CITATION_MIN_MOTS = 3;
 
@@ -73,7 +72,7 @@ function referentiel(rome) {
 }
 
 // ---------------------------------------------------------------------------
-// Claude
+// IA (OpenAI)
 // ---------------------------------------------------------------------------
 
 const SYSTEM_DEBUT = `Tu aides un psychologue du travail du Centre des Possibles (Nice) à préparer un entretien de 15 minutes avec un jeune (15-25 ans), souvent en décrochage, qui pense « ne rien savoir faire ».
@@ -121,36 +120,27 @@ const SCHEMA = {
   },
 };
 
-async function analyserClaude(recit, { apiKey, ref, max, effort, timeout, client: clientInjecte }) {
-  const client = clientInjecte ?? new Anthropic({ apiKey, timeout, maxRetries: 1 });
+async function analyserIA(recit, { apiKey, ref, max, effort, timeout, client: clientInjecte }) {
+  const client = clientInjecte ?? creerClient(apiKey);
   const consigneMax = max < 8 ? `\n\nPropose AU MAXIMUM ${max} compétences : les ${max} mieux prouvées.` : "";
-  // `timeout` est une limite de temps TOTALE (relance du SDK comprise) : sans ce
-  // signal, le SDK relance après un timeout et l'attente double (25 s → ~50 s).
-  const ctrl = new AbortController();
-  const minuterie = setTimeout(() => ctrl.abort(), timeout);
-  let response;
   try {
-    response = await client.beta.messages.create(
-      {
-        model: MODELE,
-        max_tokens: 16000,
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
-        output_config: { effort, format: { type: "json_schema", schema: SCHEMA } },
-        system: [{ type: "text", text: ref.system, cache_control: { type: "ephemeral" } }],
-        messages: [{ role: "user", content: `Récit du jeune :\n"""\n${recit}\n"""${consigneMax}` }],
-      },
-      { signal: ctrl.signal },
-    );
-  } finally {
-    clearTimeout(minuterie);
+    // `timeout` est une limite de temps TOTALE pour l'appel.
+    return await appelerJSON({
+      client,
+      system: ref.system,
+      contenu: `Récit du jeune :\n"""\n${recit}\n"""${consigneMax}`,
+      schema: SCHEMA,
+      nom: "analyse",
+      effort,
+      maxTokens: 16000,
+      timeoutMs: timeout,
+    });
+  } catch (err) {
+    if (err?.message === "refus du modèle") {
+      throw new Error("L'IA n'a pas pu analyser ce récit. Reformule-le ou raconte une autre situation.");
+    }
+    throw err;
   }
-
-  if (response.stop_reason === "refusal") {
-    throw new Error("L'IA n'a pas pu analyser ce récit. Reformule-le ou raconte une autre situation.");
-  }
-  const texte = response.content.filter((b) => b.type === "text").map((b) => b.text).join("");
-  return { brut: JSON.parse(texte), modele: response.model };
 }
 
 // ---------------------------------------------------------------------------
@@ -319,7 +309,7 @@ function analyserMock(recit, { rome, max }) {
 /**
  * @param {string} recit
  * @param {{ apiKey?: string, rome: object, max?: number, mode?: string, effort?: string, timeout?: number }} options
- *   mode : "auto" (Claude si apiKey, sinon mock) ou "mock" (toujours le mock).
+ *   mode : "auto" (IA si apiKey, sinon mock) ou "mock" (toujours le mock).
  */
 export async function analyser(recit, { apiKey, rome, max = 8, mode = "auto", effort = "medium", timeout = 60000, client } = {}) {
   const ref = referentiel(rome);
@@ -327,7 +317,7 @@ export async function analyser(recit, { apiKey, rome, max = 8, mode = "auto", ef
   const mock = mode === "mock" || (!apiKey && !client);
   const { brut, modele } = mock
     ? analyserMock(texteRecit, { rome, max })
-    : await analyserClaude(texteRecit, { apiKey, ref, max, effort, timeout, client });
+    : await analyserIA(texteRecit, { apiKey, ref, max, effort, timeout, client });
 
   // Garde-fous côté serveur : on ne garde que ce qui est vérifiable.
   const vus = new Set();
