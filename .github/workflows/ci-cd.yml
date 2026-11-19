@@ -1,0 +1,101 @@
+# CI/CD de Déclic.
+# - CI, à chaque pull request et à chaque push sur main :
+#     tests (npm test), vérification du build du Worker (wrangler deploy --dry-run),
+#     puis une partie complète simulée contre `wrangler dev` (MJ de secours, sans réseau IA).
+# - CD, à chaque push sur main, si la CI passe : déploiement sur Cloudflare Workers
+#   (https://potentiel-cache.planbhunalp.workers.dev), puis vérification que le site répond.
+#   Le déploiement ne s'active que si les secrets du dépôt CLOUDFLARE_API_TOKEN et
+#   CLOUDFLARE_ACCOUNT_ID existent (sinon il est sauté, sans erreur). La clé OpenAI reste
+#   un secret du Worker (wrangler secret put) : elle n'est jamais dans GitHub.
+name: CI/CD
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tests unitaires et d'intégration
+        run: npm test
+      - name: Build du Worker (sans déployer)
+        run: npm run check
+
+  simulation:
+    name: Partie simulée
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lancer wrangler dev (MJ de secours)
+        run: |
+          npx wrangler dev --port 8787 --var MJ_MODE:mock > wrangler.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8787/ > /dev/null && exit 0
+            sleep 2
+          done
+          echo "wrangler dev n'a pas démarré" && cat wrangler.log && exit 1
+      - name: Partie complète (écran + 3 joueurs en WebSocket)
+        run: npm run simulate -- http://127.0.0.1:8787
+
+  deploiement:
+    name: Déploiement en production
+    needs: [tests, simulation]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: deploiement-production
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      URL_PROD: https://potentiel-cache.planbhunalp.workers.dev
+    steps:
+      - name: Secrets Cloudflare présents ?
+        id: secrets
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Déploiement sauté : ajouter les secrets CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID au dépôt pour l'activer."
+          fi
+      - uses: actions/checkout@v4
+        if: steps.secrets.outputs.ok == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.ok == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - if: steps.secrets.outputs.ok == 'true'
+        run: npm ci
+      - name: wrangler deploy
+        if: steps.secrets.outputs.ok == 'true'
+        run: npx wrangler deploy
+      - name: Vérifier que la production répond
+        if: steps.secrets.outputs.ok == 'true'
+        run: |
+          curl -sf "$URL_PROD/" | grep -q "Déclic"
+          curl -sf -X POST "$URL_PROD/api/parties" -H "content-type: application/json" --data '{"nbProblemes":1,"solo":true}' | grep -q '"code"'
+          echo "Production OK : $URL_PROD"
