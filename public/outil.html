@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Potentiel caché — Équipe 12</title>
+  <meta name="description" content="Faire raconter ses expériences à un jeune, révéler les compétences ROME qu'elles contiennent, et préparer la fiche du psychologue du travail.">
+  <link rel="stylesheet" href="style.css">
+  <!-- Bandeau commun du hackathon (le numéro d'équipe est déjà renseigné) -->
+  <script src="https://orientation.code4sud.fr/bandeau.js" data-equipe="12"></script>
+</head>
+<body>
+  <header class="entete">
+    <p class="surtitre">Centre des Possibles · préparation d'entretien</p>
+    <h1>Ton potentiel caché</h1>
+    <ol class="etapes" aria-label="Étapes">
+      <li data-etape="1" class="active">1. Raconte</li>
+      <li data-etape="2">2. Choisis</li>
+      <li data-etape="3">3. Fiche pour le psy</li>
+    </ol>
+  </header>
+
+  <main>
+    <!-- Étape 1 : le récit -->
+    <section id="etape-1" class="etape">
+      <h2>Raconte des trucs que tu as déjà faits</h2>
+      <p class="aide">À la maison, avec tes potes, en ligne, dans ton quartier… Même si ça te paraît « rien ». Pas besoin d'écrire bien, écris comme tu parles. Une idée pour démarrer :</p>
+      <div class="relances" id="relances"></div>
+      <label for="recit" class="visuellement-cache">Ton récit</label>
+      <textarea id="recit" rows="9" maxlength="10000" placeholder="Par exemple : le mercredi je garde mes deux petits frères, je les fais goûter et je les aide pour les devoirs…"></textarea>
+      <div class="actions">
+        <button type="button" id="micro" class="secondaire" hidden>🎙️ Parler au lieu d'écrire</button>
+        <button type="button" id="analyser" class="principal">Révéler mes compétences</button>
+      </div>
+      <details class="exemples">
+        <summary>Essayer avec un récit d'exemple (personnages inventés)</summary>
+        <div id="exemples" class="exemples-liste"></div>
+      </details>
+      <p id="statut" class="statut" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- Étape 2 : validation par le jeune -->
+    <section id="etape-2" class="etape" hidden>
+      <h2>Voilà ce qu'on a repéré dans ton histoire</h2>
+      <p class="aide">C'est toi qui décides. Garde ce qui te ressemble, retire le reste, et change les mots si tu veux (clique sur la phrase).</p>
+      <div id="cartes" class="cartes"></div>
+      <div id="approfondir" class="approfondir" hidden></div>
+      <div class="actions">
+        <button type="button" class="secondaire" data-aller="1">← Compléter mon récit</button>
+        <button type="button" id="vers-fiche" class="principal">Préparer la fiche pour le psy →</button>
+      </div>
+    </section>
+
+    <!-- Étape 3 : fiche pour le psychologue -->
+    <section id="etape-3" class="etape" hidden>
+      <article id="fiche" class="fiche"></article>
+      <div class="actions sans-impression">
+        <button type="button" class="secondaire" data-aller="2">← Modifier mes choix</button>
+        <button type="button" id="imprimer" class="principal">Imprimer / PDF</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pied sans-impression">
+    <p>Aucun récit n'est enregistré. Compétences issues du référentiel <a href="https://www.data.gouv.fr/datasets/repertoire-operationnel-des-metiers-et-des-emplois-rome" target="_blank" rel="noopener">ROME 4.0</a> (France Travail, open data). L'outil éclaire, il ne décide pas : pas de score, pas de verdict.</p>
+  </footer>
+
+  <template id="tpl-carte">
+    <article class="carte">
+      <p class="situation"></p>
+      <span class="riasec"></span>
+      <p class="mots" contenteditable="true" spellcheck="true"></p>
+      <blockquote class="preuve"></blockquote>
+      <p class="rome"><span class="code"></span> <span class="libelle"></span></p>
+      <div class="choix" role="group" aria-label="Ton choix">
+        <button type="button" data-choix="garde" aria-pressed="false">✓ C'est moi</button>
+        <button type="button" data-choix="retire" aria-pressed="false">✗ Pas moi</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="js/outil.js" type="module"></script>
+</body>
+</html>
