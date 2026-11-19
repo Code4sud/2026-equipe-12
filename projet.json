@@ -6,5 +6,5 @@
   "stack": ["Cloudflare Workers", "Durable Objects", "JavaScript", "OpenAI gpt-5-nano", "ROME 4.0", "O*NET", "ESCO"],
   "demo": "https://potentiel-cache.planbhunalp.workers.dev",
   "video": "",
-  "captures": ["captures/1-ecran-probleme.png", "captures/2-telephones.png", "captures/3-ecran-reponses.png", "captures/4-ecran-solution.png", "captures/5-fiche.png"]
+  "captures": ["captures/1-ecran-probleme.png", "captures/2-telephones.png", "captures/3-ecran-reponses.png", "captures/4-ecran-competences.png", "captures/5-fiche.png"]
 }
