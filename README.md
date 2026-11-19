@@ -16,6 +16,8 @@ Une partie se joue à 1 à 6 joueurs autour d'un **écran commun**, chacun avec 
 4. **Chaque joueur reçoit une compétence** tirée de sa réponse, avec sa propre phrase comme preuve. Il la garde ou non.
 5. À la fin : une **fiche imprimable** avec les compétences gardées, le profil d'intérêts RIASEC et des métiers proches (O\*NET, ESCO).
 
+**Mode solo** : le bouton « Jouer seul » de l'accueil lance une partie sur un seul appareil (téléphone ou PC), sans animateur ni écran commun : la situation s'affiche sur l'appareil, pas de discussion ni de minuteur, et la même fiche à la fin.
+
 Garde-fous :
 - les réponses sont privées : l'écran commun montre **qui** a répondu, jamais **ce qu'il** a répondu, ni qui a trouvé ;
 - pas de bonne ni de mauvaise réponse : personne n'est jamais jugé ;
