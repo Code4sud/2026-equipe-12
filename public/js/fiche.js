@@ -182,7 +182,7 @@ export function rendreFiche(brut, o = {}) {
     </section>`;
   return `<header class="fiche-entete">
       <div>
-        <p class="surtitre">Potentiel caché · fiche personnage${date ? ` · ${echapper(date)}` : ""}${f.code ? ` · partie ${echapper(f.code)}` : ""}</p>
+        <p class="surtitre">Déclic · fiche personnage${date ? ` · ${echapper(date)}` : ""}${f.code ? ` · partie ${echapper(f.code)}` : ""}</p>
         <h2><span class="avatar" aria-hidden="true">${echapper(f.avatar)}</span> ${echapper(f.pseudo || "Mon personnage")}</h2>
       </div>
     </header>

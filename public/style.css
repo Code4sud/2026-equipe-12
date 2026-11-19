@@ -1,31 +1,20 @@
 :root {
-  --fond: #faf7f2;
+  /* Documents (fiche, outil solo) : fond clair pour lire et imprimer,
+     couleurs de la DA « Centre des Possibles » (bleu nuit, rose, violet). */
+  color-scheme: light;
+  --fond: #f5f4ff;
   --surface: #ffffff;
-  --texte: #1f2430;
-  --discret: #626a7a;
-  --bord: #e4dfd6;
-  --accent: #e2572b;
-  --accent-fonce: #b8411b;
+  --texte: #1b1858;
+  --discret: #5a5790;
+  --bord: #dcd9f5;
+  --accent: #d01f74;
+  --accent-fonce: #a8155c;
+  --violet: #5b54e6;
   --vert: #1f8a5b;
   --vert-fond: #e6f4ec;
-  --rouge-fond: #f6eceb;
-  --citation: #fff4d6;
-  --rayon: 14px;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --fond: #16181d;
-    --surface: #1f2229;
-    --texte: #eceef2;
-    --discret: #a0a7b4;
-    --bord: #343843;
-    --accent: #ff7a4d;
-    --accent-fonce: #ff9a76;
-    --vert: #4fd194;
-    --vert-fond: #1c3329;
-    --rouge-fond: #33231f;
-    --citation: #3a3220;
-  }
+  --rouge-fond: #fbeef4;
+  --citation: #fdeef6;
+  --rayon: 16px;
 }
 
 * { box-sizing: border-box; }
@@ -33,13 +22,17 @@ body {
   margin: 0;
   background: var(--fond);
   color: var(--texte);
-  font: 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 17px/1.55 "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 main, .entete, .pied { max-width: 980px; margin: 0 auto; padding: 0 16px; }
 .entete { padding-top: 28px; }
-h1 { font-size: clamp(1.8rem, 5vw, 2.6rem); margin: 0 0 12px; letter-spacing: -0.02em; }
+h1 {
+  font-size: clamp(1.8rem, 5vw, 2.6rem); margin: 0 0 12px; letter-spacing: 0.01em;
+  font-style: italic; font-weight: 900; text-transform: uppercase; color: var(--violet);
+  text-shadow: 0.03em 0.03em 0 #ff5aa8, 0.06em 0.06em 0 #e0348a;
+}
 h2 { font-size: 1.45rem; margin: 8px 0; }
-.surtitre { text-transform: uppercase; font-size: 0.78rem; letter-spacing: 0.08em; color: var(--accent-fonce); margin: 0 0 4px; font-weight: 600; }
+.surtitre { text-transform: uppercase; font-size: 0.78rem; letter-spacing: 0.12em; color: var(--accent); margin: 0 0 4px; font-weight: 700; }
 .aide, .discret { color: var(--discret); }
 .discret { font-size: 0.88em; }
 .visuellement-cache { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
@@ -138,6 +131,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
 @media print {
+  h1 { text-shadow: none; color: #000; }
   :root { --fond: #fff; --surface: #fff; --texte: #000; --discret: #444; --citation: #f3f3f3; }
   .entete, .sans-impression, .pied { display: none !important; }
   .fiche { border: none; padding: 0; }

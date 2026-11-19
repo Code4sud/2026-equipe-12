@@ -1,4 +1,4 @@
-# SPEC — « Potentiel caché » : le jeu de rôle des compétences (MVP)
+# SPEC — « Déclic » : le jeu de rôle des compétences (MVP)
 
 Document de référence pour tout le développement. **Si le code et cette spec divergent, c'est la spec qui fait foi** (sauf bug évident de la spec : le signaler).
 

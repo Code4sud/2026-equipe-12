@@ -5,7 +5,7 @@
   display: flex; align-items: center; justify-content: space-between; gap: 0.6em;
   max-width: 520px; margin: 0 auto; padding: 10px 16px 0; font-size: 0.85rem;
 }
-.tel-entete .marque { font-weight: 800; color: var(--accent); }
+.tel-entete .marque { font-size: 1.05rem; }
 .tel-entete .code-partie { font-weight: 800; letter-spacing: 0.15em; }
 .tel-ecran { padding-bottom: 40px; outline: none; }
 .tel-ecran h1 { font-size: clamp(1.6rem, 7vw, 2.1rem); }
@@ -18,8 +18,7 @@
 .tel-sous-champ { justify-content: space-between; gap: 0.5em; }
 .tel-sous-champ [data-compteur] { margin-left: auto; font-variant-numeric: tabular-nums; }
 .tel-ecran textarea { min-height: 9em; font-size: 1.05rem; }
-.tel-question { font-weight: 800; color: var(--accent-bouton); font-size: 1.15em; }
-@media (prefers-color-scheme: dark) { .tel-question { color: var(--accent); } }
+.tel-question { font-weight: 800; font-style: italic; color: var(--rose); font-size: 1.15em; }
 .tel-titre-minuteur { justify-content: space-between; flex-wrap: nowrap; }
 .tel-titre-minuteur .minuteur { --taille: 84px; }
 .tel-compte { text-align: center; color: var(--discret); font-weight: 600; }
@@ -60,7 +59,7 @@
 /* Carte compétence (couleur RIASEC via --type / --sur-type) */
 .carte-competence {
   background: var(--surface); border: 3px solid var(--type); border-radius: var(--rayon);
-  overflow: hidden; box-shadow: var(--ombre);
+  overflow: hidden; box-shadow: var(--ombre), 6px 6px 0 var(--rose);
 }
 .carte-competence-bandeau {
   /* --fond-type : couleur RIASEC assombrie si besoin pour un contraste AA (couleursLisibles). */
@@ -76,9 +75,8 @@
 .tel-proposition[data-choix="retire"] .carte-competence { opacity: 0.5; }
 .tel-garde { flex-wrap: nowrap; gap: 0.6em; }
 .tel-garde .bouton { flex: 1; padding-left: 0.6em; padding-right: 0.6em; }
-.tel-garde [data-garder="1"][aria-pressed="true"] { background: var(--succes); border-color: var(--succes); color: #fff; }
-/* Mode sombre : --succes devient vert clair (#4fd194) → texte sombre (9,2:1 au lieu de 1,9:1). */
-@media (prefers-color-scheme: dark) { .tel-garde [data-garder="1"][aria-pressed="true"] { color: #16181d; } }
+/* --succes est un vert clair (#3ddc97) : texte bleu nuit (9:1). */
+.tel-garde [data-garder="1"][aria-pressed="true"] { background: var(--succes); border-color: var(--succes); color: #1b1858; }
 .tel-garde [data-garder="0"][aria-pressed="true"] { background: var(--discret); border-color: var(--discret); color: var(--fond); }
 
 .gommette {
@@ -112,7 +110,7 @@
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
   display: flex; align-items: center; justify-content: center; gap: 8px;
   padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
-  background: var(--surface); border-top: 2px solid var(--accent); font-size: 0.85rem;
+  background: var(--surface); border-top: 2px solid var(--rose); font-size: 0.85rem;
 }
 .demo-barre .bouton { min-height: 40px; }
 .demo-etiquette { flex: 1; text-align: center; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

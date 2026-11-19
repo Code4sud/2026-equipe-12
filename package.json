@@ -2,7 +2,7 @@
   "name": "potentiel-cache",
   "private": true,
   "type": "module",
-  "description": "Équipe 12 — Potentiel caché : le jeu de rôle des compétences (Cloudflare Workers + Durable Objects)",
+  "description": "Équipe 12 — Déclic : le jeu de rôle des compétences (Cloudflare Workers + Durable Objects)",
   "scripts": {
     "dev": "wrangler dev",
     "test": "node --test \"test/**/*.test.js\"",
