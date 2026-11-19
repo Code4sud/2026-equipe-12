@@ -1,5 +1,5 @@
 // Configuration Cloudflare Workers de « Potentiel caché ».
-// Développement local : `npm run dev` (wrangler dev).
+// Développement local : `npm run dev` (wrangler dev). Production : `npx wrangler deploy`.
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "potentiel-cache",
@@ -9,11 +9,23 @@
   "compatibility_flags": ["nodejs_compat"],
 
   // Fichiers statiques (écran commun, téléphone, fiche, outil solo).
+  // Le worker ne passe en premier que pour l'API et les liens joueurs /p/<code>.
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/p/*"]
   },
+
+  // Une instance de Durable Object par partie (SQLite, WebSocket Hibernation, alarmes).
+  "durable_objects": {
+    "bindings": [{ "name": "PARTIE", "class_name": "Partie" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Partie"] }],
+
+  // MJ_MODE : "auto" = Claude si le secret ANTHROPIC_API_KEY est présent, sinon MJ mock ;
+  // "mock" = toujours le MJ mock déterministe (démo de secours, simulation).
+  // La clé se met dans .dev.vars en local (voir .dev.vars.example), jamais ici.
+  "vars": { "MJ_MODE": "auto" },
 
   "observability": { "enabled": true }
 }

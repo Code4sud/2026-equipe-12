@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500" role="img" aria-labelledby="ae-titre ae-desc">
+  <title id="ae-titre">Créer l'affiche d'un événement</title>
+  <desc id="ae-desc">Sur un mur, une grande affiche encore vierge est en cours de création. Sur la table, des feutres, une tablette graphique et des confettis.</desc>
+  <!-- Mur de briques douces -->
+  <rect width="800" height="500" fill="#faf7f2"/>
+  <rect width="800" height="350" fill="#f6dcc9"/>
+  <g fill="#efcdb5">
+    <rect x="10" y="20" width="90" height="30" rx="4"/>
+    <rect x="120" y="20" width="90" height="30" rx="4"/>
+    <rect x="600" y="20" width="90" height="30" rx="4"/>
+    <rect x="710" y="20" width="90" height="30" rx="4"/>
+    <rect x="-30" y="66" width="90" height="30" rx="4"/>
+    <rect x="70" y="66" width="90" height="30" rx="4"/>
+    <rect x="650" y="66" width="90" height="30" rx="4"/>
+    <rect x="750" y="66" width="90" height="30" rx="4"/>
+    <rect x="10" y="112" width="90" height="30" rx="4"/>
+    <rect x="120" y="112" width="90" height="30" rx="4"/>
+    <rect x="600" y="112" width="90" height="30" rx="4"/>
+    <rect x="710" y="112" width="90" height="30" rx="4"/>
+    <rect x="-30" y="158" width="90" height="30" rx="4"/>
+    <rect x="70" y="158" width="90" height="30" rx="4"/>
+    <rect x="650" y="158" width="90" height="30" rx="4"/>
+    <rect x="750" y="158" width="90" height="30" rx="4"/>
+    <rect x="10" y="204" width="90" height="30" rx="4"/>
+    <rect x="120" y="204" width="90" height="30" rx="4"/>
+    <rect x="600" y="204" width="90" height="30" rx="4"/>
+    <rect x="710" y="204" width="90" height="30" rx="4"/>
+    <rect x="-30" y="250" width="90" height="30" rx="4"/>
+    <rect x="70" y="250" width="90" height="30" rx="4"/>
+    <rect x="650" y="250" width="90" height="30" rx="4"/>
+    <rect x="750" y="250" width="90" height="30" rx="4"/>
+  </g>
+  <!-- Grande affiche en cours -->
+  <rect x="246" y="34" width="308" height="288" rx="6" fill="#3b3f58" opacity="0.12"/>
+  <rect x="240" y="26" width="308" height="288" rx="6" fill="#ffffff"/>
+  <!-- Zones à remplir (pointillés) -->
+  <g fill="none" stroke="#c9cdd8" stroke-width="3" stroke-dasharray="10 8">
+    <rect x="270" y="56" width="248" height="56" rx="6"/>
+    <rect x="270" y="254" width="248" height="40" rx="6"/>
+  </g>
+  <!-- Étoile en cours de dessin -->
+  <path d="M394 136 l18 36 l40 6 l-29 28 l7 40 l-36 -19 l-36 19 l7 -40 l-29 -28 l40 -6 z" fill="#f2c14e"/>
+  <path d="M394 136 l18 36 l40 6 l-29 28 l7 40 l-36 -19 l-36 19 l7 -40 l-29 -28 l40 -6 z" fill="none" stroke="#e2572b" stroke-width="4" stroke-linejoin="round" stroke-dasharray="420 300"/>
+  <!-- Traits d'esquisse -->
+  <path d="M286 84 q30 -14 60 0 t60 0" fill="none" stroke="#4a8fbf" stroke-width="6" stroke-linecap="round"/>
+  <!-- Pastilles de couleur -->
+  <circle cx="300" cy="274" r="10" fill="#e2572b"/>
+  <circle cx="326" cy="274" r="10" fill="#6fb38a"/>
+  <circle cx="352" cy="274" r="10" fill="#4a8fbf"/>
+  <!-- Ruban adhésif aux coins -->
+  <g fill="#f2c14e" opacity="0.8">
+    <rect x="226" y="18" width="44" height="16" rx="2" transform="rotate(-30 248 26)"/>
+    <rect x="518" y="18" width="44" height="16" rx="2" transform="rotate(30 540 26)"/>
+    <rect x="226" y="306" width="44" height="16" rx="2" transform="rotate(30 248 314)"/>
+    <rect x="518" y="306" width="44" height="16" rx="2" transform="rotate(-30 540 314)"/>
+  </g>
+  <!-- Table -->
+  <rect y="350" width="800" height="150" fill="#f1e4d0"/>
+  <path d="M40 360 h720 l24 44 h-768 z" fill="#d79a62"/>
+  <rect x="16" y="404" width="768" height="16" rx="4" fill="#b97a45"/>
+  <rect x="60" y="420" width="16" height="80" fill="#b97a45"/>
+  <rect x="724" y="420" width="16" height="80" fill="#b97a45"/>
+  <!-- Feutres -->
+  <g transform="rotate(-12 150 380)">
+    <rect x="96" y="372" width="96" height="16" rx="8" fill="#e2572b"/>
+    <rect x="96" y="372" width="34" height="16" rx="8" fill="#c84a22"/>
+    <path d="M192 374 l14 6 l-14 6 z" fill="#3b3f58"/>
+  </g>
+  <g transform="rotate(4 160 392)">
+    <rect x="110" y="386" width="96" height="16" rx="8" fill="#4a8fbf"/>
+    <rect x="110" y="386" width="34" height="16" rx="8" fill="#2f4a6b"/>
+    <path d="M206 388 l14 6 l-14 6 z" fill="#3b3f58"/>
+  </g>
+  <g transform="rotate(18 250 380)">
+    <rect x="214" y="372" width="80" height="16" rx="8" fill="#6fb38a"/>
+    <rect x="214" y="372" width="28" height="16" rx="8" fill="#2e7d5b"/>
+    <path d="M294 374 l12 6 l-12 6 z" fill="#3b3f58"/>
+  </g>
+  <rect x="300" y="368" width="34" height="14" rx="7" fill="#f2c14e" transform="rotate(-20 317 375)"/>
+  <!-- Tablette graphique et stylet -->
+  <path d="M470 368 h210 l14 32 h-238 z" fill="#3b3f58"/>
+  <path d="M492 374 h150 l10 22 h-170 z" fill="#4d5371"/>
+  <path d="M520 386 q30 -12 60 0" fill="none" stroke="#f2c14e" stroke-width="3" stroke-linecap="round"/>
+  <g fill="#9aa0b4">
+    <circle cx="664" cy="378" r="4"/>
+    <circle cx="668" cy="390" r="4"/>
+  </g>
+  <g transform="rotate(-28 600 352)">
+    <rect x="560" y="347" width="90" height="10" rx="5" fill="#e2572b"/>
+    <path d="M560 347 l-14 5 l14 5 z" fill="#3b3f58"/>
+  </g>
+  <!-- Confettis -->
+  <g>
+    <rect x="590" y="300" width="12" height="6" rx="2" fill="#e2572b" transform="rotate(25 596 303)"/>
+    <rect x="624" y="276" width="12" height="6" rx="2" fill="#4a8fbf" transform="rotate(-35 630 279)"/>
+    <rect x="200" y="300" width="12" height="6" rx="2" fill="#6fb38a" transform="rotate(40 206 303)"/>
+    <rect x="170" y="250" width="12" height="6" rx="2" fill="#f2c14e" transform="rotate(-15 176 253)"/>
+    <rect x="420" y="384" width="12" height="6" rx="2" fill="#e2572b" transform="rotate(60 426 387)"/>
+    <rect x="380" y="374" width="12" height="6" rx="2" fill="#4a8fbf" transform="rotate(10 386 377)"/>
+    <rect x="710" y="380" width="12" height="6" rx="2" fill="#f2c14e" transform="rotate(-50 716 383)"/>
+    <rect x="80" y="390" width="12" height="6" rx="2" fill="#6fb38a" transform="rotate(30 86 393)"/>
+    <circle cx="582" cy="246" r="5" fill="#f2c14e"/>
+    <circle cx="214" cy="200" r="5" fill="#e2572b"/>
+    <circle cx="660" cy="320" r="5" fill="#6fb38a"/>
+    <circle cx="448" cy="372" r="4" fill="#f2c14e"/>
+    <circle cx="140" cy="300" r="4" fill="#4a8fbf"/>
+    <path d="M600 200 l4 10 l10 4 l-10 4 l-4 10 l-4 -10 l-10 -4 l10 -4 z" fill="#f2c14e"/>
+    <path d="M186 140 l3 8 l8 3 l-8 3 l-3 8 l-3 -8 l-8 -3 l8 -3 z" fill="#e2572b"/>
+  </g>
+</svg>
