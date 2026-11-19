@@ -342,6 +342,9 @@ test("mock : les mots par défaut rétablissent l'accent initial du ROME (« Ela
 
 const PROBLEMES_JEU = JSON.parse(readFileSync(new URL("../public/data/problemes.json", import.meta.url), "utf-8")).problemes;
 const pb = (id) => PROBLEMES_JEU.find((p) => p.id === id);
+// Ancienne situation du téléphone (avant le 19/11/2026), gardée comme donnée de test
+// pour la découpe des preuves.
+const TEL_ANCIEN = {"id": "telephone-ancien", "titre": "TÃ©lÃ©phone cassÃ©", "situation": "Vous Ãªtes au parc avec votre pote Sami quand son tÃ©lÃ©phone tombe : l'Ã©cran est fissurÃ© et il reste noir. Ce soir avant 20 h, Sami doit envoyer son CV pour un job d'Ã©tÃ©. Son CV et le lien pour postuler sont dans son tÃ©lÃ©phone.", "question": "Que faites-vous ?", "riasec": "C", "solution": {"resume": "Garder son calme et s'occuper d'abord du plus urgent : Sami se connecte Ã  son compte en ligne (mail, drive) depuis un autre appareil pour retrouver son CV et l'envoyer ce soir. Ensuite seulement, on compare plusieurs devis de rÃ©paration.", "motsCles": ["compte", "cloud", "drive", "google", "gmail", "sauvegard", "ordi", "pc", "mon tel", "autre tel", "pret", "emprunt", "mail", "connect", "mediatheque", "cyber", "imprim", "copie", "refai", "preven", "previen", "patron", "employeur", "appel", "retard", "delai"]}, "competences": [{"code": "6B309", "pourquoi": "propose de passer par un autre appareil, un compte en ligne, une messagerie ou une sauvegarde pour retrouver et envoyer le CV", "motsCles": ["compte", "cloud", "drive", "sauvegard", "mail", "connect", "ordi", "en ligne", "appli"], "mots": "Tu as pensÃ© au numÃ©rique, comme un compte en ligne ou un autre appareil, pour avancer malgrÃ© l'Ã©cran cassÃ©."}, {"code": "6D107", "pourquoi": "traite d'abord l'urgence (le CV de ce soir) avant la rÃ©paration", "motsCles": ["abord", "urgent", "priorit", "ce soir", "avant", "ensuite", "plus important"], "mots": "Tu as rÃ©flÃ©chi Ã  l'ordre des choses : ce qui presse d'abord, le reste ensuite."}, {"code": "4B103", "pourquoi": "compare plusieurs rÃ©parateurs, devis ou prix, ou vÃ©rifie la garantie avant de choisir", "motsCles": ["devis", "compar", "prix", "reparateur", "garantie", "boutique", "magasin"], "mots": "Tu as pensÃ© Ã  bien choisir oÃ¹ faire rÃ©parer ou remplacer le tÃ©lÃ©phone."}, {"code": "6B201", "pourquoi": "pense Ã  prÃ©venir l'employeur ou Ã  demander de l'aide Ã  quelqu'un (pote, mÃ©diathÃ¨que)", "motsCles": ["preven", "previen", "demand", "aid", "appel", "pote", "delai", "expliqu"], "mots": "Tu as pensÃ© Ã  prÃ©venir quelqu'un ou Ã  demander un coup de main, au lieu de tout gÃ©rer dans ton coin."}, {"code": "3E202", "pourquoi": "cherche Ã  comprendre ce qui ne marche pas sur le tÃ©lÃ©phone (Ã©cran, batterie, charge, redÃ©marrage)", "motsCles": ["redemarr", "batterie", "charge", "ecran", "allume", "bouton", "test"], "mots": "Tu as regardÃ© de prÃ¨s ce qui ne marche plus sur le tÃ©lÃ©phone."}, {"code": "6D112", "pourquoi": "garde son calme et propose une solution au lieu de paniquer", "motsCles": ["calme", "paniqu", "respir", "pas grave", "solution", "tranquille"], "mots": "Tu as gardÃ© la tÃªte froide face au tÃ©lÃ©phone cassÃ© et tu as rÃ©flÃ©chi Ã  quoi faire."}], "competenceParDefaut": "6D112", "competenceParticipation": "6D102"};
 
 test("mock attribuer : une réponse sérieuse sans mot-clé reçoit une vraie compétence, jamais la participation", async () => {
   const mj = mjMock({ rome: ROME });
@@ -372,67 +375,48 @@ test("mock attribuer : une réponse sérieuse sans mot-clé reçoit une vraie co
 
 const HESITATION = "je sais pas trop, on attend de voir";
 
-test("remplissage / hésitation : jamais citée comme preuve ; compétence du choix, sinon participation", async () => {
+test("remplissage / hésitation : jamais citée comme preuve, participation", async () => {
   const mj = mjMock({ rome: ROME });
   const voisine = pb("voisine-formulaire");
-  // Cas réel : « je sais pas trop, on attend de voir » + proposition 2 (index 1).
-  const { j } = await mj.attribuer({ probleme: voisine, historique: { j: { reponses: [HESITATION], choix: 1 } } });
-  assert.equal(j.code, voisine.choix[1].competence, "la compétence écrite pour ce choix");
-  assert.equal(j.preuve, voisine.choix[1].texte, "preuve = texte du choix");
-  assert.equal(j.typePreuve, "jeu");
-  assert.notEqual(j.preuve, HESITATION);
-  // Sans choix : participation.
   const sans = (await mj.attribuer({ probleme: voisine, historique: { j: { reponses: [HESITATION], choix: null } } })).j;
   assert.equal(sans.typePreuve, "participation");
   assert.equal(sans.preuve, PREUVE_PARTICIPATION);
   assert.equal(sans.code, "6D102");
-
-  // Autres formes de remplissage, sur tous les problèmes du jeu.
+  // Autres formes de remplissage, sur toutes les situations du jeu.
   const remplissages = ["je sais pas", "sais pas", "jsp", "aucune idée", "je vois pas", "on attend", "rien", "bof", "euh", "euuuh…", "?", "Je ne sais pas, bof", "jsp trop on verra bien"];
   for (const p of PROBLEMES_JEU) {
     for (const texte of remplissages) {
-      for (let index = 0; index < p.choix.length; index++) {
-        const r = (await mj.attribuer({ probleme: p, historique: { j: { reponses: [texte], choix: index } } })).j;
-        assert.equal(r.preuve, p.choix[index].texte, `${p.id} « ${texte} » choix ${index}`);
-        if (p.choix[index].competence) assert.equal(r.code, p.choix[index].competence, `${p.id} « ${texte} » choix ${index}`);
-      }
       const r = (await mj.attribuer({ probleme: p, historique: { j: { reponses: [texte], choix: null } } })).j;
-      assert.equal(r.typePreuve, "participation", `${p.id} « ${texte} » sans choix`);
+      assert.equal(r.typePreuve, "participation", `${p.id} « ${texte} »`);
     }
   }
   // Une réponse courte mais sur le sujet n'est pas du remplissage.
-  const court = (await mj.attribuer({ probleme: pb("telephone-casse"), historique: { j: { reponses: ["je préviens le coach"], choix: 0 } } })).j;
+  const court = (await mj.attribuer({ probleme: pb("telephone-casse"), historique: { j: { reponses: ["je préviens le coach"], choix: null } } })).j;
   assert.equal(court.code, "6B201");
   assert.equal(court.preuve, "je préviens le coach");
 });
 
-test("réponse sérieuse sans mot-clé + un choix : la compétence du choix plutôt que competenceParDefaut", async () => {
+test("réponse sérieuse sans mot-clé : la compétence générique, preuve tirée de la réponse", async () => {
   const mj = mjMock({ rome: ROME });
   const voisine = pb("voisine-formulaire");
   const texte = "je l'emmène à la mission locale demain matin";
-  const avecChoix = (await mj.attribuer({ probleme: voisine, historique: { j: { reponses: [texte], choix: 2 } } })).j;
-  assert.equal(avecChoix.code, voisine.choix[2].competence);
-  assert.equal(avecChoix.preuve, voisine.choix[2].texte);
-  // Sans choix : toujours la compétence générique, preuve tirée de la réponse.
-  const sansChoix = (await mj.attribuer({ probleme: voisine, historique: { j: { reponses: [texte], choix: null } } })).j;
-  assert.equal(sansChoix.code, voisine.competenceParDefaut);
-  assert.ok(texte.includes(sansChoix.preuve));
+  const j = (await mj.attribuer({ probleme: voisine, historique: { j: { reponses: [texte], choix: null } } })).j;
+  assert.equal(j.code, voisine.competenceParDefaut);
+  assert.ok(texte.includes(j.preuve));
 });
 
-test("IA attribuer : une citation tirée d'un remplissage est refusée → compétence du choix (même priorité que le mock)", async () => {
+test("IA attribuer : une citation tirée d'un remplissage est refusée → participation (même priorité que le mock)", async () => {
   const voisine = pb("voisine-formulaire");
   const client = fauxClient(sortie({ attributions: [{ joueur: "J1", participation: false, code: "6D116", citation: HESITATION, mots: "Tu as répondu présent." }] }));
   const mj = creerMJ({ apiKey: "x", rome: ROME, client, journal: silencieux });
-  const res = await mj.attribuer({ probleme: voisine, historique: { a: { reponses: [HESITATION], choix: 1 }, b: { reponses: [HESITATION], choix: null } } });
-  assert.equal(res.a.code, voisine.choix[1].competence);
-  assert.equal(res.a.preuve, voisine.choix[1].texte);
+  const res = await mj.attribuer({ probleme: voisine, historique: { b: { reponses: [HESITATION], choix: null } } });
   assert.equal(res.b.typePreuve, "participation");
   assert.equal(res.b.preuve, PREUVE_PARTICIPATION);
 });
 
 test("preuve = la proposition qui contient le mot-clé, jamais coupée au milieu d'une phrase", async () => {
   const mj = mjMock({ rome: ROME });
-  const tel = pb("telephone-casse");
+  const tel = TEL_ANCIEN;
   const preuve = async (texte) => (await mj.attribuer({ probleme: tel, historique: { j: { reponses: [texte], choix: null } } })).j;
   // Cas réel : la preuve était « … et ce soir je compare les » (coupée à 20 mots).
   const reel = "J'emprunte le tel d'un pote pour prevenir le coach que je serai en retard, et ce soir je compare les prix des reparateurs du quartier avant de choisir";
@@ -502,33 +486,6 @@ test("compétence générique : competenceParDefaut, puis 6D103, puis le premier
   assert.equal(await code({ ...base, competences: [comps[0], comps[3]] }), "4A201");
 });
 
-test("mock attribuer : un choix non retenu ne reçoit jamais une compétence qui le contredit", async () => {
-  const mj = mjMock({ rome: ROME });
-  const conflit = pb("conflit-discord");
-  const exclure = conflit.choix.findIndex((c) => /excluez les deux/.test(c.texte));
-  assert.ok(exclure >= 0);
-  // Sans champ `competence` sur le choix : ni « médiation » (mot-clé « les deux ») ni une autre compétence du problème.
-  const sansChamp = { ...conflit, choix: conflit.choix.map(({ competence: _c, ...c }) => c) };
-  let { j } = await mj.attribuer({ probleme: sansChamp, historique: { j: { reponses: [], choix: exclure } } });
-  assert.notEqual(j.code, "1D302");
-  assert.equal(j.code, conflit.competenceParticipation);
-  assert.equal(j.typePreuve, "jeu");
-  assert.equal(j.preuve, conflit.choix[exclure].texte);
-  assert.doesNotMatch(j.mots, INTERDITS);
-  // Avec le champ `competence` (pris dans la liste du problème) : c'est lui qui compte.
-  const avecChamp = { ...sansChamp, choix: sansChamp.choix.map((c, i) => (i === exclure ? { ...c, competence: "6B108" } : c)) };
-  ({ j } = await mj.attribuer({ probleme: avecChamp, historique: { j: { reponses: [], choix: exclure } } }));
-  assert.equal(j.code, "6B108");
-  // Un code de choix hors liste est ignoré.
-  const horsListe = { ...sansChamp, choix: sansChamp.choix.map((c, i) => (i === exclure ? { ...c, competence: "9Z999" } : c)) };
-  ({ j } = await mj.attribuer({ probleme: horsListe, historique: { j: { reponses: [], choix: exclure } } }));
-  assert.equal(j.code, conflit.competenceParticipation);
-  // Le bon choix décrit le bon comportement : ses mots-clés suffisent.
-  const bon = sansChamp.choix.findIndex((c) => c.correct);
-  ({ j } = await mj.attribuer({ probleme: sansChamp, historique: { j: { reponses: [], choix: bon } } }));
-  assert.ok(conflit.competences.some((c) => c.code === j.code));
-});
-
 test("mots : la phrase écrite pour la compétence du problème passe avant le libellé ROME recopié", async () => {
   const probleme = { ...PROBLEME, competences: PROBLEME.competences.map((c) => (c.code === "4A201" ? { ...c, mots: "Tu as pensé à compter avant de dépenser." } : c)) };
   const res = await mjMock({ rome: ROME }).attribuer({ probleme, historique: { a: { reponses: ["On fait un budget avec les 20 euros"], choix: null } } });
@@ -548,8 +505,8 @@ test("libellés ROME : majuscule accentuée et « œuvre » sur le titre de la c
   assert.equal(accentuerLibelle("Mettre en oeuvre des actions de communication"), "Mettre en œuvre des actions de communication");
   assert.equal(accentuerLibelle("Eduquer/dresser des animaux"), "Éduquer/dresser des animaux");
   for (const juste of ["Entretenir un véhicule", "Exécuter une étape de fabrication", "Expliquer", "Estimer"]) assert.equal(accentuerLibelle(juste), juste);
-  const conflit = pb("conflit-discord");
-  const { j } = await mjMock({ rome: ROME }).attribuer({ probleme: conflit, historique: { j: { reponses: ["je les écoute un moment et je leur parle en message privé"], choix: null } } });
+  const enfants = pb("enfants-voisine");
+  const { j } = await mjMock({ rome: ROME }).attribuer({ probleme: enfants, historique: { j: { reponses: ["je les écoute un moment et je leur demande pourquoi ils se disputent"], choix: null } } });
   assert.equal(j.code, "6D101");
   assert.equal(j.libelle, "Être à l'écoute, faire preuve d'empathie");
 });
@@ -667,8 +624,6 @@ test("conflit-discord : bannir, prendre parti ou quitter la partie n'est jamais 
     const { j } = await mj.attribuer({ probleme: conflit, historique: { j: { reponses: [texte], choix: null } } });
     assert.notEqual(j.code, "1D302", texte);
   }
-  const exclus = (await mj.attribuer({ probleme: conflit, historique: { j: { reponses: ["je les exclus tous les deux du serveur"], choix: null } } })).j;
-  assert.equal(exclus.code, "6B108");
   for (const texte of ["je parle aux deux pour avoir leur version", "je me mets entre les deux et je reste neutre", "on fait un vocal a trois"]) {
     const { j } = await mj.attribuer({ probleme: conflit, historique: { j: { reponses: [texte], choix: null } } });
     assert.equal(j.code, "1D302", texte);

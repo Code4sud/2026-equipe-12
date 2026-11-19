@@ -90,7 +90,7 @@ async function jouerPartie() {
     assert.equal(r.etat, etat);
     refus++;
     reponses[k] = [
-      k % 2 === 0 ? `${p.choix[0].texte} ${marque(k, 0)}` : `Je demande conseil à quelqu'un de confiance ${marque(k, 0)}`,
+      k % 2 === 0 ? `Je cherche une solution avec les autres ${marque(k, 0)}` : `Je demande conseil à quelqu'un de confiance ${marque(k, 0)}`,
       `Je propose qu'on en parle tous ensemble ${marque(k, 1)}`,
     ];
     joueur(0, { t: "reponse", texte: reponses[k][0] });
@@ -130,8 +130,7 @@ test("intégration : une compétence par joueur et par problème, même sans ré
       assert.doesNotMatch(c.mots, INTERDITS);
       if (c.typePreuve === "jeu" && i < 2) {
         const texte = reponses[c.problemeIndex][i];
-        const choix = p.choix.map((x) => x.texte);
-        assert.ok(texte.includes(c.preuve) || choix.includes(c.preuve), `preuve exacte : « ${c.preuve} »`);
+        assert.ok(texte.includes(c.preuve), `preuve exacte : « ${c.preuve} »`);
       }
     }
   }

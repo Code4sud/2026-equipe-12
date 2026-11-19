@@ -920,8 +920,8 @@ window.addEventListener("online", () => {
 
 const DEMO_PROBLEME = {
   id: "telephone-casse",
-  titre: "Téléphone cassé",
-  situation: "Vous êtes au parc avec des potes. Le téléphone d'un ami tombe et l'écran se fissure. Il en a besoin ce soir pour son entraînement au club.",
+  titre: "Le téléphone mystère",
+  situation: "Vous êtes avec votre pote Sami quand son téléphone tombe : depuis, l'écran reste noir, mais il vibre quand on l'appelle. Ce soir avant 20 h, Sami doit envoyer son CV pour un job d'été, et son CV est dans le téléphone. Il ne sait pas si c'est l'écran, la batterie ou autre chose.",
   question: "Que faites-vous ?",
   illustration: "illustrations/telephone-casse.svg",
 };

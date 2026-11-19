@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500" role="img" aria-labelledby="cb-titre cb-desc">
+  <title id="cb-titre">La caisse de la buvette du club de foot</title>
+  <desc id="cb-desc">Un stand de buvette au bord d'un terrain de foot. Sur le comptoir : une caisse ouverte avec des billets et des pièces, un rouleau de tickets, des canettes et un cahier de comptes avec un point d'interrogation.</desc>
+  <!-- Ciel et terrain -->
+  <rect width="800" height="500" fill="#faf7f2"/>
+  <rect width="800" height="220" fill="#dcecf2"/>
+  <circle cx="110" cy="70" r="36" fill="#f2c14e"/>
+  <g fill="#ffffff">
+    <ellipse cx="560" cy="58" rx="54" ry="16"/>
+    <ellipse cx="590" cy="46" rx="32" ry="18"/>
+  </g>
+  <rect y="200" width="800" height="300" fill="#7cc08f"/>
+  <g fill="#8ccc9d">
+    <rect x="0" y="200" width="100" height="300"/>
+    <rect x="200" y="200" width="100" height="300"/>
+    <rect x="400" y="200" width="100" height="300"/>
+    <rect x="600" y="200" width="100" height="300"/>
+  </g>
+  <!-- Cage de foot au loin -->
+  <g fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round">
+    <path d="M610 230 v-60 h130 v60"/>
+  </g>
+  <g stroke="#ffffff" stroke-width="1.5" opacity="0.7">
+    <line x1="630" y1="170" x2="630" y2="230"/>
+    <line x1="655" y1="170" x2="655" y2="230"/>
+    <line x1="680" y1="170" x2="680" y2="230"/>
+    <line x1="705" y1="170" x2="705" y2="230"/>
+    <line x1="610" y1="190" x2="740" y2="190"/>
+    <line x1="610" y1="210" x2="740" y2="210"/>
+  </g>
+  <circle cx="596" cy="252" r="12" fill="#ffffff" stroke="#3b3f58" stroke-width="2"/>
+  <!-- Stand de la buvette -->
+  <rect x="70" y="120" width="12" height="230" fill="#9aa0b4"/>
+  <rect x="518" y="120" width="12" height="230" fill="#9aa0b4"/>
+  <g>
+    <path d="M50 120 h500 l-20 -50 h-460 z" fill="#ffffff"/>
+    <path d="M70 70 h46 l-12 50 h-54 z" fill="#e2572b"/>
+    <path d="M162 70 h46 l-6 50 h-54 z" fill="#e2572b"/>
+    <path d="M254 70 h46 l0 50 h-54 z" fill="#e2572b"/>
+    <path d="M346 70 h46 l6 50 h-54 z" fill="#e2572b"/>
+    <path d="M438 70 h46 l12 50 h-54 z" fill="#e2572b"/>
+    <path d="M50 120 q25 20 50 0 q25 20 50 0 q25 20 50 0 q25 20 50 0 q25 20 50 0 q25 20 50 0 q25 20 50 0 q25 20 50 0 q25 20 50 0 q25 20 50 0 z" fill="#e2572b"/>
+  </g>
+  <rect x="200" y="150" width="200" height="36" rx="6" fill="#3b3f58"/>
+  <text x="300" y="176" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">BUVETTE</text>
+  <!-- Comptoir -->
+  <ellipse cx="300" cy="470" rx="280" ry="12" fill="#3b3f58" opacity="0.15"/>
+  <rect x="50" y="330" width="500" height="140" rx="6" fill="#d79a62"/>
+  <rect x="50" y="318" width="500" height="22" rx="6" fill="#b97a45"/>
+  <g stroke="#b97a45" stroke-width="3" opacity="0.6">
+    <line x1="150" y1="350" x2="150" y2="460"/>
+    <line x1="300" y1="350" x2="300" y2="460"/>
+    <line x1="450" y1="350" x2="450" y2="460"/>
+  </g>
+  <!-- Canettes (le stock) -->
+  <g>
+    <rect x="72" y="262" width="26" height="56" rx="5" fill="#e2572b"/>
+    <rect x="104" y="262" width="26" height="56" rx="5" fill="#4a8fbf"/>
+    <rect x="136" y="262" width="26" height="56" rx="5" fill="#6fb38a"/>
+    <rect x="88" y="206" width="26" height="56" rx="5" fill="#f2c14e"/>
+    <rect x="120" y="206" width="26" height="56" rx="5" fill="#e2572b"/>
+    <g fill="#ffffff" opacity="0.5">
+      <rect x="78" y="272" width="5" height="34" rx="2"/>
+      <rect x="110" y="272" width="5" height="34" rx="2"/>
+      <rect x="142" y="272" width="5" height="34" rx="2"/>
+      <rect x="94" y="216" width="5" height="34" rx="2"/>
+      <rect x="126" y="216" width="5" height="34" rx="2"/>
+    </g>
+  </g>
+  <!-- Caisse ouverte -->
+  <g>
+    <path d="M196 268 l20 -40 h140 l20 40 z" fill="#5c6372"/>
+    <rect x="190" y="266" width="192" height="54" rx="6" fill="#3b3f58"/>
+    <rect x="200" y="274" width="38" height="38" rx="3" fill="#8cc7a1"/>
+    <rect x="244" y="274" width="38" height="38" rx="3" fill="#8cc7a1"/>
+    <rect x="288" y="274" width="38" height="38" rx="3" fill="#f0b48a"/>
+    <g fill="#f2c14e" stroke="#c99a2e" stroke-width="1.5">
+      <circle cx="342" cy="286" r="7"/>
+      <circle cx="360" cy="286" r="7"/>
+      <circle cx="342" cy="302" r="7"/>
+      <circle cx="360" cy="302" r="6"/>
+    </g>
+  </g>
+  <!-- Rouleau de tickets -->
+  <g>
+    <circle cx="420" cy="292" r="24" fill="#f2c14e"/>
+    <circle cx="420" cy="292" r="8" fill="#c99a2e"/>
+    <path d="M420 316 h60 v16 h-60 z" fill="#f2c14e"/>
+    <g stroke="#c99a2e" stroke-width="2" stroke-dasharray="4 4">
+      <line x1="440" y1="316" x2="440" y2="332"/>
+      <line x1="460" y1="316" x2="460" y2="332"/>
+    </g>
+  </g>
+  <!-- Cahier de comptes -->
+  <g transform="rotate(-8 506 280)">
+    <rect x="470" y="226" width="80" height="96" rx="4" fill="#ffffff"/>
+    <rect x="470" y="226" width="80" height="14" rx="4" fill="#4a8fbf"/>
+    <g stroke="#9aa0b4" stroke-width="3" stroke-linecap="round">
+      <line x1="480" y1="252" x2="520" y2="252"/>
+      <line x1="480" y1="266" x2="530" y2="266"/>
+      <line x1="480" y1="280" x2="514" y2="280"/>
+    </g>
+    <line x1="480" y1="292" x2="540" y2="292" stroke="#3b3f58" stroke-width="2"/>
+    <text x="510" y="314" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#e2572b" text-anchor="middle">?</text>
+  </g>
+</svg>
