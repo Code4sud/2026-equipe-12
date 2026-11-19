@@ -86,7 +86,7 @@ const entierBorne = (v, min, max, defaut) => {
   return Math.min(max, Math.max(min, Math.round(n)));
 };
 
-export function creerEtat({ code, problemes, nbProblemes = 3, dureeEchange = 120, dureeReponse = 90, graine = 0, maintenant = null } = {}) {
+export function creerEtat({ code, problemes, nbProblemes = 3, dureeEchange = 120, dureeReponse = 90, graine = 0, maintenant = null, solo = false } = {}) {
   const liste = Array.isArray(problemes) ? problemes : problemes?.problemes ?? [];
   if (liste.length === 0) throw new Error("Aucun problème disponible pour créer la partie.");
   const nb = Math.min(entierBorne(nbProblemes, 1, 6, 3), liste.length);
@@ -94,6 +94,9 @@ export function creerEtat({ code, problemes, nbProblemes = 3, dureeEchange = 120
   return {
     code,
     phase: "accueil",
+    // Mode solo : un seul joueur, tout sur son appareil, sans écran commun ni
+    // animateur. La partie démarre dès qu'il a rejoint ; pas de discussion ni de minuteur.
+    solo: solo === true,
     creeA: maintenant,
     graine,
     reglages: {
@@ -307,6 +310,7 @@ H.rejoindre = { role: "joueur", f(e, ev) {
   if (longueur(pseudo) < 1 || longueur(pseudo) > 20) return "Choisis un pseudo de 1 à 20 caractères, avec au moins une lettre ou un chiffre.";
   if (!AVATARS.includes(ev.avatar)) return "Choisis un avatar dans la liste.";
   const js = listeJoueurs(e);
+  if (e.solo && js.length >= 1) return "Cette partie se joue en solo.";
   if (js.length >= MAX_JOUEURS) return `La partie est complète (${MAX_JOUEURS} joueurs maximum).`;
   if (js.some((j) => clePseudo(j.pseudo) === clePseudo(pseudo))) return "Ce pseudo est déjà pris. Choisis-en un autre.";
   if (js.some((j) => j.avatar === ev.avatar)) return "Cet avatar est déjà pris. Choisis-en un autre.";
@@ -320,6 +324,8 @@ H.rejoindre = { role: "joueur", f(e, ev) {
     reponses: {},
     competences: [],
   };
+  // Solo : pas d'animateur pour « Démarrer », la création du personnage commence tout de suite.
+  if (e.solo) e.phase = "creation";
   return [];
 } };
 
@@ -391,6 +397,11 @@ H.lu = { role: "joueur", f(e, ev) {
   if (r.lu) return [];
   r.lu = true;
   if (!listeJoueurs(e).every((x) => reponseCourante(x, e).lu)) return [];
+  // Solo : personne avec qui discuter, on passe directement à la réponse, sans minuteur.
+  if (e.solo) {
+    e.phase = "reponse";
+    return arreterMinuteur(e, true);
+  }
   return lancerMinuteur(e, "echange", e.reglages.dureeEchange, ev.__maintenant);
 } };
 
@@ -598,6 +609,7 @@ function partiesCommunes(e) {
   return {
     code: e.code,
     phase: e.phase,
+    solo: !!e.solo,
     problemeIndex: e.problemeIndex,
     nbProblemes: e.problemes.length,
     probleme: avecProbleme ? vueProbleme(p) : null,

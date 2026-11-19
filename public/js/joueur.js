@@ -99,7 +99,8 @@ function htmlMinuteur(v) {
     </div>`;
 }
 
-const htmlCompte = (v) => (v.compte ? `<p class="tel-compte" data-compte></p>` : "");
+// En solo, pas de « 1/1 ont répondu » : il n'y a personne à attendre.
+const htmlCompte = (v) => (v.compte && !v.solo ? `<p class="tel-compte" data-compte></p>` : "");
 
 // « J'ai lu » : la discussion démarre quand tout le monde l'a fait.
 function boutonLu(v) {
@@ -208,6 +209,7 @@ function ecranPour(v) {
     case "creation":
       return ecranCreation(v);
     case "presentation":
+      if (v.solo) return ecranSituationSolo(v, pi);
       return {
         cle: `presentation:${pi}:${!!moi.aLu}`,
         titre: moi.aLu ? "On attend les autres" : "Regarde l'écran",
@@ -245,6 +247,27 @@ function ecranPour(v) {
         html: `<div class="pile centre large"><h1>Regarde l'écran</h1>${points}</div>`,
       };
   }
+}
+
+// Solo : pas d'écran commun, la situation s'affiche sur l'appareil du joueur.
+function ecranSituationSolo(v, pi) {
+  const p = v.probleme ?? {};
+  const n = Number.isFinite(v.nbProblemes) ? ` ${pi + 1} sur ${v.nbProblemes}` : "";
+  const image = typeof p.illustration === "string" && /^[\w./-]+$/.test(p.illustration)
+    ? `<img class="tel-illustration" src="/${echapper(p.illustration.replace(/^\/+/, ""))}" alt="">` : "";
+  return {
+    cle: `presentation-solo:${pi}`,
+    titre: p.titre ?? "La situation",
+    html: `<div class="pile">
+        <p class="surtitre">Problème${n}</p>
+        <h1>${echapper(p.titre ?? "")}</h1>
+        ${image}
+        <p class="tel-situation">${echapper(p.situation ?? "")}</p>
+        ${p.question ? `<p class="tel-question">${echapper(p.question)}</p>` : ""}
+        <p class="discret">Toutes les idées comptent : dis simplement ce que toi, tu ferais.</p>
+        <button type="button" class="bouton principal large grand" data-action="lu">✓ J'ai lu, je réponds</button>
+      </div>`,
+  };
 }
 
 function ecranCode() {

@@ -45,6 +45,13 @@
   border-radius: var(--rayon-petit); padding: 0.8em 1em;
 }
 
+/* Solo : la situation sur le téléphone */
+.tel-illustration {
+  width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: #ffffff;
+  border-radius: var(--rayon); border: 3px solid var(--violet); box-shadow: 6px 6px 0 var(--rose);
+}
+.tel-situation { font-size: 1.1rem; line-height: 1.5; }
+
 /* Rejoindre : avatars */
 .avatars { border: none; padding: 0; margin: 0; }
 .avatars legend { font-weight: 600; margin-bottom: 0.5em; padding: 0; }
