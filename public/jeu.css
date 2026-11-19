@@ -1,0 +1,556 @@
+/* =============================================================================
+   jeu.css — styles communs du jeu « Potentiel caché » (écran commun + téléphone)
+   Propriétaire : agent E. Aucun framework, aucun build.
+
+   UTILISATION
+   - Inclure : <link rel="stylesheet" href="/jeu.css">
+   - Écran projecteur : <body class="ecran"> (tout est agrandi, titres ≥ 48 px).
+   - Téléphone : <body class="telephone"> (mobile d'abord, 360 px, gros boutons).
+   - Mode sombre automatique (prefers-color-scheme) ; animations coupées si
+     prefers-reduced-motion.
+
+   VARIABLES (à réutiliser plutôt que des couleurs en dur)
+   --fond, --surface, --surface-2   fonds (crème #faf7f2 / blanc ; sombre en dark)
+   --texte, --discret, --bord       texte principal, texte secondaire (AA), bordures
+   --accent                         orange du projet #e2572b (décor, bordures, gros titres)
+   --accent-bouton, --sur-accent    fond + texte des boutons principaux (contraste AA)
+   --accent-doux                    fond pâle orangé (encarts, survol)
+   --succes, --succes-fond          vert « Problème résolu ! », « Je la garde »
+   --citation                       fond des citations / preuves
+   --rayon, --rayon-petit           arrondis
+   --ombre                          ombre des cartes
+   --espace                         unité d'espacement (1rem)
+   --duree-anim                     durée des transitions (0s si reduced-motion)
+   --riasec-R … --riasec-C          couleurs RIASEC (§6 de la SPEC)
+
+   CLASSES GÉNÉRIQUES
+   .pile            colonne flex avec espacement régulier (gap = --espace).
+                    Variantes : .pile.serre (petit gap), .pile.large (grand gap),
+                    .pile.centre (centrée horizontalement + texte centré).
+   .rangee          ligne flex qui passe à la ligne (wrap), gap régulier.
+   .bouton          bouton/lien bouton (≥ 48 px de haut, focus visible).
+                    Variantes : .bouton.principal (orange plein), .bouton.secondaire
+                    (contour), .bouton.succes (vert), .bouton.discret (petit, sobre),
+                    .bouton.large (pleine largeur), .bouton.grand (encore plus gros).
+   .carte           encart blanc arrondi avec bordure.
+                    Variantes : .carte.accent (liseré orange), .carte.riasec (liseré
+                    coloré : ajouter .riasec-R|I|A|S|E|C sur la carte, qui définit
+                    --type et --sur-type), .carte[data-choix="garde"|"retire"].
+   .riasec-R … .riasec-C   définissent --type (couleur) et --sur-type (texte lisible
+                    sur cette couleur). .puce-riasec = pastille ronde de la couleur.
+   .minuteur        minuteur circulaire. Structure attendue :
+                      <div class="minuteur" style="--progression: 0.4">
+                        <svg viewBox="0 0 100 100" aria-hidden="true">
+                          <circle class="minuteur-fond" cx="50" cy="50" r="45"/>
+                          <circle class="minuteur-arc" cx="50" cy="50" r="45" pathLength="100"/>
+                        </svg>
+                        <span class="minuteur-texte">1:20</span>
+                      </div>
+                    --progression = temps restant / temps total (1 → 0).
+                    Ajouter .bientot (≤ 10 s) pour la couleur d'alerte, .fini à 0.
+                    Variante .minuteur.petit (téléphone), taille réglable par --taille.
+   .barre-minuteur  barre horizontale (même --progression), alternative compacte.
+   .avatar          emoji d'avatar dans une pastille ronde (.avatar.grand).
+   .compteur        « 3/4 » en très gros chiffres.
+   .points-attente  « … » animé (3 <span> à l'intérieur).
+   .citation        texte de preuve / citation.
+   .discret, .aide  texte secondaire ; .visuellement-cache : lecteurs d'écran seulement.
+   .apparition      animation d'entrée douce (fondu + léger glissement).
+   .statut-connexion[data-etat="ok"|"attente"|"erreur"]  pastille de connexion.
+   .toast           message temporaire en bas de l'écran (role="status").
+   ============================================================================= */
+
+:root {
+  color-scheme: light dark;
+  --fond: #faf7f2;
+  --surface: #ffffff;
+  --surface-2: #f3eee6;
+  --texte: #1f2430;
+  --discret: #5c6372;
+  --bord: #e4dfd6;
+  --accent: #e2572b;
+  --accent-bouton: #c2461f;
+  --accent-bouton-survol: #a83b18;
+  --sur-accent: #ffffff;
+  --accent-doux: #fde9e1;
+  --succes: #1f8a5b;
+  --succes-fond: #e6f4ec;
+  --alerte: #c2461f;
+  --citation: #fff4d6;
+  --rayon: 18px;
+  --rayon-petit: 10px;
+  --ombre: 0 2px 10px rgba(31, 36, 48, 0.07);
+  --espace: 1rem;
+  --duree-anim: 0.35s;
+  --police: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --riasec-R: #c8743a;
+  --riasec-I: #3a7bc8;
+  --riasec-A: #a24fc0;
+  --riasec-S: #2e9b6a;
+  --riasec-E: #d8a019;
+  --riasec-C: #5f6b85;
+
+  --type: var(--accent);
+  --sur-type: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fond: #16181d;
+    --surface: #1f2229;
+    --surface-2: #272b34;
+    --texte: #eceef2;
+    --discret: #a0a7b4;
+    --bord: #343843;
+    --accent: #ff7a4d;
+    --accent-bouton: #ff7a4d;
+    --accent-bouton-survol: #ff9a76;
+    --sur-accent: #16181d;
+    --accent-doux: #3a241c;
+    --succes: #4fd194;
+    --succes-fond: #1c3329;
+    --alerte: #ff8f66;
+    --citation: #3a3220;
+    --ombre: 0 2px 12px rgba(0, 0, 0, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --duree-anim: 0s; }
+  *, *::before, *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Base ---------- */
+/* L'attribut hidden doit toujours masquer, même sur un élément qui a un
+   display d'auteur (.bouton, .statut-connexion… en inline-flex). */
+[hidden] { display: none !important; }
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--fond);
+  color: var(--texte);
+  font: 17px/1.5 var(--police);
+}
+h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; margin: 0; }
+h1 { font-size: clamp(1.8rem, 6vw, 2.6rem); }
+h2 { font-size: clamp(1.35rem, 4.5vw, 1.9rem); }
+h3 { font-size: 1.2rem; }
+p { margin: 0; }
+a { color: var(--accent-bouton); }
+img { max-width: 100%; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+.discret, .aide { color: var(--discret); }
+.discret { font-size: 0.9em; }
+.visuellement-cache {
+  position: absolute !important; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; margin: -1px; padding: 0; border: 0;
+}
+.surtitre {
+  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700;
+  font-size: 0.8em; color: var(--accent-bouton);
+}
+@media (prefers-color-scheme: dark) { .surtitre, a { color: var(--accent); } }
+
+/* ---------- Mises en page ---------- */
+.pile { display: flex; flex-direction: column; gap: var(--espace); }
+.pile.serre { gap: calc(var(--espace) * 0.5); }
+.pile.large { gap: calc(var(--espace) * 2); }
+.pile.centre { align-items: center; text-align: center; }
+.rangee { display: flex; flex-wrap: wrap; gap: var(--espace); align-items: center; }
+.contenu { width: 100%; max-width: 960px; margin: 0 auto; padding: 0 16px; }
+
+/* ---------- Boutons ---------- */
+.bouton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5em;
+  min-height: 48px; padding: 0.7em 1.4em;
+  font: inherit; font-weight: 700; line-height: 1.2; text-align: center; text-decoration: none;
+  color: var(--texte); background: var(--surface);
+  border: 2px solid var(--bord); border-radius: 999px;
+  cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+  transition: background var(--duree-anim), border-color var(--duree-anim), transform 0.1s, opacity var(--duree-anim);
+}
+.bouton:hover:not(:disabled) { border-color: var(--accent); }
+.bouton:active:not(:disabled) { transform: scale(0.98); }
+.bouton:disabled, .bouton[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+.bouton.principal { background: var(--accent-bouton); border-color: var(--accent-bouton); color: var(--sur-accent); }
+.bouton.principal:hover:not(:disabled) { background: var(--accent-bouton-survol); border-color: var(--accent-bouton-survol); }
+.bouton.secondaire { background: transparent; }
+.bouton.succes { background: var(--succes); border-color: var(--succes); color: #fff; }
+@media (prefers-color-scheme: dark) { .bouton.succes { color: #16181d; } }
+.bouton.discret {
+  min-height: 40px; padding: 0.45em 1em; font-weight: 600; font-size: 0.9em;
+  color: var(--discret); background: transparent; border-color: var(--bord);
+}
+.bouton.discret:hover:not(:disabled), .bouton.discret:focus-visible { color: var(--texte); }
+.bouton.large { width: 100%; }
+.bouton.grand { min-height: 64px; font-size: 1.25em; padding: 0.8em 1.8em; }
+
+/* ---------- Champs ---------- */
+.champ { display: flex; flex-direction: column; gap: 0.35em; }
+.champ label { font-weight: 600; }
+input[type="text"], input[type="number"], select, textarea {
+  font: inherit; color: inherit; background: var(--surface);
+  border: 2px solid var(--bord); border-radius: var(--rayon-petit);
+  padding: 0.65em 0.8em; min-height: 48px; width: 100%;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+textarea { resize: vertical; }
+
+/* ---------- Cartes ---------- */
+.carte {
+  background: var(--surface); border: 2px solid var(--bord); border-radius: var(--rayon);
+  padding: calc(var(--espace) * 1.1); box-shadow: var(--ombre);
+  transition: border-color var(--duree-anim), background var(--duree-anim), opacity var(--duree-anim);
+}
+.carte.accent { border-color: var(--accent); }
+.carte.riasec { border-color: var(--type); border-left-width: 10px; }
+.carte[data-choix="garde"] { border-color: var(--succes); background: var(--succes-fond); }
+.carte[data-choix="retire"] { opacity: 0.55; }
+
+/* ---------- RIASEC ---------- */
+.riasec-R { --type: var(--riasec-R); --sur-type: #ffffff; }
+.riasec-I { --type: var(--riasec-I); --sur-type: #ffffff; }
+.riasec-A { --type: var(--riasec-A); --sur-type: #ffffff; }
+.riasec-S { --type: var(--riasec-S); --sur-type: #ffffff; }
+.riasec-E { --type: var(--riasec-E); --sur-type: #1f2430; }
+.riasec-C { --type: var(--riasec-C); --sur-type: #ffffff; }
+.puce-riasec {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.8em; height: 1.8em; border-radius: 50%;
+  background: var(--type); color: var(--sur-type); font-weight: 800;
+}
+
+/* ---------- Avatars ---------- */
+.avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.2em; height: 2.2em; border-radius: 50%;
+  background: var(--surface-2); font-size: 1.4em; line-height: 1;
+}
+.avatar.grand { font-size: 2.4em; }
+
+/* ---------- Minuteur ---------- */
+.minuteur {
+  --taille: 220px;
+  --progression: 1;
+  --couleur-minuteur: var(--accent);
+  position: relative; width: var(--taille); height: var(--taille); flex: none;
+}
+.minuteur svg { width: 100%; height: 100%; transform: rotate(-90deg); display: block; }
+.minuteur circle { fill: none; stroke-width: 9; }
+.minuteur-fond { stroke: var(--bord); }
+.minuteur-arc {
+  stroke: var(--couleur-minuteur); stroke-linecap: round;
+  stroke-dasharray: 100 100;
+  stroke-dashoffset: calc(100 - var(--progression) * 100);
+  transition: stroke-dashoffset 0.25s linear, stroke 0.4s;
+}
+.minuteur-texte {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: calc(var(--taille) * 0.24); font-variant-numeric: tabular-nums;
+}
+.minuteur.bientot { --couleur-minuteur: var(--alerte); }
+.minuteur.bientot .minuteur-texte { animation: battement 1s ease-in-out infinite; color: var(--alerte); }
+.minuteur.fini { --couleur-minuteur: var(--bord); }
+.minuteur.petit { --taille: 96px; }
+.barre-minuteur {
+  --progression: 1;
+  height: 12px; border-radius: 99px; background: var(--bord); overflow: hidden;
+}
+.barre-minuteur::before {
+  content: ""; display: block; height: 100%; width: calc(var(--progression) * 100%);
+  background: var(--accent); border-radius: inherit; transition: width 0.25s linear;
+}
+
+/* ---------- Divers ---------- */
+.compteur { font-size: 2.5em; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+.citation {
+  background: var(--citation); border-radius: var(--rayon-petit);
+  padding: 0.6em 0.9em; font-style: italic;
+}
+.points-attente { display: inline-flex; gap: 0.25em; }
+.points-attente span {
+  width: 0.45em; height: 0.45em; border-radius: 50%; background: currentColor;
+  animation: point 1.2s ease-in-out infinite;
+}
+.points-attente span:nth-child(2) { animation-delay: 0.15s; }
+.points-attente span:nth-child(3) { animation-delay: 0.3s; }
+
+.apparition { animation: apparition 0.5s ease-out both; }
+
+.statut-connexion { display: inline-flex; align-items: center; gap: 0.45em; font-size: 0.85rem; color: var(--discret); }
+.statut-connexion::before { content: ""; width: 0.65em; height: 0.65em; border-radius: 50%; background: var(--discret); }
+.statut-connexion[data-etat="ok"]::before { background: var(--succes); }
+.statut-connexion[data-etat="attente"]::before { background: var(--riasec-E); animation: battement 1.2s ease-in-out infinite; }
+.statut-connexion[data-etat="erreur"]::before { background: var(--alerte); }
+
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  max-width: min(92vw, 640px); padding: 0.8em 1.2em; border-radius: var(--rayon-petit);
+  background: var(--texte); color: var(--fond); box-shadow: var(--ombre); z-index: 50;
+  font-weight: 600;
+}
+.toast[hidden] { display: none; }
+
+@keyframes apparition { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes battement { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+@keyframes point { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-0.25em); } }
+@keyframes flotte { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+/* =============================================================================
+   ÉCRAN COMMUN (projecteur) — body.ecran
+   ============================================================================= */
+body.ecran {
+  font-size: clamp(20px, 1.55vw, 34px);
+  display: flex; flex-direction: column; overflow-x: hidden;
+}
+.ecran h1 { font-size: clamp(48px, 4.6vw, 104px); }
+.ecran h2 { font-size: clamp(34px, 3.1vw, 68px); }
+.ecran .minuteur { --taille: clamp(220px, 24vw, 460px); }
+
+.ecran-entete {
+  display: flex; align-items: center; justify-content: space-between; gap: 1em;
+  padding: 0.8em 1.6em 0; font-size: 0.8em; color: var(--discret);
+}
+.ecran-entete .marque { font-weight: 800; color: var(--accent-bouton); letter-spacing: -0.01em; }
+.ecran-entete .code-partie { font-weight: 800; letter-spacing: 0.15em; color: var(--texte); }
+.progression-problemes { display: flex; gap: 0.4em; align-items: center; }
+.progression-problemes .etape-pb { width: 0.8em; height: 0.8em; border-radius: 50%; background: var(--bord); }
+.progression-problemes .etape-pb.faite { background: var(--accent); opacity: 0.55; }
+.progression-problemes .etape-pb.en-cours { background: var(--accent); transform: scale(1.3); }
+
+/* Centrage par margin:auto : si le contenu dépasse (petit écran), il reste
+   accessible au défilement au lieu d'être coupé en haut. */
+.scene {
+  flex: 1; display: flex; flex-direction: column;
+  padding: 1em 3vw 1.5em; width: 100%;
+}
+.scene > * { width: 100%; max-width: 1600px; margin: auto; }
+
+/* Accueil */
+.accueil-grille {
+  display: grid; grid-template-columns: auto 1fr; gap: 3vw; align-items: center;
+}
+.qr-boite {
+  background: #fff; border-radius: var(--rayon); padding: 0.6em; box-shadow: var(--ombre);
+  width: clamp(260px, 26vw, 520px); aspect-ratio: 1;
+}
+.qr-boite svg { width: 100%; height: 100%; display: block; }
+.qr-boite .qr-repli { color: #1f2430; display: flex; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 1em; }
+.code-geant {
+  font-size: clamp(72px, 9vw, 200px); font-weight: 900; letter-spacing: 0.18em;
+  line-height: 1; color: var(--accent);
+}
+.adresse-rejoindre { font-size: 1.1em; }
+.alerte-locale {
+  font-size: 0.8em; line-height: 1.4; border: 3px solid var(--alerte); border-radius: var(--rayon-petit);
+  background: var(--accent-doux); padding: 0.6em 0.9em;
+}
+.alerte-locale code { font-size: 0.95em; }
+.adresse-rejoindre strong { white-space: nowrap; }
+.liste-joueurs {
+  list-style: none; padding: 0; margin: 0;
+  display: flex; flex-wrap: wrap; gap: 0.7em;
+}
+.liste-joueurs li {
+  display: inline-flex; align-items: center; gap: 0.45em;
+  background: var(--surface); border: 2px solid var(--bord); border-radius: 999px;
+  padding: 0.25em 1em 0.25em 0.3em; font-weight: 700;
+  animation: apparition 0.5s ease-out both;
+}
+.liste-joueurs li .avatar { width: 1.8em; height: 1.8em; font-size: 1.3em; }
+.liste-joueurs li.deconnecte { opacity: 0.5; }
+.liste-joueurs.anonyme li { padding: 0.25em; }
+
+/* Problème */
+.probleme-grille {
+  display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 3vw; align-items: center;
+}
+.illustration {
+  width: 100%; aspect-ratio: 4 / 3; object-fit: contain;
+  background: var(--surface); border-radius: var(--rayon); border: 2px solid var(--bord);
+}
+.illustration-repli {
+  width: 100%; aspect-ratio: 4 / 3; border-radius: var(--rayon); border: 2px dashed var(--bord);
+  display: flex; align-items: center; justify-content: center; font-size: clamp(80px, 10vw, 200px);
+  background: var(--surface);
+}
+.situation { font-size: 1.25em; line-height: 1.45; }
+.question { font-size: 1.5em; font-weight: 800; color: var(--accent); }
+.bouton-lire { font-size: 0.85em; }
+.bouton-lire[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-doux); }
+
+/* Échanges / réponses */
+.minuteur-grille {
+  display: grid; grid-template-columns: auto 1fr; gap: 4vw; align-items: center;
+}
+.consigne-geante { font-size: clamp(52px, 5.2vw, 120px); font-weight: 900; line-height: 1.05; letter-spacing: -0.03em; }
+.rappel-probleme { font-size: 0.95em; color: var(--discret); }
+.rappel-probleme strong { color: var(--texte); }
+.ecran .compteur { font-size: clamp(80px, 8vw, 180px); color: var(--accent); }
+.points-anonymes { display: flex; flex-wrap: wrap; gap: 0.5em; }
+.points-anonymes span {
+  width: 1.3em; height: 1.3em; border-radius: 50%; border: 3px solid var(--accent);
+  transition: background var(--duree-anim);
+}
+.points-anonymes span.plein { background: var(--accent); }
+/* Qui a fini (lu, répondu, choisi) : l'animateur sait qui attendre. */
+.statuts-joueurs { list-style: none; padding: 0; margin: 0.3em 0 0; display: flex; flex-wrap: wrap; gap: 0.5em; font-size: 0.8em; }
+.statuts-joueurs li {
+  display: inline-flex; align-items: center; gap: 0.4em;
+  border: 3px solid var(--bord); border-radius: 999px; padding: 0.2em 0.9em 0.2em 0.3em; font-weight: 700;
+  transition: background var(--duree-anim), border-color var(--duree-anim), opacity var(--duree-anim);
+}
+.statuts-joueurs li .avatar { width: 1.6em; height: 1.6em; font-size: 1.2em; }
+.statuts-joueurs li.attente { opacity: 0.6; border-style: dashed; }
+.statuts-joueurs li.fait { border-color: var(--succes); background: var(--succes-fond); }
+.statuts-joueurs li.fait .marque { color: var(--succes); font-weight: 900; }
+.statuts-joueurs li.deconnecte { opacity: 0.35; }
+.temps-ecoule {
+  font-size: 1.1em; font-weight: 800; color: var(--alerte);
+  border: 3px solid var(--alerte); border-radius: var(--rayon-petit); padding: 0.4em 0.8em; margin: 0;
+}
+
+/* MJ réfléchit */
+.mj-reflechit .bulle {
+  font-size: clamp(110px, 12vw, 240px); line-height: 1;
+  animation: flotte 2.4s ease-in-out infinite;
+}
+.mj-reflechit .points-attente { font-size: 0.4em; color: var(--accent); vertical-align: middle; }
+
+/* Indice */
+.indice-geant {
+  font-size: clamp(44px, 4.4vw, 96px); font-weight: 800; line-height: 1.2;
+  border-left: 0.25em solid var(--riasec-E); padding-left: 0.6em;
+}
+
+/* Choix */
+.choix-liste {
+  list-style: none; padding: 0; margin: 0;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1em;
+}
+.choix-liste li {
+  display: flex; gap: 0.7em; align-items: flex-start;
+  background: var(--surface); border: 2px solid var(--bord); border-radius: var(--rayon);
+  padding: 0.8em 1em; font-size: 1.1em; font-weight: 600;
+}
+.choix-liste .numero {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 1.8em; height: 1.8em; border-radius: 50%;
+  background: var(--accent-bouton); color: var(--sur-accent); font-weight: 900;
+}
+
+/* Solution */
+.resolu-titre { color: var(--succes); }
+.solution-texte {
+  font-size: 1.45em; line-height: 1.4; font-weight: 600;
+  background: var(--surface); border: 2px solid var(--bord); border-radius: var(--rayon);
+  padding: 1em 1.2em; border-left: 0.4em solid var(--succes);
+}
+.confettis { font-size: 1.6em; letter-spacing: 0.3em; }
+
+/* Fin */
+.fin-titre { font-size: clamp(60px, 6.5vw, 150px) !important; color: var(--accent); }
+.fin-chiffre { font-size: 1.4em; }
+.fin-chiffre strong { color: var(--accent); font-size: 1.4em; }
+.palette-riasec { display: flex; gap: 0.6em; justify-content: center; }
+.palette-riasec span { width: 1.4em; height: 1.4em; border-radius: 50%; background: var(--type); animation: flotte 2.6s ease-in-out infinite; }
+.palette-riasec span:nth-child(2) { animation-delay: 0.2s; }
+.palette-riasec span:nth-child(3) { animation-delay: 0.4s; }
+.palette-riasec span:nth-child(4) { animation-delay: 0.6s; }
+.palette-riasec span:nth-child(5) { animation-delay: 0.8s; }
+.palette-riasec span:nth-child(6) { animation-delay: 1s; }
+
+/* Barre animateur (bas de l'écran) */
+.barre-animateur {
+  position: sticky; bottom: 0; z-index: 10; background: var(--fond);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.8em;
+  padding: 0.6em 1.6em 0.9em; font-size: 0.7em;
+  border-top: 1px solid var(--bord);
+}
+.barre-animateur .commandes { display: flex; flex-wrap: wrap; gap: 0.6em; align-items: center; }
+.barre-animateur .bouton { min-height: 44px; }
+.reglages { display: flex; flex-wrap: wrap; gap: 0.8em; align-items: center; color: var(--discret); }
+.reglages label { display: inline-flex; align-items: center; gap: 0.4em; }
+.reglages select { width: auto; min-height: 40px; padding: 0.3em 0.5em; font-size: 0.95em; }
+.raccourcis { color: var(--discret); }
+.raccourcis kbd {
+  font: inherit; font-size: 0.9em; padding: 0.05em 0.4em; border: 1px solid var(--bord);
+  border-radius: 5px; background: var(--surface);
+}
+
+.message-plein {
+  max-width: 900px; margin: 0 auto;
+}
+
+.scene-choix .minuteur { --taille: clamp(150px, 14vw, 300px); }
+
+/* Écran bas (portable, fenêtre réduite) : on resserre un peu */
+@media (max-height: 800px) and (min-width: 901px) {
+  body.ecran { font-size: clamp(18px, 1.3vw, 28px); }
+  .ecran .minuteur { --taille: clamp(180px, 19vw, 340px); }
+  .scene-choix .minuteur { --taille: clamp(120px, 11vw, 220px); }
+  .ecran .compteur { font-size: clamp(64px, 6vw, 130px); }
+}
+
+/* Écran étroit (portable, test) : on empile */
+@media (max-width: 900px) {
+  body.ecran { font-size: 18px; }
+  .accueil-grille, .probleme-grille, .minuteur-grille { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  .choix-liste { grid-template-columns: 1fr; }
+  .qr-boite { width: min(70vw, 300px); }
+  .ecran h1 { font-size: 48px; }
+  .consigne-geante { font-size: 48px; }
+  .indice-geant { font-size: 34px; }
+  .barre-animateur { padding: 0.6em 16px 0.9em; position: static; }
+  .scene { padding: 1em 16px 1.5em; }
+}
+
+/* =============================================================================
+   ACCUEIL (index.html) — body.accueil
+   ============================================================================= */
+body.accueil { display: flex; flex-direction: column; }
+.accueil-entete { padding: 40px 16px 8px; text-align: center; }
+.accueil-entete h1 { font-size: clamp(2.2rem, 8vw, 3.6rem); }
+.accueil-entete h1 span { color: var(--accent); }
+.accueil-entete .accroche { margin-top: 0.6em; font-size: 1.1em; color: var(--discret); }
+.accueil-choix {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;
+  width: 100%; max-width: 860px; margin: 24px auto; padding: 0 16px;
+}
+.accueil-choix .carte { display: flex; flex-direction: column; gap: 14px; }
+.accueil-choix .icone { font-size: 2.6rem; line-height: 1; }
+.champ-code {
+  text-transform: uppercase; letter-spacing: 0.4em; font-weight: 800; font-size: 1.6rem !important;
+  text-align: center;
+}
+.champ-code::placeholder { letter-spacing: 0.4em; color: var(--discret); opacity: 0.6; }
+details.options summary { cursor: pointer; color: var(--discret); font-size: 0.95em; }
+details.options[open] summary { margin-bottom: 0.6em; }
+.message-erreur { color: var(--alerte); font-weight: 600; min-height: 1.5em; }
+.accueil-pied { margin-top: auto; padding: 24px 16px 32px; text-align: center; font-size: 0.92em; }
+.accueil-pied a { color: var(--discret); }
+
+/* =============================================================================
+   TÉLÉPHONE (joueur.html, fiche) — body.telephone
+   Mobile d'abord (360 px). L'agent F peut compléter dans ses propres fichiers.
+   ============================================================================= */
+body.telephone { font-size: 18px; }
+.telephone .contenu { max-width: 520px; padding: 16px; }
+.telephone .bouton { min-height: 56px; font-size: 1.05em; }
+.telephone .minuteur { --taille: 110px; }
+
+@media print {
+  body { background: #fff; color: #000; }
+  .barre-animateur, .toast, .statut-connexion { display: none !important; }
+  .carte { box-shadow: none; }
+}

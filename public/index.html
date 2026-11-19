@@ -1,26 +1,131 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Potentiel caché</title>
-  <link rel="icon" href="illustrations/logo.svg" type="image/svg+xml">
-  <style>
-    :root { color-scheme: light dark; --fond: #fbf7f2; --texte: #1d1b19; --accent: #c8743a; }
-    @media (prefers-color-scheme: dark) { :root { --fond: #18171a; --texte: #f2eee9; } }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--fond); color: var(--texte);
-      font: 18px/1.5 system-ui, sans-serif; padding: 16px; box-sizing: border-box; text-align: center; }
-    img { width: 96px; height: 96px; }
-    h1 { margin: 0.4em 0 0.2em; }
-    p { max-width: 36em; margin: 0 auto; }
-    strong { color: var(--accent); }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Potentiel caché — le jeu</title>
+  <meta name="description" content="Un jeu de rôle en groupe pour découvrir ses compétences : on résout des problèmes de la vie ensemble, chacun repart avec sa fiche personnage.">
+  <meta name="theme-color" content="#e2572b">
+  <link rel="stylesheet" href="jeu.css">
+  <!-- Bandeau commun du hackathon (le numéro d'équipe est déjà renseigné) -->
+  <script src="https://orientation.code4sud.fr/bandeau.js" data-equipe="12"></script>
 </head>
-<body>
-  <main>
-    <img src="illustrations/logo.svg" alt="">
-    <h1>Potentiel caché</h1>
-    <p>Le jeu de rôle des compétences : chacun joue son propre rôle, un MJ IA révèle les compétences que tu as déjà. <strong>En construction.</strong></p>
+<body class="accueil">
+  <header class="accueil-entete">
+    <p class="surtitre">Centre des Possibles · jeu de rôle</p>
+    <h1>Ton potentiel <span>caché</span></h1>
+    <p class="accroche">On résout des problèmes de la vie, ensemble. Chacun repart avec ses compétences.</p>
+  </header>
+
+  <main class="accueil-choix">
+    <!-- Animateur : créer une partie -->
+    <section class="carte accent" aria-labelledby="titre-creer">
+      <span class="icone" aria-hidden="true">🖥️</span>
+      <h2 id="titre-creer">Créer une partie</h2>
+      <p class="aide">Pour l'animateur : ouvre l'écran commun (PC ou projecteur). Les joueurs rejoignent avec leur téléphone.</p>
+      <form id="form-creer" class="pile">
+        <details class="options">
+          <summary>Réglages de la partie</summary>
+          <div class="champ">
+            <label for="nb-problemes">Nombre de problèmes</label>
+            <select id="nb-problemes" name="nbProblemes">
+              <option value="1">1 problème (≈ 10 min)</option>
+              <option value="2">2 problèmes (≈ 20 min)</option>
+              <option value="3" selected>3 problèmes (≈ 30 min)</option>
+              <option value="4">4 problèmes (≈ 40 min)</option>
+              <option value="5">5 problèmes (≈ 50 min)</option>
+              <option value="6">6 problèmes (≈ 1 h)</option>
+            </select>
+          </div>
+          <p class="discret">Les durées de discussion et de réponse se règlent ensuite sur l'écran commun.</p>
+        </details>
+        <button type="submit" class="bouton principal grand large" id="bouton-creer">Créer une partie</button>
+        <p class="message-erreur" id="erreur-creer" role="alert"></p>
+      </form>
+    </section>
+
+    <!-- Joueur : rejoindre -->
+    <section class="carte" aria-labelledby="titre-rejoindre">
+      <span class="icone" aria-hidden="true">📱</span>
+      <h2 id="titre-rejoindre">Rejoindre une partie</h2>
+      <p class="aide">Tu es joueur ? Scanne le QR code de l'écran, ou tape le code à 4 lettres.</p>
+      <form id="form-rejoindre" class="pile" novalidate>
+        <div class="champ">
+          <label for="code">Code de la partie</label>
+          <input type="text" id="code" name="code" class="champ-code" maxlength="4"
+                 autocomplete="off" autocapitalize="characters" spellcheck="false"
+                 inputmode="text" pattern="[A-Za-z]{4}" placeholder="ABCD" aria-describedby="erreur-rejoindre">
+        </div>
+        <button type="submit" class="bouton secondaire grand large">Rejoindre</button>
+        <p class="message-erreur" id="erreur-rejoindre" role="alert"></p>
+      </form>
+    </section>
   </main>
+
+  <footer class="accueil-pied pile serre">
+    <p><a href="outil.html">Version solo : raconter ses expériences sans jouer</a></p>
+    <p class="discret">Aucune donnée personnelle : un pseudo suffit, et rien n'est gardé après la partie.</p>
+  </footer>
+
+  <script type="module">
+    const formCreer = document.getElementById("form-creer");
+    const boutonCreer = document.getElementById("bouton-creer");
+    const erreurCreer = document.getElementById("erreur-creer");
+    const formRejoindre = document.getElementById("form-rejoindre");
+    const champCode = document.getElementById("code");
+    const erreurRejoindre = document.getElementById("erreur-rejoindre");
+
+    // Créer une partie : POST /api/parties puis l'écran commun.
+    formCreer.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      erreurCreer.textContent = "";
+      boutonCreer.disabled = true;
+      boutonCreer.textContent = "Création…";
+      const nbProblemes = Number(document.getElementById("nb-problemes").value) || 3;
+      try {
+        const rep = await fetch("/api/parties", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nbProblemes }),
+        });
+        if (!rep.ok) throw new Error(`HTTP ${rep.status}`);
+        const { code, cleEcran } = await rep.json();
+        if (!/^[A-Z]{4}$/.test(code ?? "")) throw new Error("code invalide");
+        if (typeof cleEcran !== "string" || !cleEcran) throw new Error("clé animateur absente");
+        // ?hote=192.168.1.20:8787 : adresse à mettre dans le QR code (écran ouvert sur localhost).
+        const hote = new URLSearchParams(location.search).get("hote");
+        // Clé animateur dans le FRAGMENT (#cle=…) : jamais envoyée au serveur (ni logs ni Referer).
+        // ecran.js la range dans sessionStorage puis l'efface de la barre d'adresse.
+        location.href = `ecran.html?code=${encodeURIComponent(code)}${hote ? `&hote=${encodeURIComponent(hote)}` : ""}`
+          + `#cle=${encodeURIComponent(cleEcran)}`;
+      } catch (err) {
+        console.error(err);
+        erreurCreer.innerHTML = "Impossible de créer la partie : le serveur de jeu ne répond pas. "
+          + '<a href="ecran.html?demo=1">Voir la démo de l\'écran</a>';
+        boutonCreer.disabled = false;
+        boutonCreer.textContent = "Réessayer";
+      }
+    });
+
+    // Rejoindre : /p/XXXX (servi par le worker).
+    champCode.addEventListener("input", () => {
+      champCode.value = champCode.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4);
+      erreurRejoindre.textContent = "";
+    });
+    formRejoindre.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const code = champCode.value.trim().toUpperCase();
+      if (!/^[A-Z]{4}$/.test(code)) {
+        erreurRejoindre.textContent = "Le code fait 4 lettres, par exemple KDMZ.";
+        champCode.focus();
+        return;
+      }
+      location.href = `/p/${code}`;
+    });
+
+    // Lien du type index.html?code=ABCD : on pré-remplit.
+    const codeUrl = new URLSearchParams(location.search).get("code");
+    if (codeUrl && /^[A-Za-z]{4}$/.test(codeUrl)) champCode.value = codeUrl.toUpperCase();
+  </script>
 </body>
 </html>
