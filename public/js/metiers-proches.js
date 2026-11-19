@@ -1,0 +1,57 @@
+// Métiers à découvrir : rapprochement déterministe (sans IA) entre les intérêts
+// mis en pratique par le jeune (codes RIASEC de ses compétences validées) et le
+// profil RIASEC des métiers O*NET. Utilisable dans le navigateur et dans Node.
+
+const ORDRE = ["R", "I", "A", "S", "E", "C"];
+
+const centrer = (v) => {
+  const m = v.reduce((a, b) => a + b, 0) / v.length;
+  return v.map((x) => x - m);
+};
+const cosinus = (a, b) => {
+  let p = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { p += a[i] * b[i]; na += a[i] ** 2; nb += b[i] ** 2; }
+  return na && nb ? p / Math.sqrt(na * nb) : 0;
+};
+
+/**
+ * @param {{R:number,I:number,A:number,S:number,E:number,C:number}} poids
+ *   nombre de preuves par type (ex. majeur = 2, mineur = 1)
+ * @param {Array} metiers  data/metiers.json → metiers
+ * @returns {{accessibles: Array, plusLongs: Array}} null si aucune preuve RIASEC
+ *
+ * « Accessibles » = sans études longues (zones O*NET 1 à 3, jusqu'à bac+2).
+ * Le public (15-25 ans, souvent sans diplôme) passe d'abord : on prend jusqu'à
+ * `nbCourts` métiers de zone 1-2 (sur le tas, CAP, bac) proches du profil
+ * (proximité ≥ `seuilCourts`), on complète avec la
+ * zone 3 (BTS, BUT, bac+2), puis de nouveau avec la zone 1-2 s'il manque des
+ * métiers de zone 3. Ordre d'affichage : zone 1-2 d'abord, puis zone 3, chaque
+ * groupe trié par proximité.
+ */
+export function metiersProches(poids, metiers, { nbAccessibles = 5, nbLongs = 3, nbCourts = 3, seuilCourts = 0.5 } = {}) {
+  const jeune = ORDRE.map((k) => poids[k] || 0);
+  if (!jeune.some((x) => x > 0)) return null;
+  const j = centrer(jeune);
+  const classes = metiers
+    .map((m) => ({ ...m, proximite: cosinus(j, centrer(m.riasec)) }))
+    .filter((m) => m.proximite > 0)
+    .sort((a, b) => b.proximite - a.proximite || a.zone - b.zone);
+  // Zone 1-2 mise en avant seulement si le métier ressemble vraiment au profil
+  // (sinon on proposerait des métiers sans rapport juste parce qu'ils sont courts).
+  const courts = classes.filter((m) => m.zone <= 2 && m.proximite >= seuilCourts);
+  const moyens = classes.filter((m) => m.zone === 3);
+  const nMoyens = Math.min(moyens.length, Math.max(0, nbAccessibles - Math.min(courts.length, nbCourts)));
+  const nCourts = Math.min(courts.length, nbAccessibles - nMoyens);
+  return {
+    accessibles: [...courts.slice(0, nCourts), ...moyens.slice(0, nMoyens)],
+    plusLongs: classes.filter((m) => m.zone >= 4).slice(0, nbLongs),
+  };
+}
+
+// Les 2 types RIASEC dominants d'un métier, pour l'afficher simplement (« S·C »).
+export function typesDominants(m) {
+  return ORDRE.map((k, i) => [k, m.riasec[i]])
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([k]) => k);
+}
