@@ -214,9 +214,10 @@ test("questionsPsy et ligneCompetence", () => {
 
 // ---------- Pages ----------
 
-test("fiche-papier.html : légende avec les 6 couleurs RIASEC et 6 cases « Compétence gagnée »", () => {
+test("fiche-papier.html : nom, prénom, 6 cases « Compétence trouvée », sans légende RIASEC", () => {
   const html = lire("public/fiche-papier.html");
-  for (const k of ORDRE_RIASEC) assert.ok(html.includes(RIASEC[k].couleur), `couleur ${k}`);
+  assert.ok(html.includes("Prénom :") && html.includes("Compétence trouvée n° 6"));
+  assert.ok(!/RIASEC|Réaliste|Preuve :|pseudo/i.test(html), "ni légende RIASEC, ni preuve, ni pseudo");
   assert.equal((html.match(/class="case"/g) || []).length, 6);
   assert.ok(html.includes("Ce que je sais déjà faire"));
   assert.ok(/@page\s*\{\s*size:\s*A4/.test(html));
