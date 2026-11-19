@@ -52,6 +52,14 @@ npm run dev                      # http://localhost:8787
 | `npx wrangler deploy` puis `npx wrangler secret put OPENAI_API_KEY` | mise en production sur Cloudflare |
 | `npm run build` | copie `public/` dans `dist/` pour GitHub Pages (démo statique de l'outil solo) |
 
+## CI/CD
+
+Workflow `.github/workflows/ci-cd.yml` (GitHub Actions) :
+
+- **CI**, sur chaque pull request et chaque push sur `main` : `npm test`, build du Worker à blanc (`npm run check`), puis une partie complète simulée contre `wrangler dev` (écran + 3 joueurs en WebSocket, MJ de secours).
+- **CD**, sur chaque push sur `main` quand la CI passe : `wrangler deploy` sur https://potentiel-cache.planbhunalp.workers.dev, puis vérification que la production répond.
+- Le déploiement s'active quand le dépôt a les secrets `CLOUDFLARE_API_TOKEN` (token Cloudflare limité à « Workers Scripts : Edit » sur ce compte) et `CLOUDFLARE_ACCOUNT_ID` (réglages du dépôt, droits administrateur). Sans eux, il est sauté. La clé OpenAI reste un secret du Worker, jamais dans GitHub.
+
 ## Données
 
 - **ROME 4.0** (France Travail, open data) : 506 macro-compétences, codes RIASEC.
