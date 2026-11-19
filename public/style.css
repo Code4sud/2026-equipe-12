@@ -153,12 +153,12 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .competence-mots { font-weight: 600; }
 .competence .preuve { font-size: 0.92rem; }
 .competence-contexte { font-size: 0.8rem; }
-.gommette {
+.pastille {
   display: inline-block; flex: none; width: 1.3em; height: 1.3em; border-radius: 50%;
   background: var(--type); box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.12); vertical-align: middle;
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
-.gommette-blanche { background: #fff; box-shadow: inset 0 0 0 2px var(--type); }
+.pastille-blanche { background: #fff; box-shadow: inset 0 0 0 2px var(--type); }
 .metier.ouvert .metier-entete { margin: 0; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
 .metier.ouvert .metier-entete .discret { flex-basis: 100%; }
 .esco { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--bord); font-size: 0.9rem; }

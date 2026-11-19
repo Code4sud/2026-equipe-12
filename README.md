@@ -13,7 +13,7 @@ Une partie se joue à 1 à 6 joueurs autour d'un **écran commun**, chacun avec 
 1. **Création du personnage** : chacun raconte 1 ou 2 choses qu'il a déjà faites ; le MJ en tire ses premières compétences, qu'il garde ou refuse.
 2. **Un problème illustré** s'affiche. Chacun valide « J'ai lu », le groupe discute à voix haute (minuteur), puis chacun répond **en privé** sur son téléphone.
 3. **Il n'y a ni bonne ni mauvaise réponse.** Seuls « je ne sais pas » et la violence sont refusés, au joueur concerné seulement, qui réécrit sa réponse.
-4. **Chaque joueur reçoit une compétence** tirée de sa réponse, avec sa propre phrase comme preuve. Il la garde ou non, et colle la gommette de sa couleur RIASEC sur sa fiche.
+4. **Chaque joueur reçoit une compétence** tirée de sa réponse, avec sa propre phrase comme preuve. Il la garde ou non.
 5. À la fin : une **fiche imprimable** avec les compétences gardées, le profil d'intérêts RIASEC et des métiers proches (O\*NET, ESCO).
 
 Garde-fous :

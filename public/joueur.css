@@ -86,16 +86,11 @@
 .tel-garde [data-garder="1"][aria-pressed="true"] { background: var(--succes); border-color: var(--succes); color: #1b1858; }
 .tel-garde [data-garder="0"][aria-pressed="true"] { background: var(--discret); border-color: var(--discret); color: var(--fond); }
 
-.gommette {
+.pastille {
   display: inline-block; flex: none; width: 1.4em; height: 1.4em; border-radius: 50%;
   background: var(--type); vertical-align: middle; box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.12);
 }
-.gommette-blanche { background: #fff; box-shadow: inset 0 0 0 2px var(--type); }
-.consigne-gommette {
-  display: flex; align-items: center; gap: 0.7em; font-weight: 600;
-  background: var(--accent-doux); border-radius: var(--rayon-petit); padding: 0.8em 1em;
-}
-.consigne-gommette .gommette { width: 2em; height: 2em; }
+.pastille-blanche { background: #fff; box-shadow: inset 0 0 0 2px var(--type); }
 .tel-liste-gardees { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.6em; }
 .tel-liste-gardees li { display: flex; gap: 0.6em; align-items: flex-start; }
 

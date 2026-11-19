@@ -48,7 +48,7 @@ function verifierCompetence(c) {
     assert.ok(k in c, `champ ${k} manquant`);
   }
   assert.ok(["jeu", "participation", "vecu"].includes(c.typePreuve));
-  assert.ok(Array.isArray(c.riasec) && c.riasec.length >= 1, "au moins une lettre RIASEC (couleur de gommette)");
+  assert.ok(Array.isArray(c.riasec) && c.riasec.length >= 1, "au moins une lettre RIASEC (couleur de la carte)");
   assert.equal(c.gardee, null);
   assert.ok(c.mots.length > 0);
   assert.doesNotMatch(c.mots, INTERDITS);

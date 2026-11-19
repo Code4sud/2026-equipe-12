@@ -154,12 +154,6 @@ function carteCompetence(c, { surtitre = "", corps = "" } = {}) {
     </article>`;
 }
 
-function consigneGommette(c, avant = false) {
-  const t = typeDe(c, etat.rome);
-  return `<p class="consigne-gommette"><span class="gommette${t.lettre ? "" : " gommette-blanche"}" style="--type:${t.couleur}" aria-hidden="true"></span>
-      <span>${avant ? "Si tu la gardes, recopie-la" : "Recopie-la"} sur ta fiche et colle une gommette <strong>${t.gommette}</strong>.</span></p>`;
-}
-
 function lienFiche(v) {
   const brut = v.fin?.lienFiche;
   if (typeof brut === "string" && /^(\/|https?:\/\/|fiche\.html)/.test(brut)) return brut;
@@ -422,8 +416,8 @@ function ecranCreation(v) {
 
 function consigneMini(c) {
   const t = typeDe(c, etat.rome);
-  return `<span class="gommette${t.lettre ? "" : " gommette-blanche"}" style="--type:${t.couleur}" aria-hidden="true"></span>
-    <span><strong>${echapper(libelleDe(c))}</strong> <span class="discret">— gommette ${t.gommette}</span></span>`;
+  return `<span class="pastille${t.lettre ? "" : " pastille-blanche"}" style="--type:${t.couleur}" aria-hidden="true"></span>
+    <span><strong>${echapper(libelleDe(c))}</strong> <span class="discret">— ${echapper(t.nom)}</span></span>`;
 }
 
 function ecranReponse(v, pi) {
@@ -486,7 +480,7 @@ function ecranCompetence(v, pi) {
   if (!etat.rome) charger("rome");
   let bas;
   if (c.gardee === true) {
-    bas = `${consigneGommette(c)}
+    bas = `<p>C'est noté : elle va sur ta fiche.</p>
       <p class="discret centre-texte">On attend les autres. ${points}</p>
       <button type="button" class="bouton discret" data-action="garder" data-garder="0" data-pi="${pi}">Finalement, pas moi</button>`;
   } else if (c.gardee === false) {
@@ -494,7 +488,7 @@ function ecranCompetence(v, pi) {
       <p class="discret centre-texte">On attend les autres. ${points}</p>
       <button type="button" class="bouton discret" data-action="garder" data-garder="1" data-pi="${pi}">Finalement, je la garde</button>`;
   } else {
-    bas = `${consigneGommette(c, true)}
+    bas = `
       <div class="rangee tel-garde" role="group" aria-label="Ton choix">
         <button type="button" class="bouton succes grand" data-action="garder" data-garder="1" data-pi="${pi}">✓ Je la garde</button>
         <button type="button" class="bouton grand" data-action="garder" data-garder="0" data-pi="${pi}">Pas moi</button>
@@ -526,7 +520,7 @@ function ecranFin(v) {
         <div class="pile centre">
           <p class="tel-emoji" aria-hidden="true">🎉</p>
           <h1>Bravo, la partie est finie !</h1>
-          <p>Voici ta fiche. Vérifie que tu as tout recopié sur ta fiche papier, avec les bonnes gommettes. Tu peux la montrer au psy pour en parler ensemble.</p>
+          <p>Voici ta fiche. Tu peux l'imprimer et la montrer au psy pour en parler ensemble.</p>
         </div>
         <div class="pile serre">
           <a class="bouton principal large" href="${echapper(lienFiche(v))}" target="_blank" rel="noopener">🖨️ Ouvrir ma fiche à imprimer</a>
@@ -555,7 +549,6 @@ function blocEnAttente(v) {
   const cartes = liste
     .map((c) => `<div class="tel-proposition">
         ${carteCompetence(c, { surtitre: estDepartEnAttente(c) ? "Ton histoire" : `Problème ${c.problemeIndex + 1}` })}
-        ${consigneGommette(c, true)}
         <div class="rangee tel-garde" role="group" aria-label="Ton choix pour cette compétence">
           <button type="button" class="bouton succes" data-action="garder" data-garder="1" ${cible(c)}>✓ Je la garde</button>
           <button type="button" class="bouton" data-action="garder" data-garder="0" ${cible(c)}>Pas moi</button>

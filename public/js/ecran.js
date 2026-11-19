@@ -331,7 +331,7 @@ function illustration(p) {
 }
 
 function legendeRiasec() {
-  return `<ul class="rangee" style="list-style:none;padding:0;margin:0;justify-content:center" aria-label="Couleurs des gommettes">
+  return `<ul class="rangee" style="list-style:none;padding:0;margin:0;justify-content:center" aria-label="Couleurs des types d'intérêts (RIASEC)">
     ${Object.entries(RIASEC).map(([k, t]) => `<li class="rangee riasec-${k}" style="gap:.4em"><span class="puce-riasec" aria-hidden="true">${k}</span> ${t.nom}</li>`).join("")}
   </ul>`;
 }
@@ -486,7 +486,7 @@ export const SCENES = {
     return `<div class="pile centre large apparition message-plein" style="max-width:1300px">
       <p class="surtitre">Une compétence pour chacun</p>
       <h1>Chacun découvre sa compétence sur son téléphone</h1>
-      <p class="situation">Garde-la si elle te ressemble, puis recopie-la sur ta fiche avec la gommette de sa couleur.</p>
+      <p class="situation">Garde-la si elle te ressemble : elle ira sur ta fiche.</p>
       ${legendeRiasec()}
       ${bloc("compte", vue)}
     </div>`;
