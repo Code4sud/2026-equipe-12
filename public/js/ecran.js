@@ -26,7 +26,7 @@
 export const LIBELLES_PHASES = {
   accueil: "Accueil",
   creation: "Création des personnages",
-  presentation: "Présentation du problème",
+  presentation: "Présentation de l'épisode",
   echange: "Discussion",
   reponse: "Réponses sur les téléphones",
   competences: "Compétences",
@@ -279,7 +279,7 @@ export function commandesPour(vue) {
         desactive: nbJoueurs < 1, aide: nbJoueurs < 1 ? "Il faut au moins 1 joueur." : "" }];
     case "creation":
       return [{ id: "suivant", libelle: "Suivant", message: { t: "suivant" }, principal: true,
-        aide: "Passe au premier problème (ceux qui n'ont pas fini commencent sans compétence de départ)." }];
+        aide: "Passe au premier épisode (ceux qui n'ont pas fini commencent sans compétence de départ)." }];
     case "presentation":
       return [{ id: "suivant", libelle: "Lancer la discussion", message: { t: "suivant" }, principal: true,
         aide: "La discussion démarre seule quand tout le monde a appuyé sur « J'ai lu ». Ce bouton n'attend pas." }];
@@ -294,7 +294,8 @@ export function commandesPour(vue) {
         aide: "La suite démarre seule quand tout le monde a répondu. Ceux qui n'ont pas répondu ne perdent rien : ils auront quand même une compétence." }];
     case "competences": {
       const dernier = Number.isFinite(vue.nbProblemes) && vue.problemeIndex >= vue.nbProblemes - 1;
-      return [{ id: "suivant", libelle: dernier ? "Voir la fin" : "Problème suivant", message: { t: "suivant" }, principal: true }];
+      return [{ id: "suivant", libelle: dernier ? "Voir la fin" : "Épisode suivant", message: { t: "suivant" }, principal: true,
+        aide: vue.idee?.pseudo ? `L'histoire continue seule quand ${vue.idee.pseudo} a noté sa compétence.` : "" }];
     }
     default:
       return [];
@@ -387,7 +388,7 @@ function verbeCompte(phase) {
   switch (phase) {
     case "presentation": return "ont lu";
     case "creation": return "sont prêts";
-    case "competences": return "ont fait leur choix";
+    case "competences": return "a noté sa compétence";
     default: return "ont répondu";
   }
 }
@@ -436,7 +437,7 @@ export const SCENES = {
       ${illustration(p)}
       <div class="pile large">
         <div class="pile serre">
-          <p class="surtitre">Problème ${(vue.problemeIndex ?? 0) + 1}${vue.nbProblemes ? ` sur ${vue.nbProblemes}` : ""}</p>
+          <p class="surtitre">Le tournoi du quartier · Épisode ${(vue.problemeIndex ?? 0) + 1}${vue.nbProblemes ? ` sur ${vue.nbProblemes}` : ""}</p>
           <h1>${echapper(p.titre)}</h1>
         </div>
         <p class="situation">${echapper(p.situation)}</p>
@@ -475,20 +476,34 @@ export const SCENES = {
     </div>`;
   },
 
+  // L'idée du tour : le pseudo de son auteur, ses mots, et la compétence qu'il écrit
+  // sur sa fiche papier.
   competences(vue) {
-    if (vue.attenteIA) {
+    if (vue.attenteIA || !vue.idee) {
       return `<div class="pile centre large mj-reflechit apparition">
-        <div class="bulle" aria-hidden="true">🎁</div>
-        <h1>Le MJ prépare vos compétences ${pointsAttente()}</h1>
-        <p class="situation discret">Une compétence pour chacun, tirée de ce qu'il a proposé.</p>
+        <div class="bulle" aria-hidden="true">💡</div>
+        <h1>Le MJ lit vos idées ${pointsAttente()}</h1>
+        <p class="situation discret">Il choisit l'idée qui fait avancer l'histoire.</p>
       </div>`;
     }
-    return `<div class="pile centre large apparition message-plein" style="max-width:1300px">
-      <p class="surtitre">Une compétence pour chacun</p>
-      <h1>Chacun découvre sa compétence sur son téléphone</h1>
-      <p class="situation">Garde-la si elle te ressemble : elle ira sur ta fiche.</p>
-      ${legendeRiasec()}
-      ${bloc("compte", vue)}
+    if (vue.idee.aucune) {
+      return `<div class="pile centre large apparition message-plein">
+        <p class="surtitre">L'idée du tour</p>
+        <h1>Pas d'idée retenue cette fois</h1>
+        <p class="situation">L'histoire continue : à vous de jouer au prochain épisode !</p>
+      </div>`;
+    }
+    const i = vue.idee;
+    const k = Array.isArray(i.competence?.riasec) ? i.competence.riasec.find((x) => RIASEC[x]) : null;
+    return `<div class="pile centre large apparition message-plein idee-du-tour" style="max-width:1300px">
+      <p class="surtitre">L'idée retenue pour la suite de l'histoire</p>
+      <h1 class="idee-auteur"><span class="avatar grand" aria-hidden="true">${echapper(i.avatar ?? "")}</span> ${echapper(i.pseudo ?? "")}</h1>
+      <blockquote class="idee-texte">« ${echapper(i.texte ?? "")} »</blockquote>
+      <div class="idee-competence${k ? ` riasec-${k}` : ""}">
+        <p class="discret">Compétence à écrire sur sa fiche papier</p>
+        <p class="idee-libelle">${k ? `<span class="puce-riasec" aria-hidden="true">${k}</span> ` : ""}${echapper(i.competence?.libelle ?? "")}</p>
+      </div>
+      <p class="situation discret">${i.notee ? "✓ Notée sur la fiche. L'histoire continue…" : `${echapper(i.pseudo ?? "")} l'écrit sur sa fiche papier…`}</p>
     </div>`;
   },
 
@@ -519,19 +534,19 @@ export function rendreScene(vue, ctx = { origine: "" }) {
 
 const DEMO_PROBLEMES = [
   {
-    id: "telephone-casse",
-    titre: "Le téléphone mystère",
-    illustration: "illustrations/telephone-casse.svg",
-    situation: "Vous êtes avec votre pote Sami quand son téléphone tombe : depuis, l'écran reste noir, mais il vibre quand on l'appelle. Ce soir avant 20 h, Sami doit envoyer son CV pour un job d'été, et son CV est dans le téléphone. Il ne sait pas si c'est l'écran, la batterie ou autre chose.",
-    question: "Que faites-vous ?",
+    id: "budget-tournoi",
+    titre: "Le budget du tournoi",
+    illustration: "illustrations/budget-tournoi.svg",
+    situation: "Le club de foot du quartier vous confie l'organisation de son premier tournoi des jeunes, dans un mois. Huit équipes sont attendues, et le club vous donne 150 euros pour tout : ballons, goûter, coupe et récompenses. À vous de décider comment utiliser cet argent.",
+    question: "Que faites-vous ?"
   },
   {
-    id: "anniversaire-20-euros",
-    titre: "Un anniversaire à 20 €",
-    illustration: "illustrations/anniversaire-20-euros.svg",
-    situation: "Vous organisez l'anniversaire d'un pote du club pour samedi. Vous êtes cinq, et il n'y a que 20 € en tout dans la cagnotte.",
-    question: "Comment faites-vous ?",
-  },
+    id: "affiche-tournoi",
+    titre: "L'affiche du tournoi",
+    illustration: "illustrations/affiche-tournoi.svg",
+    situation: "Le budget est bouclé, bravo. Mais à trois semaines du tournoi, presque personne dans le quartier n'est au courant, et il manque encore des équipes. Le club vous demande de faire l'affiche et de faire venir des joueurs et du public.",
+    question: "Que faites-vous ?"
+  }
 ];
 
 const DEMO_JOUEURS = [
@@ -557,12 +572,12 @@ export function vuesDemo(maintenant = Date.now(), code = "KDMZ") {
     pb(0, "reponse", { minuteurFin: maintenant + 90_000, joueurs: joueurs(4, 1), compte: { repondu: 1, total: 4 } }),
     pb(0, "reponse", { minuteurFin: maintenant + 12_000, joueurs: joueurs(4, 3), compte: { repondu: 3, total: 4 } }),
     pb(0, "competences", { attenteIA: true }),
-    pb(0, "competences", { compte: { repondu: 2, total: 4 } }),
+    pb(0, "competences", { idee: { pseudo: "Lina", avatar: "🦊", texte: "On fait la liste de ce qu'il faut et on compare les prix avant d'acheter", competence: { code: "4C101", libelle: "Élaborer, suivre et piloter un budget", riasec: ["C"] }, notee: false } }),
     pb(1, "presentation"),
     pb(1, "echange", { minuteurFin: maintenant + 120_000 }),
     pb(1, "reponse", { minuteurFin: maintenant + 90_000, compte: { repondu: 2, total: 4 } }),
     pb(1, "competences", { attenteIA: true }),
-    pb(1, "competences", { compte: { repondu: 1, total: 4 } }),
+    pb(1, "competences", { idee: { pseudo: "Sam", avatar: "🐼", texte: "on poste l'affiche en story et on la colle à la boulangerie et au lycée", competence: { code: "6A107", libelle: "Utiliser les réseaux sociaux", riasec: ["C", "S"] }, notee: true } }),
     { ...base, phase: "fin", problemeIndex: 1, probleme: null, joueurs: joueurs(4), compte: null, fin: { nbCompetencesTotal: 15 } },
   ];
 }
@@ -711,7 +726,7 @@ function demarrerEcran() {
       return;
     }
     const i = vue.phase === "fin" ? n : vue.problemeIndex ?? 0;
-    el.setAttribute("aria-label", vue.phase === "fin" ? "Tous les problèmes sont faits" : `Problème ${i + 1} sur ${n}`);
+    el.setAttribute("aria-label", vue.phase === "fin" ? "Tous les épisodes sont faits" : `Épisode ${i + 1} sur ${n}`);
     el.innerHTML = Array.from({ length: n }, (_, k) =>
       `<span class="etape-pb${k < i ? " faite" : k === i ? " en-cours" : ""}"></span>`).join("");
   }

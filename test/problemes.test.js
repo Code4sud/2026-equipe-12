@@ -12,18 +12,15 @@ import { mjMock, motsValides } from "../src/mj.js";
 
 const PUBLIC = new URL("../public/", import.meta.url);
 const MACROS = new Map(rome.macros.map((m) => [m.code, m]));
-// Une situation par profil RIASEC, tirée des exemples du sujet 4 (garder des enfants,
-// réparer un scooter, animer une communauté en ligne, tenir la caisse d'une
-// association…), plus le formulaire de la voisine et l'anniversaire.
+// « Le tournoi du quartier » : 6 épisodes qui s'enchaînent, un par profil RIASEC,
+// tirés des exemples de compétences cachées du sujet 4.
 const IDS_ATTENDUS = [
-  "scooter-panne",
-  "telephone-casse",
-  "affiche-evenement",
-  "enfants-voisine",
-  "conflit-discord",
+  "budget-tournoi",
+  "affiche-tournoi",
+  "embrouille-equipe",
+  "telephone-mystere",
+  "jour-j-scooter",
   "caisse-buvette",
-  "voisine-formulaire",
-  "anniversaire-20-euros",
 ];
 const MOTS_INTERDITS = [
   "mère", "père", "parent", "maman", "papa", "frère", "sœur", "soeur", "famille",
@@ -59,6 +56,12 @@ test("structure générale", () => {
 
 test("les ids attendus, sans doublon", () => {
   assert.deepEqual([...problemes.map((p) => p.id)].sort(), [...IDS_ATTENDUS].sort());
+});
+
+test("une histoire : épisodes numérotés de 1 à 6, dans l'ordre", () => {
+  assert.equal(data.histoire?.titre, "Le tournoi du quartier");
+  assert.deepEqual(problemes.map((p) => p.episode), [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual(problemes.map((p) => p.id), IDS_ATTENDUS);
 });
 
 test("les 6 profils RIASEC du Centre sont couverts", () => {
@@ -174,22 +177,19 @@ test("les formes conjuguées sont reconnues par les mots-clés", () => {
   const P = Object.fromEntries(problemes.map((p) => [p.id, p]));
   const comp = (id, code) => P[id].competences.find((c) => c.code === code).motsCles;
   const cas = [
-    ["telephone-casse", "6B201", "J'appelle le snack"],
-    ["telephone-casse", "6B201", "On prévient le patron"],
-    ["telephone-casse", "6B201", "Je demande à un pote"],
-    ["telephone-casse", "6B201", "Il lui explique la situation"],
-    ["conflit-discord", "1B105", "On organise un entraînement avant samedi"],
-    ["conflit-discord", "6D106", "Je les remotive pour le tournoi"],
-    ["enfants-voisine", "1D302", "Chacun son tour à la console"],
-    ["enfants-voisine", "1D301", "Je lui explique sans faire l'exercice à sa place"],
+    ["telephone-mystere", "6B201", "J'appelle le club"],
+    ["telephone-mystere", "6B201", "On prévient le coach"],
+    ["telephone-mystere", "6B201", "Je demande à un pote"],
+    ["telephone-mystere", "6B201", "Il lui explique la situation"],
+    ["embrouille-equipe", "1B105", "On organise qui fait quoi le jour J"],
+    ["embrouille-equipe", "6D101", "Je leur demande ce qui se passe"],
     ["caisse-buvette", "4A201", "Je recompte la caisse"],
     ["caisse-buvette", "6B201", "On prévient la trésorière"],
-    ["voisine-formulaire", "1D101", "Je l'aide et je lui montre"],
-    ["voisine-formulaire", "6D116", "Je lui propose de passer"],
-    ["scooter-panne", "2D313", "On comprend d'où vient la panne"],
-    ["scooter-panne", "3F203", "Elle gare le scooter et l'attache"],
-    ["scooter-panne", "3E205", "On change la bougie"],
-    ["anniversaire-20-euros", "6D115", "On crée une vidéo"],
+    ["jour-j-scooter", "2D313", "On comprend d'où vient la panne"],
+    ["jour-j-scooter", "3F203", "Elle gare le scooter et l'attache"],
+    ["jour-j-scooter", "3E205", "On change la bougie"],
+    ["budget-tournoi", "6D115", "On demande un sponsor au commerçant"],
+    ["budget-tournoi", "4C101", "On compare les prix"],
   ];
   for (const [id, code, phrase] of cas) assert.ok(compterMots(phrase, comp(id, code)) > 0, `${id} ${code} : « ${phrase} »`);
 });
@@ -200,14 +200,14 @@ const attribuer = async (id, texte) =>
   (await mj.attribuer({ probleme: problemes.find((p) => p.id === id), historique: { j1: { reponses: [texte], choix: null } } })).j1.code;
 
 test("MJ mock : demander de l'aide au présent donne la compétence d'aide, pas la participation", async () => {
-  assert.equal(await attribuer("scooter-panne", "On appelle un pote qui s'y connaît en mécanique"), "6B201");
-  assert.equal(await attribuer("telephone-casse", "Je demande conseil à quelqu'un de confiance"), "6B201");
+  assert.equal(await attribuer("jour-j-scooter", "On appelle un pote qui s'y connaît en mécanique"), "6B201");
+  assert.equal(await attribuer("telephone-mystere", "Je demande conseil à quelqu'un de confiance"), "6B201");
 });
 
-test("MJ mock : les nouvelles situations donnent la compétence attendue", async () => {
-  assert.equal(await attribuer("telephone-casse", "Il vibre donc la cause vient sans doute de l'écran"), "2D313");
-  assert.equal(await attribuer("enfants-voisine", "Chacun son tour à la console, avec un minuteur"), "1D302");
-  assert.equal(await attribuer("conflit-discord", "Je poste une annonce sur le serveur pour rassembler tout le monde"), "1B109");
+test("MJ mock : les épisodes donnent la compétence attendue", async () => {
+  assert.equal(await attribuer("telephone-mystere", "Il vibre donc la cause vient sans doute de l'écran"), "2D313");
+  assert.equal(await attribuer("embrouille-equipe", "Je me mets entre eux, je reste neutre et j'écoute leur version"), "1D302");
+  assert.equal(await attribuer("budget-tournoi", "On compare les prix et on répartit le budget"), "4C101");
   assert.equal(await attribuer("caisse-buvette", "Je recompte la caisse et la monnaie rendue"), "4A201");
 });
 

@@ -59,11 +59,11 @@ test("lireReglages : valeurs par défaut et valides", () => {
   assert.deepEqual(lireReglages({}), { reglages: {} });
   assert.deepEqual(lireReglages({ nbProblemes: 2, dureeEchange: 20, dureeReponse: 30 }), {
     reglages: { nbProblemes: 2, dureeEchange: 20, dureeReponse: 30 },
-  });  assert.deepEqual(lireReglages({ nbProblemes: 3, solo: true }), { reglages: { nbProblemes: 3, solo: true } });
+  });
 });
 
 test("lireReglages : refuse les valeurs hors bornes, en français", () => {
-  for (const corps of [{ nbProblemes: 0 }, { nbProblemes: 7 }, { nbProblemes: 2.5 }, { nbProblemes: "3" }, { dureeEchange: 2 }, { dureeReponse: 99999 }, { solo: "oui" }, [], "x"]) {
+  for (const corps of [{ nbProblemes: 0 }, { nbProblemes: 7 }, { nbProblemes: 2.5 }, { nbProblemes: "3" }, { dureeEchange: 2 }, { dureeReponse: 99999 }, [], "x"]) {
     const r = lireReglages(corps);
     assert.ok(r.erreur, JSON.stringify(corps));
     assert.equal(typeof r.erreur, "string");
@@ -339,18 +339,22 @@ test("Partie : init unique, fiche, partie complète en mode mock sans fuite vers
   assert.match(b.recus.at(-1).message, /Toutes les idées comptent/);
   assert.equal(partie.etat.phase, "reponse");
   await envoyer(b, { t: "reponse", texte: SECRET_B });
-  // Pas de bonne réponse à chercher : directement les compétences.
+  // Toutes les réponses sont là : le MJ choisit l'idée du tour.
   assert.equal(partie.etat.phase, "competences");
   await attendreIA(ctx);
-  assert.ok(a.derniereVue().moi.competenceDuProbleme);
-  await envoyer(a, { t: "garder_competence", garder: true });
-  await envoyer(b, { t: "garder_competence", garder: false });
+  const retenu = partie.etat.idee?.joueurId;
+  assert.ok(["joueur-aaaa-1111", "joueur-bbbb-2222"].includes(retenu), "une idée retenue");
+  const [auteur, autre] = retenu === "joueur-aaaa-1111" ? [a, b] : [b, a];
+  assert.ok(auteur.derniereVue().moi.competenceDuProbleme, "l'auteur reçoit la compétence");
+  assert.equal(autre.derniereVue().moi.competenceDuProbleme, null, "les autres non");
+  assert.equal(ecran.derniereVue().idee.pseudo, auteur === a ? "Alex" : "Bea", "l'écran montre son pseudo");
+  await envoyer(auteur, { t: "garder_competence", garder: true });
   assert.equal(partie.etat.phase, "fin");
   assert.ok(ctx.alarme >= Date.now() + 59 * 60 * 1000, "nettoyage programmé une heure plus tard");
 
   const fiche = await partie.fiche("joueur-aaaa-1111");
   assert.equal(fiche.joueur.pseudo, "Alex");
-  assert.equal(fiche.jeu.length, 1);
+  assert.equal(fiche.jeu.length, retenu === "joueur-aaaa-1111" ? 1 : 0);
   assert.ok(fiche.depart.length >= 1);
   assert.equal(await partie.fiche("inconnu-0000"), null);
 
@@ -359,10 +363,10 @@ test("Partie : init unique, fiche, partie complète en mode mock sans fuite vers
   assert.ok(!JSON.stringify(fiche).includes(CLE), "clé animateur dans la fiche");
   assert.ok(!JSON.stringify(await partie.fiche("joueur-bbbb-2222")).includes(CLE));
 
-  // L'écran n'a jamais reçu le texte d'une réponse ; un joueur ne voit pas celle de l'autre.
-  const toutEcran = JSON.stringify(ecran.recus);
-  assert.ok(!toutEcran.includes("zorglub"), "fuite d'une réponse vers l'écran");
-  assert.ok(!JSON.stringify(a.recus).includes("zorglubB"), "fuite de la réponse de B vers A");
+  // Seule l'idée retenue (un extrait) est montrée ; la réponse non retenue reste privée.
+  const nonRetenue = retenu === "joueur-aaaa-1111" ? "zorglubB" : "zorglubA";
+  assert.ok(!JSON.stringify(ecran.recus).includes(nonRetenue), "fuite de la réponse non retenue vers l'écran");
+  assert.ok(!JSON.stringify(autre === a ? b.recus : a.recus).includes(nonRetenue), "fuite de la réponse non retenue");
 
   // Déconnexion puis nettoyage à l'échéance.
   b.readyState = 3;
@@ -390,27 +394,25 @@ test("Partie : messages invalides → erreur en français, état inchangé", asy
   for (const m of a.recus) assert.equal(typeof m.message, "string");
 });
 
-test("Partie : un joueur oublié par le MJ reçoit quand même sa compétence (mock en complément)", async () => {
+test("Partie : le MJ IA en échec pour le choix → le MJ de secours choisit l'idée du tour", async () => {
   const ctx = fauxContexte();
   const partie = new Partie(ctx, { MJ_MODE: "mock" });
   await ctx.pret;
   const { problemes } = JSON.parse(readFileSync(new URL("../public/data/problemes.json", import.meta.url), "utf8"));
-  const probleme = problemes[0];
-  // MJ qui « oublie » le joueur B.
-  partie.mj = {
-    evaluer: async () => ({ resolu: false, synthese: null }),
-    attribuer: async () => ({ "joueur-aaaa-1111": { code: probleme.competences[0].code, libelle: "x", mots: "Tu as aidé.", preuve: "aider", typePreuve: "jeu", riasec: [] } }),
-  };
+  const probleme = problemes.find((p) => p.id === "caisse-buvette");
+  partie.mj = { choisir: async () => { throw new Error("réseau"); } };
   const ev = await partie.calculerIA({
-    type: "attribuer",
+    type: "choisir",
     problemeIndex: 0,
     probleme,
-    historique: { "joueur-aaaa-1111": { reponses: ["aider"], choix: null }, "joueur-bbbb-2222": { reponses: [], choix: null } },
+    reponses: [
+      { joueurId: "joueur-aaaa-1111", texte: "On recompte la caisse et la monnaie rendue", dejaRetenu: false },
+      { joueurId: "joueur-bbbb-2222", texte: "bof", dejaRetenu: false },
+    ],
   });
   assert.equal(ev.t, "attribution_faite");
-  assert.equal(ev.competences["joueur-aaaa-1111"].code, probleme.competences[0].code);
-  assert.equal(ev.competences["joueur-bbbb-2222"].code, probleme.competenceParticipation);
-  assert.equal(ev.competences["joueur-bbbb-2222"].typePreuve, "participation");
+  assert.equal(ev.joueurId, "joueur-aaaa-1111");
+  assert.ok(probleme.competences.some((c) => c.code === ev.competence.code));
 });
 
 // ─────────────────────────── Non-régression (correctifs) ───────────────────────────
@@ -474,7 +476,7 @@ test("Partie : appel IA perdu (redémarrage du DO) → le chien de garde relance
   await envoyer(a, { t: "reponse", texte: "On éteint le téléphone et on le fait sécher" });
   assert.equal(partie.etat.phase, "competences");
   const gardes = ctx.stockage.get("gardesIA");
-  const cle = cleIA({ type: "attribuer", problemeIndex: 0 });
+  const cle = cleIA({ type: "choisir", problemeIndex: 0 });
   assert.deepEqual(Object.keys(gardes), [cle], "échéance persistée avant l'appel");
   assert.ok(gardes[cle] >= avant + DELAI_GARDE_IA_MS && gardes[cle] <= Date.now() + DELAI_GARDE_IA_MS);
   assert.ok(ctx.alarme <= gardes[cle], "l'alarme sonne au plus tard à l'échéance");
@@ -524,7 +526,7 @@ test("Partie : chien de garde en création (récit resté « en analyse ») et e
   await partie.traiter({ t: "reponse", texte: "Je le sèche", role: "joueur", joueurId: "joueur-aaaa-1111" });
   assert.equal(partie.etat.phase, "competences");
   assert.equal(partie.etat.attribution, null);
-  ctx.stockage.set("gardesIA", { [cleIA({ type: "attribuer", problemeIndex: 0 })]: Date.now() - 1 });
+  ctx.stockage.set("gardesIA", { [cleIA({ type: "choisir", problemeIndex: 0 })]: Date.now() - 1 });
   partie = new Partie(ctx, env);
   await ctx.pret;
   await partie.alarm();
@@ -748,9 +750,7 @@ test("cleEcran absente de toute vue (écran, joueur, joueur inconnu) à chaque p
   verifierVues();
   for (let n = 0; partie.etat.phase !== "fin" && n < 20; n++) {
     const phase = partie.etat.phase;
-    if (phase === "choix") await envoyer(a, { t: "choix", index: 0 });
-    else if (phase === "competences" && partie.etat.attribution) await envoyer(a, { t: "garder_competence", garder: true });
-    else if (phase === "echange2") await envoyer(ecran, { t: "fin_minuteur" });
+    if (phase === "competences" && partie.etat.attribution && partie.etat.idee?.joueurId === "joueur-aaaa-1111") await envoyer(a, { t: "garder_competence", garder: true });
     else await envoyer(ecran, { t: "suivant" });
     await attendreIA(ctx);
     verifierVues();

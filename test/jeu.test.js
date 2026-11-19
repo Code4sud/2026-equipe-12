@@ -129,17 +129,14 @@ function jusquaReponse(e, t = T0) {
 
 // ───────────────────────── Création ─────────────────────────
 
-test("creerEtat : phase accueil, réglages, tirage déterministe et varié", () => {
+test("creerEtat : phase accueil, réglages, les épisodes dans l'ordre", () => {
   const e = nouvellePartie();
   assert.equal(e.phase, "accueil");
   assert.equal(e.code, "BCDF");
   assert.deepEqual(e.reglages, { nbProblemes: 2, dureeEchange: 120, dureeReponse: 90 });
-  assert.equal(e.problemes.length, 2);
-  assert.deepEqual(nouvellePartie().problemes, e.problemes, "même graine → même tirage");
-  // Types RIASEC dominants différents quand c'est possible.
-  const doms = e.problemes.map((id) => PROBLEMES.find((p) => p.id === id).riasec[0]);
-  assert.equal(new Set(doms).size, doms.length);
-  // nbProblemes borné par le nombre de problèmes disponibles.
+  assert.deepEqual(e.problemes, ["test-telephone", "test-anniversaire"], "les premiers épisodes, dans l'ordre");
+  assert.deepEqual(nouvellePartie({ graine: 99 }).problemes, e.problemes, "la graine ne change plus rien");
+  // nbProblemes borné par le nombre d'épisodes disponibles.
   assert.equal(creerEtat({ code: "BCDF", problemes: PROBLEMES, nbProblemes: 6, graine: 1 }).problemes.length, 3);
   // Accepte aussi le format { version, problemes }.
   assert.equal(creerEtat({ code: "BCDF", problemes: { version: 1, problemes: PROBLEMES }, graine: "x" }).problemes.length, 3);
@@ -147,11 +144,10 @@ test("creerEtat : phase accueil, réglages, tirage déterministe et varié", () 
   assert.deepEqual(JSON.parse(JSON.stringify(e)), e);
 });
 
-test("tirage : couvre des types RIASEC différents pour plusieurs graines", () => {
-  for (let g = 0; g < 30; g++) {
-    const tires = tirerProblemes(PROBLEMES, 3, g);
-    assert.equal(new Set(tires.map((p) => p.riasec[0])).size, 3);
-  }
+test("tirage : les épisodes suivent le champ « episode », en partant du début", () => {
+  const histoire = PROBLEMES.map((p, i) => ({ ...p, episode: 3 - i }));
+  assert.deepEqual(tirerProblemes(histoire, 2, 7).map((p) => p.id), ["test-discord", "test-anniversaire"]);
+  assert.deepEqual(tirerProblemes(PROBLEMES, 3, 0).map((p) => p.id), PROBLEMES.map((p) => p.id));
 });
 
 test("AVATARS : 12 emojis", () => {
@@ -356,68 +352,86 @@ test("creation forcée pendant l'analyse : le résultat qui arrive après devien
 // Pas de bonne ni de mauvaise réponse : après les réponses, le MJ donne
 // directement une compétence à chacun (pas d'évaluation, d'indice ni de choix).
 
-test("problème : presentation → echange → reponse → competences → suivant", () => {
+const compJeu = (code, preuve) => ({ code, libelle: code, mots: "Tu as eu une bonne idée.", preuve, typePreuve: "jeu", riasec: ["E"] });
+
+test("épisode : presentation → echange → reponse → l'idée du tour (une seule compétence) → épisode suivant", () => {
   let e = partieEnPresentation();
   const p0 = e.problemes[0];
 
   let r = ok(e, E({ t: "suivant" }), T0);
   assert.equal(r.etat.phase, "echange");
   assert.deepEqual(r.effets, [{ type: "minuteur", fin: T0 + 120 * 1000 }]);
-  assert.equal(r.etat.minuteurFin, T0 + 120000);
   e = r.etat;
-
   ko(e, J("a", { t: "reponse", texte: "trop tôt" }));
 
   r = ok(e, E({ t: "fin_minuteur" }), T0 + 120000);
   assert.equal(r.etat.phase, "reponse");
-  assert.deepEqual(r.effets, [{ type: "minuteur", fin: T0 + 120000 + 90 * 1000 }]);
   e = r.etat;
-
   ko(e, J("a", { t: "reponse", texte: "x".repeat(501) }));
   ko(e, J("a", { t: "reponse" }));
   e = ok(e, J("a", { t: "reponse", texte: "première idée" })).etat;
   r = ok(e, J("a", { t: "reponse", texte: "Je l'éteins tout de suite et je le fais sécher" }));
   assert.deepEqual(r.effets, [], "renvoyer remplace la réponse");
   e = r.etat;
-  assert.equal(e.joueurs.a.reponses[0].tour1, "Je l'éteins tout de suite et je le fais sécher");
 
   r = ok(e, J("b", { t: "reponse", texte: "Je rassure mon pote" }));
-  assert.equal(r.etat.phase, "competences", "tous ont répondu : directement les compétences");
+  assert.equal(r.etat.phase, "competences", "tous ont répondu : le MJ choisit l'idée du tour");
   assert.equal(r.etat.attribution, null);
-  assert.ok(r.effets.some((x) => x.type === "annuler_minuteur"));
-  assert.ok(!r.effets.some((x) => x.type === "evaluer"), "plus d'évaluation résolu / pas résolu");
-  const attribuer = r.effets.find((x) => x.type === "attribuer");
-  assert.deepEqual(attribuer.historique, {
-    a: { reponses: ["Je l'éteins tout de suite et je le fais sécher"], choix: null },
-    b: { reponses: ["Je rassure mon pote"], choix: null },
-  });
-  assert.equal(attribuer.problemeIndex, 0);
-  assert.equal(attribuer.probleme.id, p0);
+  const choisir = r.effets.find((x) => x.type === "choisir");
+  assert.deepEqual(choisir.reponses, [
+    { joueurId: "a", texte: "Je l'éteins tout de suite et je le fais sécher", dejaRetenu: false },
+    { joueurId: "b", texte: "Je rassure mon pote", dejaRetenu: false },
+  ]);
+  assert.equal(choisir.problemeIndex, 0);
+  assert.equal(choisir.probleme.id, p0);
   e = r.etat;
-  const ve = vue(e, "ecran");
-  for (const cle of ["evaluation", "indice", "choix", "solution"]) assert.ok(!(cle in ve), `plus de « ${cle} » dans la vue`);
-  // Le MJ prépare les compétences : « Suivant » relance l'attribution avec le MJ de secours.
-  const relanceAtt = ok(e, E({ t: "suivant" }));
-  assert.equal(relanceAtt.etat.phase, "competences");
-  assert.deepEqual(relanceAtt.effets, [{ ...attribuer, secours: true }]);
+  assert.equal(vue(e, "ecran").attenteIA, true);
+  assert.equal(vue(e, "ecran").idee, null);
+  // Le MJ réfléchit : « Suivant » relance le choix avec le MJ de secours.
+  const relance = ok(e, E({ t: "suivant" }));
+  assert.deepEqual(relance.effets, [{ ...choisir, secours: true }]);
   ko(e, J("a", { t: "garder_competence", garder: true }));
+  ko(e, { t: "attribution_faite", problemeIndex: 1, joueurId: "a", competence: compJeu("6D111", "tout de suite") }); // périmé
 
-  const comp = (code, preuve) => ({ code, libelle: code, mots: "Tu as agi vite.", preuve, typePreuve: "jeu", riasec: ["E"] });
-  ko(e, { t: "attribution_faite", problemeIndex: 1, competences: {} }); // périmé
-  r = ok(e, { t: "attribution_faite", problemeIndex: 0, competences: { a: comp("6D111", "tout de suite"), b: comp("6D101", "Je rassure") } });
+  r = ok(e, { t: "attribution_faite", problemeIndex: 0, joueurId: "a", competence: compJeu("6D111", "Je l'éteins tout de suite") });
   e = r.etat;
+  assert.deepEqual(Object.keys(e.attribution), ["a"], "une seule compétence : celle de l'idée retenue");
+  assert.equal(e.joueurs.b.competences.filter((c) => c.problemeIndex === 0).length, 0);
+  // L'idée du tour est montrée à tout le monde, avec le pseudo de son auteur.
+  for (const v of [vue(e, "ecran"), vue(e, "joueur", "b"), vue(e, "joueur", "a")]) {
+    assert.deepEqual(v.idee, {
+      pseudo: "Lina", avatar: "🦊", texte: "Je l'éteins tout de suite",
+      competence: { code: "6D111", libelle: "6D111", riasec: ["E"], mots: "Tu as eu une bonne idée." }, notee: false,
+    });
+  }
   assert.equal(vue(e, "joueur", "a").moi.competenceDuProbleme.code, "6D111");
-  assert.equal(vue(e, "joueur", "a").moi.competenceDuProbleme.problemeIndex, 0);
-  ko(e, { t: "attribution_faite", problemeIndex: 0, competences: { a: comp("6D101", "x") } }); // déjà attribué
+  assert.equal(vue(e, "joueur", "b").moi.competenceDuProbleme, null);
+  ko(e, { t: "attribution_faite", problemeIndex: 0, joueurId: "b", competence: compJeu("6D101", "x") }); // déjà choisie
+  ko(e, J("b", { t: "garder_competence", garder: true })); // b n'a pas de compétence pour cet épisode
 
-  ko(e, J("a", { t: "garder_competence", garder: "oui" }));
-  e = ok(e, J("a", { t: "garder_competence", garder: true })).etat;
-  assert.equal(e.phase, "competences");
-  r = ok(e, J("b", { t: "garder_competence", garder: false }), T0 + 1);
-  assert.equal(r.etat.phase, "presentation", "tous ont choisi → problème suivant");
+  // L'auteur l'écrit sur sa fiche papier et la garde : l'histoire continue.
+  r = ok(e, J("a", { t: "garder_competence", garder: true }), T0 + 1);
+  assert.equal(r.etat.phase, "presentation", "épisode suivant");
   assert.equal(r.etat.problemeIndex, 1);
+  assert.equal(r.etat.idee, null);
   assert.equal(r.etat.joueurs.a.competences.find((c) => c.problemeIndex === 0).gardee, true);
-  assert.equal(r.etat.joueurs.b.competences.find((c) => c.problemeIndex === 0).gardee, false);
+});
+
+test("idée du tour : un joueur déjà retenu est signalé au MJ ; une idée inconnue ou vide n'est pas retenue", () => {
+  let e = jusquaReponse(partieEnPresentation());
+  e = ok(e, J("a", { t: "reponse", texte: "Je l'éteins" })).etat;
+  e = ok(e, J("b", { t: "reponse", texte: "Je demande de l'aide" })).etat;
+  e = ok(e, { t: "attribution_faite", problemeIndex: 0, joueurId: "a", competence: compJeu("6D111", "Je l'éteins") }).etat;
+  e = ok(e, E({ t: "suivant" })).etat; // épisode 2
+  e = jusquaReponse(e);
+  e = ok(e, J("a", { t: "reponse", texte: "On fait une liste" })).etat;
+  const r = ok(e, J("b", { t: "reponse", texte: "On cuisine ensemble" }));
+  const choisir = r.effets.find((x) => x.type === "choisir");
+  assert.deepEqual(choisir.reponses.map((x) => [x.joueurId, x.dejaRetenu]), [["a", true], ["b", false]]);
+  // Joueur inconnu : pas d'idée retenue, l'histoire continue.
+  const inconnu = ok(r.etat, { t: "attribution_faite", problemeIndex: 1, joueurId: "zz", competence: compJeu("6D102", "x") }).etat;
+  assert.deepEqual(vue(inconnu, "ecran").idee, { aucune: true });
+  assert.equal(ok(inconnu, E({ t: "suivant" })).etat.phase, "fin");
 });
 
 test("reponse : « je ne sais pas » et violence refusées pour CE joueur seulement, qui réécrit", () => {
@@ -460,14 +474,14 @@ test("reponse : à la fin du minuteur, la partie attend (pas d'enchaînement aut
   assert.equal(r2.etat.tempsEcoule, false);
 });
 
-test("reponse : l'animateur passe sans attendre → les absents ont une réponse vide", () => {
+test("reponse : l'animateur passe sans attendre → seules les réponses écrites vont au MJ", () => {
   let e = jusquaReponse(partieEnPresentation());
   e = ok(e, J("a", { t: "reponse", texte: "J'appelle un réparateur" })).etat;
   e = ok(e, { t: "minuteur_fini" }).etat;
   const r = ok(e, E({ t: "suivant" }));
   assert.equal(r.etat.phase, "competences");
-  const att = r.effets.find((x) => x.type === "attribuer");
-  assert.deepEqual(att.historique, { a: { reponses: ["J'appelle un réparateur"], choix: null }, b: { reponses: [], choix: null } });
+  const choisir = r.effets.find((x) => x.type === "choisir");
+  assert.deepEqual(choisir.reponses, [{ joueurId: "a", texte: "J'appelle un réparateur", dejaRetenu: false }]);
   assert.equal(r.etat.joueurs.b.reponses[0].tour1, "");
 });
 
@@ -488,7 +502,7 @@ test("lecture : chacun valide « J'ai lu » ; la discussion démarre quand tout 
   ko(r.etat, J("a", { t: "lu" })); // plus rien à lire
 });
 
-test("fin_minuteur de l'écran : coupe le temps et annule l'alarme", () => {
+test("fin_minuteur de l'écran : coupe le temps et annule l'alarme ; personne n'a écrit → pas d'idée retenue", () => {
   let e = partieEnPresentation();
   e = ok(e, E({ t: "suivant" })).etat;
   ko(e, J("a", { t: "fin_minuteur" }));
@@ -498,9 +512,11 @@ test("fin_minuteur de l'écran : coupe le temps et annule l'alarme", () => {
   r = ok(r.etat, E({ t: "fin_minuteur" }));
   assert.equal(r.etat.phase, "competences");
   assert.ok(r.effets.some((x) => x.type === "annuler_minuteur"));
-  assert.ok(r.effets.some((x) => x.type === "attribuer"));
+  assert.ok(!r.effets.some((x) => x.type === "choisir"), "aucune réponse : pas d'appel au MJ");
+  assert.deepEqual(vue(r.etat, "ecran").idee, { aucune: true });
   ko(r.etat, E({ t: "fin_minuteur" })); // plus de minuteur
   ko(r.etat, { t: "minuteur_fini" });
+  assert.equal(ok(r.etat, E({ t: "suivant" })).etat.phase, "presentation", "l'histoire continue");
 });
 
 test("anciens messages du choix parmi 4 et de l'évaluation : refusés", () => {
@@ -511,67 +527,52 @@ test("anciens messages du choix parmi 4 et de l'évaluation : refusés", () => {
 
 // ───────────────────────── Compétences et fin ─────────────────────────
 
-// Joue un problème complet et renvoie l'état après attribution.
-function jouerProbleme(e, t = T0) {
+// Joue un épisode complet : a et b répondent, l'idée de `retenu` est choisie.
+function jouerProbleme(e, t = T0, retenu = "a") {
   e = jusquaReponse(e, t);
   e = ok(e, J("a", { t: "reponse", texte: "Je l'éteins" }), t).etat;
   e = ok(e, J("b", { t: "reponse", texte: "Je demande de l'aide" }), t).etat;
   assert.equal(e.phase, "competences");
-  const c = { code: "6D102", libelle: "Avoir l'esprit d'équipe", mots: "Tu as cherché de l'aide.", preuve: "Je demande", typePreuve: "jeu", riasec: [] };
-  return ok(e, { t: "attribution_faite", problemeIndex: e.problemeIndex, competences: { a: c, b: c } }, t).etat;
+  const c = { code: "6D102", libelle: "Avoir l'esprit d'équipe", mots: "Tu as cherché de l'aide.", preuve: retenu === "a" ? "Je l'éteins" : "Je demande", typePreuve: "jeu", riasec: [] };
+  return ok(e, { t: "attribution_faite", problemeIndex: e.problemeIndex, joueurId: retenu, competence: c }, t).etat;
 }
 
-test("une seule compétence par joueur et par problème ; fin → nettoyer", () => {
+test("une compétence par épisode, pour l'auteur de l'idée retenue ; fin → nettoyer", () => {
   let e = partieEnPresentation();
-  e = jouerProbleme(e);
-  // L'écran passe sans attendre les joueurs : leur compétence reste gardee:null.
+  e = jouerProbleme(e, T0, "a");
+  // L'écran passe sans attendre : la compétence de a reste gardee:null.
   e = ok(e, E({ t: "suivant" })).etat;
   assert.equal(e.problemeIndex, 1);
-  e = jouerProbleme(e);
-  e = ok(e, J("a", { t: "garder_competence", garder: true })).etat;
-  e = ok(e, J("a", { t: "garder_competence", garder: false })).etat; // change d'avis
+  e = jouerProbleme(e, T0, "b");
   const tFin = T0 + 999;
   const r = ok(e, J("b", { t: "garder_competence", garder: true }), tFin);
   assert.equal(r.etat.phase, "fin");
   assert.deepEqual(r.effets, [{ type: "nettoyer", fin: tFin + 60 * 60 * 1000 }]);
   e = r.etat;
-
-  for (const id of ["a", "b"]) {
-    const jeu = e.joueurs[id].competences.filter((c) => c.problemeIndex !== null);
-    assert.equal(jeu.length, 2, "2 problèmes → 2 compétences de jeu");
-    assert.deepEqual(jeu.map((c) => c.problemeIndex), [0, 1]);
-  }
-  assert.equal(e.joueurs.a.competences[1].gardee, false);
+  assert.deepEqual(e.joueurs.a.competences.map((c) => c.problemeIndex), [0]);
+  assert.deepEqual(e.joueurs.b.competences.map((c) => c.problemeIndex), [1]);
   assert.equal(e.joueurs.a.competences[0].gardee, null);
-
   const ve = vue(e, "ecran");
   assert.equal(ve.phase, "fin");
-  assert.equal(ve.fin.nbCompetencesTotal, 3); // tout sauf la compétence retirée par a
+  assert.equal(ve.fin.nbCompetencesTotal, 2);
   assert.equal(ve.probleme, null);
-  const vj = vue(e, "joueur", "a");
-  assert.equal(vj.fin.lienFiche, "/fiche.html?code=BCDF&joueur=a");
-
+  assert.equal(vue(e, "joueur", "a").fin.lienFiche, "/fiche.html?code=BCDF&joueur=a");
   // Plus rien n'est accepté après la fin.
   ko(e, E({ t: "suivant" }));
   ko(e, J("a", { t: "reponse", texte: "x" }));
   ko(e, J("a", { t: "garder_competence", garder: true }));
 });
 
-test("erreur_ia pendant l'attribution : l'écran peut passer", () => {
+test("erreur_ia pendant le choix : pas d'idée retenue, l'écran peut passer", () => {
   let e = partieEnPresentation();
   e = jusquaReponse(e);
+  e = ok(e, J("a", { t: "reponse", texte: "Je l'éteins" })).etat;
   e = ok(e, E({ t: "fin_minuteur" })).etat;
   assert.equal(e.phase, "competences");
   e = ok(e, { t: "erreur_ia" }).etat;
-  // IA et mock en échec : chacun reçoit quand même la compétence de participation.
-  assert.deepEqual(Object.keys(e.attribution).sort(), ["a", "b"]);
-  for (const id of ["a", "b"]) {
-    const c = vue(e, "joueur", id).moi.competenceDuProbleme;
-    assert.equal(c.code, "6D102");
-    assert.equal(c.typePreuve, "participation");
-    assert.equal(c.libelle, "Avoir l'esprit d'équipe");
-    assert.equal(c.gardee, null);
-  }
+  assert.deepEqual(e.attribution, {});
+  assert.deepEqual(vue(e, "ecran").idee, { aucune: true });
+  assert.equal(vue(e, "joueur", "a").moi.competenceDuProbleme, null);
   const r = ok(e, E({ t: "suivant" }));
   assert.equal(r.etat.phase, "presentation");
 });
@@ -594,7 +595,7 @@ test("messages invalides ou hors phase → erreur, état inchangé", () => {
   ko(e, E({ t: "reponse", texte: "x" })); // réservé aux joueurs
   ko(e, { t: "minuteur_fini" }); // pas de minuteur en présentation
   ko(e, { t: "evaluation_faite", tourId: e.tourId, resultat: { resolu: true } });
-  ko(e, { t: "attribution_faite", problemeIndex: 0, competences: {} });
+  ko(e, { t: "attribution_faite", problemeIndex: 0, joueurId: "a", competence: { code: "6D111" } });
   // Événements internes forgés par un client.
   ko(e, J("a", { t: "minuteur_fini" }));
   ko(e, E({ t: "minuteur_fini" }));
@@ -605,7 +606,7 @@ test("messages invalides ou hors phase → erreur, état inchangé", () => {
 
 const INTERDITS = /faux|fausse|mauvaise|tromp|"correct"/i;
 
-test("confidentialité : l'écran ne voit jamais les réponses (seulement qui a fini)", () => {
+test("confidentialité : seule l'idée retenue est montrée ; les autres réponses et les récits restent privés", () => {
   const SECRET_A = "Réponse secrète de Lina zorglub";
   const SECRET_B = "Proposition cachée de Sam blurp";
   const vues = [];
@@ -633,15 +634,13 @@ test("confidentialité : l'écran ne voit jamais les réponses (seulement qui a 
   const ve = vue(e, "ecran");
   assert.deepEqual(ve.compte, { repondu: 1, total: 2 });
   for (const j of ve.joueurs) assert.deepEqual(Object.keys(j).sort(), ["aFini", "avatar", "connecte", "pseudo"]);
-  assert.deepEqual(ve.joueurs.map((j) => j.aFini), [true, false]);
 
   e = capter(ok(e, J("b", { t: "reponse", texte: SECRET_B })).etat);
-  assert.equal(e.phase, "competences");
+  // L'idée de a est retenue : son extrait (la preuve) est montré à tous, avec son pseudo.
   const compA = { code: "6D111", libelle: "Réactivité", mots: "Tu agis vite.", preuve: "secrète de Lina zorglub", typePreuve: "jeu", riasec: ["E"] };
-  const compB = { code: "6D102", libelle: "Esprit d'équipe", mots: "Tu proposes.", preuve: "cachée de Sam blurp", typePreuve: "jeu", riasec: [] };
-  e = capter(ok(e, { t: "attribution_faite", problemeIndex: 0, competences: { a: compA, b: compB } }).etat);
+  e = capter(ok(e, { t: "attribution_faite", problemeIndex: 0, joueurId: "a", competence: compA }).etat);
+  assert.equal(vue(e, "ecran").idee.texte, "secrète de Lina zorglub");
   e = capter(ok(e, J("a", { t: "garder_competence", garder: true })).etat);
-  e = capter(ok(e, J("b", { t: "garder_competence", garder: true })).etat);
   e = jouerProbleme(e);
   e = capter(ok(e, E({ t: "suivant" })).etat);
   assert.equal(e.phase, "fin");
@@ -650,28 +649,21 @@ test("confidentialité : l'écran ne voit jamais les réponses (seulement qui a 
     const s = JSON.stringify(v);
     assert.doesNotMatch(s, INTERDITS, `mot interdit dans la vue ${role} (${v.phase})`);
     if (role !== "a") {
-      assert.ok(!s.includes("zorglub"), `réponse de a visible par ${role} (${v.phase})`);
       assert.ok(!s.includes("qwerty"), `récit de a visible par ${role} (${v.phase})`);
-      assert.ok(!s.includes("6D111") && !s.includes("Réactivité"), `compétence de a visible par ${role} (${v.phase})`);
+      // La réponse ENTIÈRE de a n'est jamais montrée : seulement l'extrait retenu.
+      assert.ok(!s.includes(SECRET_A), `réponse entière de a visible par ${role} (${v.phase})`);
+      if (v.phase !== "competences") assert.ok(!s.includes("zorglub"), `réponse de a visible par ${role} hors idée du tour (${v.phase})`);
     }
-    if (role !== "b") {
-      assert.ok(!s.includes("blurp"), `réponse de b visible par ${role} (${v.phase})`);
-    }
+    if (role !== "b") assert.ok(!s.includes("blurp"), `réponse non retenue de b visible par ${role} (${v.phase})`);
     if (role === "ecran") {
       assert.ok(!("moi" in v));
-      assert.ok(!s.includes("monChoix") && !s.includes("maReponse"));
-      assert.ok(!s.includes('"preuve"') && !s.includes('"mots"'), `l'écran ne voit aucune compétence (${v.phase})`);
-    }
-    if (role === "b" || role === "inconnu") {
-      assert.ok(!s.includes("Lina"), `pseudo de a visible par ${role}`);
+      assert.ok(!s.includes("maReponse"));
+      assert.ok(!s.includes('"preuve"'), `l'écran ne voit aucune fiche (${v.phase})`);
     }
   }
-
-  // Le joueur voit bien SES données.
-  const va = vue(e, "joueur", "a");
-  assert.equal(va.moi.pseudo, "Lina");
-  assert.ok(va.moi.competences.some((c) => c.code === "6D111"));
-  assert.ok(!JSON.stringify(vue(e, "joueur", "b")).includes("6D111"));
+  // Le joueur voit bien SES données ; b n'a pas de compétence de a.
+  assert.ok(vue(e, "joueur", "a").moi.competences.some((c) => c.code === "6D111"));
+  assert.ok(!JSON.stringify(vue(e, "joueur", "b").moi.competences).includes("6D111"));
 });
 
 test("vue joueur : sa réponse seulement", () => {
@@ -732,16 +724,16 @@ test("phase bloquée : effetsIAEnAttente reconstruit l'effet perdu et « Suivant
   assert.deepEqual(effetsIAEnAttente(e), []);
   e = jusquaReponse(e);
   e = ok(e, J("a", { t: "reponse", texte: "Je l'éteins" })).etat;
-  const att = ok(e, E({ t: "fin_minuteur" }));
-  e = att.etat;
+  const r = ok(e, E({ t: "fin_minuteur" }));
+  e = r.etat;
   assert.equal(e.phase, "competences");
-  assert.deepEqual(effetsIAEnAttente(e), att.effets.filter((x) => x.type === "attribuer"), "même effet que celui perdu");
+  assert.deepEqual(effetsIAEnAttente(e), r.effets.filter((x) => x.type === "choisir"), "même effet que celui perdu");
   const rel = ok(e, E({ t: "suivant" }));
   assert.equal(rel.effets[0].secours, true);
   assert.equal(rel.effets[0].problemeIndex, 0);
   // Le premier résultat gagne, le second (doublon) est refusé.
-  e = ok(e, { t: "attribution_faite", problemeIndex: 0, competences: { a: { code: "6D111", preuve: "Je l'éteins" } } }).etat;
-  ko(e, { t: "attribution_faite", problemeIndex: 0, competences: {} }); // doublon refusé
+  e = ok(e, { t: "attribution_faite", problemeIndex: 0, joueurId: "a", competence: { code: "6D111", preuve: "Je l'éteins" } }).etat;
+  ko(e, { t: "attribution_faite", problemeIndex: 0, joueurId: "a", competence: { code: "6D111", preuve: "x" } });
   assert.deepEqual(effetsIAEnAttente(e), []);
 
   // Création : un joueur resté en « analyse ».
@@ -756,85 +748,31 @@ test("phase bloquée : effetsIAEnAttente reconstruit l'effet perdu et « Suivant
 });
 
 test("garder_competence : une compétence restée sans réponse reste modifiable jusqu'à la fin", () => {
-  let e = partieEnPresentation(); // 2 problèmes
-  const comp = (code) => ({ code, libelle: code, mots: "Tu as agi.", preuve: "x y z", typePreuve: "jeu", riasec: ["E"] });
-  const jouerProbleme = (etat, index) => {
-    let s = jusquaReponse(etat);
-    s = ok(s, E({ t: "fin_minuteur" })).etat;
-    return ok(s, { t: "attribution_faite", problemeIndex: index, competences: { a: comp("6D111"), b: comp("6D101") } }).etat;
-  };
-  e = jouerProbleme(e, 0);
+  let e = partieEnPresentation(); // 2 épisodes
+  e = jouerProbleme(e, T0, "a");
   ko(e, J("a", { t: "garder_competence", garder: true, problemeIndex: 5 }));
   ko(e, J("a", { t: "garder_competence", garder: true, problemeIndex: "0" }));
-  e = ok(e, E({ t: "suivant" })).etat; // personne n'a répondu : problème suivant
+  e = ok(e, E({ t: "suivant" })).etat; // a n'a pas répondu : épisode suivant
   assert.equal(e.phase, "presentation");
   assert.equal(e.problemeIndex, 1);
   ko(e, J("a", { t: "garder_competence", garder: true })); // sans problemeIndex : seulement en phase competences
-  let va = vue(e, "joueur", "a");
+  const va = vue(e, "joueur", "a");
   assert.equal(va.moi.competencesEnAttente.length, 1);
   assert.equal(va.moi.competencesEnAttente[0].problemeIndex, 0);
-  assert.equal(va.moi.competencesEnAttente[0].code, "6D111");
   e = ok(e, J("a", { t: "garder_competence", garder: true, problemeIndex: 0 })).etat;
   assert.equal(e.phase, "presentation", "aucun effet sur la phase");
   assert.equal(e.joueurs.a.competences.find((c) => c.problemeIndex === 0).gardee, true);
   assert.deepEqual(vue(e, "joueur", "a").moi.competencesEnAttente, []);
-  assert.equal(vue(e, "joueur", "b").moi.competencesEnAttente.length, 1, "b n'a pas encore répondu");
-  ko(e, J("a", { t: "garder_competence", garder: true, problemeIndex: 1 })); // pas encore de compétence pour ce problème
+  ko(e, J("b", { t: "garder_competence", garder: true, problemeIndex: 0 })); // b n'a pas été retenu
 
-  // Problème 1 en phase competences : celle du problème en cours n'est pas en double dans la liste.
-  e = jouerProbleme(e, 1);
-  va = vue(e, "joueur", "b");
-  assert.equal(va.moi.competenceDuProbleme.problemeIndex, 1);
-  assert.deepEqual(va.moi.competencesEnAttente.map((c) => c.problemeIndex), [0]);
-  // Répondre pour un ancien problème ne fait pas passer au suivant.
-  e = ok(e, J("b", { t: "garder_competence", garder: false, problemeIndex: 0 })).etat;
+  // Épisode 2 : l'idée de b est retenue ; répondre pour un ancien épisode ne fait pas avancer.
+  e = jouerProbleme(e, T0, "b");
+  e = ok(e, J("a", { t: "garder_competence", garder: false, problemeIndex: 0 })).etat;
   assert.equal(e.phase, "competences");
-  e = ok(e, J("a", { t: "garder_competence", garder: true, problemeIndex: 1 })).etat;
   e = ok(e, J("b", { t: "garder_competence", garder: true })).etat;
-  assert.equal(e.phase, "fin", "tous ont répondu pour le problème en cours");
-
+  assert.equal(e.phase, "fin", "l'auteur de l'idée a répondu");
   // En phase fin : encore modifiable.
-  e = ok(e, J("b", { t: "garder_competence", garder: true, problemeIndex: 0 })).etat;
-  assert.equal(e.joueurs.b.competences.find((c) => c.problemeIndex === 0).gardee, true);
-  ko(e, J("b", { t: "garder_competence", garder: true })); // en fin, problemeIndex obligatoire
-});
-
-// ───────────────────────── Mode solo ─────────────────────────
-
-test("solo : un seul joueur, démarre seul, pas de discussion ni de minuteur, puis compétences et fin", () => {
-  let e = creerEtat({ code: "SOLO", problemes: PROBLEMES, nbProblemes: 2, graine: 42, solo: true });
-  assert.equal(e.solo, true);
-  e = ok(e, J("a", { t: "rejoindre", pseudo: "Lina", avatar: "🦊" })).etat;
-  assert.equal(e.phase, "creation", "pas d'animateur : la création commence tout de suite");
-  ko(e, J("b", { t: "rejoindre", pseudo: "Sam", avatar: "🐼" })); // un seul joueur
-  e = ok(e, J("a", { t: "recit", texte: "Je garde mon petit frère le mercredi." })).etat;
-  e = ok(e, { t: "analyse_faite", joueurId: "a", competences: [{ code: "1A102", libelle: "Garde", mots: "m", preuve: "Je garde mon petit frère", riasec: ["S"] }] }).etat;
-  e = ok(e, J("a", { t: "valider_depart", garder: [true] })).etat;
-  assert.equal(e.phase, "presentation");
-  const v = vue(e, "joueur", "a");
-  assert.equal(v.solo, true);
-  assert.ok(v.probleme.situation && v.probleme.question, "la situation s'affiche sur l'appareil du joueur");
-
-  for (let k = 0; k < 2; k++) {
-    let r = ok(e, J("a", { t: "lu" }), T0);
-    assert.equal(r.etat.phase, "reponse", "pas de phase de discussion en solo");
-    assert.equal(r.etat.minuteurFin, null, "pas de minuteur en solo");
-    assert.equal(vue(r.etat, "joueur", "a").minuteurFin, null);
-    ko(r.etat, J("a", { t: "reponse", texte: "je sais pas" })); // même règle qu'en groupe
-    r = ok(r.etat, J("a", { t: "reponse", texte: "Je demande de l'aide à un adulte" }));
-    assert.equal(r.etat.phase, "competences");
-    assert.ok(r.effets.some((x) => x.type === "attribuer"));
-    e = ok(r.etat, { t: "attribution_faite", problemeIndex: k, competences: { a: { code: "6D102", libelle: "Esprit d'équipe", mots: "Tu demandes de l'aide.", preuve: "Je demande de l'aide", typePreuve: "jeu", riasec: [] } } }).etat;
-    e = ok(e, J("a", { t: "garder_competence", garder: true }), T0 + k).etat;
-  }
-  assert.equal(e.phase, "fin");
-  assert.equal(e.joueurs.a.competences.filter((c) => c.problemeIndex !== null).length, 2);
-});
-
-test("solo : une partie de groupe ne change pas (Démarrer reste à l'animateur)", () => {
-  let e = nouvellePartie();
-  assert.equal(e.solo, false);
-  e = ok(e, J("a", { t: "rejoindre", pseudo: "Lina", avatar: "🦊" })).etat;
-  assert.equal(e.phase, "accueil");
-  assert.equal(vue(e, "ecran").solo, false);
+  e = ok(e, J("a", { t: "garder_competence", garder: true, problemeIndex: 0 })).etat;
+  assert.equal(e.joueurs.a.competences.find((c) => c.problemeIndex === 0).gardee, true);
+  ko(e, J("a", { t: "garder_competence", garder: true })); // en fin, problemeIndex obligatoire
 });

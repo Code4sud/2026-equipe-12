@@ -2,8 +2,8 @@
 // avec la vraie machine à états (src/jeu.js), le MJ mock (src/mj.js), l'analyse mock
 // (src/analyse.js), le rendu de l'écran commun (public/js/ecran.js) et de la fiche
 // (public/js/fiche.js). Aucun réseau. Vérifie les règles critiques de la SPEC :
-// réponses privées, une compétence par joueur et par problème, pas de bonne réponse
-// (« je ne sais pas » refusé, le joueur réécrit),
+// l'histoire en 6 épisodes, l'idée du tour (une compétence pour son auteur), réponses
+// non retenues privées, « je ne sais pas » refusé (le joueur réécrit),
 // aucun mot interdit, aucun « undefined » à l'écran.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -35,6 +35,7 @@ async function jouerPartie() {
   const vuesJoueurs = Object.fromEntries(IDS.map((id) => [id, []]));
   let refus = 0;
   const reponses = {}; // problemeIndex → [texte par joueur]
+  const retenus = {}; // problemeIndex → joueurId
 
   const capturer = () => {
     vuesEcran.push(vue(etat, "ecran"));
@@ -55,8 +56,9 @@ async function jouerPartie() {
       if (e.type === "analyser_recit") {
         const res = await analyser(e.texte, { rome: ROME, mode: "mock", max: 3 });
         app({ t: "analyse_faite", joueurId: e.joueurId, competences: res.competences.slice(0, 3).map(versCompetenceDepart) });
-      } else if (e.type === "attribuer") {
-        app({ t: "attribution_faite", problemeIndex: e.problemeIndex, competences: await mj.attribuer(e) });
+      } else if (e.type === "choisir") {
+        const choix = await mj.choisir(e);
+        app({ t: "attribution_faite", problemeIndex: e.problemeIndex, joueurId: choix?.joueurId ?? null, competence: choix?.competence ?? null });
       }
     }
   };
@@ -78,91 +80,82 @@ async function jouerPartie() {
   assert.equal(etat.phase, "presentation");
 
   for (let k = 0; k < 6; k++) {
-    const p = etat.catalogue[etat.problemes[k]];
     ecran({ t: "suivant" }); // presentation → echange (minuteur)
     assert.equal(etat.phase, "echange");
-    assert.ok(etat.minuteurFin > 0, "minuteur sur l'échange");
     ecran({ t: "fin_minuteur" });
     assert.equal(etat.phase, "reponse");
     // « Je ne sais pas » : refusé pour ce joueur seulement, il réécrit.
     const r = appliquer(etat, { t: "reponse", texte: "Je sais pas trop, on verra bien", role: "joueur", joueurId: IDS[0] }, t);
     assert.match(r.erreur ?? "", /Toutes les idées comptent/);
-    assert.equal(r.etat, etat);
     refus++;
     reponses[k] = [
-      k % 2 === 0 ? `Je cherche une solution avec les autres ${marque(k, 0)}` : `Je demande conseil à quelqu'un de confiance ${marque(k, 0)}`,
+      `Je cherche une solution avec les autres ${marque(k, 0)}`,
       `Je propose qu'on en parle tous ensemble ${marque(k, 1)}`,
+      `Moi je demande conseil à quelqu'un de confiance ${marque(k, 2)}`,
     ];
-    joueur(0, { t: "reponse", texte: reponses[k][0] });
-    joueur(1, { t: "reponse", texte: reponses[k][1] });
-    // Le joueur 3 ne répond pas : l'animateur passe, sa réponse est vide.
-    ecran({ t: "fin_minuteur" });
-    assert.equal(etat.phase, "competences", "directement les compétences");
+    IDS.forEach((_, i) => joueur(i, { t: "reponse", texte: reponses[k][i] }));
+    assert.equal(etat.phase, "competences", "le MJ choisit l'idée du tour");
     await vider();
-    joueur(0, { t: "garder_competence", garder: true });
-    joueur(1, { t: "garder_competence", garder: true });
-    joueur(2, { t: "garder_competence", garder: k !== 1 });
+    const id = etat.idee?.joueurId;
+    assert.ok(IDS.includes(id), `idée retenue à l'épisode ${k + 1}`);
+    retenus[k] = id;
+    // L'auteur l'écrit sur sa fiche papier et la garde (sauf au 2e épisode) : l'histoire continue.
+    joueur(IDS.indexOf(id), { t: "garder_competence", garder: k !== 1 });
   }
   assert.equal(etat.phase, "fin");
-  return { etat, vuesEcran, vuesJoueurs, refus, reponses };
+  return { etat, vuesEcran, vuesJoueurs, refus, reponses, retenus };
 }
 
 const partie = jouerPartie();
 
-test("intégration : partie de 6 problèmes, sans évaluation, indice ni choix parmi 4", async () => {
-  const { refus, vuesEcran } = await partie;
-  assert.equal(refus, 6, "« je ne sais pas » refusé à chaque problème");
+test("intégration : 6 épisodes de l'histoire, dans l'ordre, sans évaluation ni choix parmi 4", async () => {
+  const { etat, refus, vuesEcran } = await partie;
+  assert.deepEqual(etat.problemes, PROBLEMES.map((p) => p.id), "l'histoire complète, dans l'ordre");
+  assert.equal(refus, 6, "« je ne sais pas » refusé à chaque épisode");
   const phases = new Set(vuesEcran.map((v) => v.phase));
   for (const ph of ["evaluation", "indice", "echange2", "choix", "solution"]) assert.ok(!phases.has(ph), `plus de phase ${ph}`);
 });
 
-test("intégration : une compétence par joueur et par problème, même sans réponse", async () => {
-  const { etat, reponses } = await partie;
-  for (const [i, id] of IDS.entries()) {
-    const jeu = etat.joueurs[id].competences.filter((c) => c.problemeIndex !== null);
-    assert.equal(jeu.length, 6, `${PSEUDOS[i]} : 6 compétences de jeu`);
-    assert.deepEqual(jeu.map((c) => c.problemeIndex).sort(), [0, 1, 2, 3, 4, 5]);
-    for (const c of jeu) {
-      const p = etat.catalogue[etat.problemes[c.problemeIndex]];
-      const autorises = [...p.competences.map((x) => x.code), p.competenceParticipation];
-      assert.ok(autorises.includes(c.code), `${c.code} autorisé pour ${p.id}`);
-      assert.ok(c.libelle && c.mots && c.preuve, "libellé, mots et preuve remplis");
-      assert.doesNotMatch(c.mots, INTERDITS);
-      if (c.typePreuve === "jeu" && i < 2) {
-        const texte = reponses[c.problemeIndex][i];
-        assert.ok(texte.includes(c.preuve), `preuve exacte : « ${c.preuve} »`);
+test("intégration : une compétence par épisode, pour l'auteur de l'idée retenue ; chacun est retenu à son tour", async () => {
+  const { etat, reponses, retenus } = await partie;
+  for (let k = 0; k < 6; k++) {
+    const avec = IDS.filter((id) => etat.joueurs[id].competences.some((c) => c.problemeIndex === k));
+    assert.deepEqual(avec, [retenus[k]], `épisode ${k + 1} : une seule compétence`);
+    const c = etat.joueurs[retenus[k]].competences.find((x) => x.problemeIndex === k);
+    const p = etat.catalogue[etat.problemes[k]];
+    assert.ok(p.competences.some((x) => x.code === c.code), `${c.code} autorisé pour ${p.id}`);
+    assert.ok(c.libelle && c.mots && c.preuve);
+    assert.ok(reponses[k][IDS.indexOf(retenus[k])].includes(c.preuve), `preuve = ses propres mots : « ${c.preuve} »`);
+    assert.doesNotMatch(c.mots, INTERDITS);
+  }
+  assert.deepEqual(new Set(Object.values(retenus)), new Set(IDS), "à idées comparables, chacun est retenu à son tour");
+});
+
+test("intégration : l'écran voit qui a répondu ; seule l'idée retenue est montrée, avec son pseudo", async () => {
+  const { vuesEcran, retenus } = await partie;
+  for (const v of vuesEcran) {
+    const s = JSON.stringify(v);
+    for (const motif of [/maReponse/, /"competences":/, /"competenceDuProbleme"/, /"preuve"/]) assert.doesNotMatch(s, motif);
+    const vus = s.match(/zq\d+m\d+x/g) ?? [];
+    if (v.phase !== "competences") assert.deepEqual(vus, [], `aucune réponse à l'écran (${v.phase})`);
+    else for (const m of vus) assert.equal(m, marque(v.problemeIndex, IDS.indexOf(retenus[v.problemeIndex])), "seulement l'idée retenue");
+    for (const j of v.joueurs) assert.deepEqual(Object.keys(j).sort(), ["aFini", "avatar", "connecte", "pseudo"]);
+  }
+  const avecIdee = vuesEcran.filter((v) => v.idee?.pseudo);
+  assert.ok(avecIdee.length >= 6);
+  for (const v of avecIdee) assert.equal(v.idee.pseudo, PSEUDOS[IDS.indexOf(retenus[v.problemeIndex])]);
+});
+
+test("intégration : un joueur ne voit la réponse d'un autre que si c'est l'idée retenue", async () => {
+  const { vuesJoueurs, retenus } = await partie;
+  IDS.forEach((id, i) => {
+    for (const v of vuesJoueurs[id]) {
+      for (const m of JSON.stringify(v).match(/zq\d+m\d+x/g) ?? []) {
+        if (m.endsWith(`m${i}x`)) continue;
+        assert.equal(v.phase, "competences");
+        assert.equal(m, marque(v.problemeIndex, IDS.indexOf(retenus[v.problemeIndex])));
       }
     }
-  }
-  // Le joueur qui n'a rien écrit (l'animateur est passé) : participation.
-  const silencieux = etat.joueurs[IDS[2]].competences.filter((c) => c.problemeIndex !== null);
-  assert.ok(silencieux.every((c) => c.typePreuve === "participation"));
-});
-
-test("intégration : l'écran voit qui a répondu, jamais une réponse ni le bon choix", async () => {
-  const { vuesEcran } = await partie;
-  const tout = JSON.stringify(vuesEcran);
-  assert.doesNotMatch(tout, /zq\d+m\d+x/, "aucun texte de réponse à l'écran");
-  for (const motif of [/maReponse/, /monChoix/, /"correct"/, /"competences":/, /"competenceDuProbleme"/]) {
-    const m = tout.match(new RegExp(`.{0,80}${motif.source}.{0,40}`));
-    assert.equal(m, null, `l'écran ne doit pas recevoir ${motif} : ${m?.[0]}`);
-  }
-  for (const v of vuesEcran) {
-    for (const j of v.joueurs) {
-      assert.deepEqual(Object.keys(j).sort(), ["aFini", "avatar", "connecte", "pseudo"]);
-      assert.ok(j.aFini === null || typeof j.aFini === "boolean", "aFini = oui / non / rien à faire");
-    }
-    if (v.choix) assert.ok(v.choix.every((c) => typeof c === "string"), "choix = textes seuls");
-  }
-});
-
-test("intégration : un joueur ne voit jamais la réponse d'un autre", async () => {
-  const { vuesJoueurs } = await partie;
-  IDS.forEach((id, i) => {
-    const tout = JSON.stringify(vuesJoueurs[id]);
-    const autres = (tout.match(/zq\d+m(\d+)x/g) ?? []).filter((m) => !m.endsWith(`m${i}x`));
-    assert.deepEqual(autres, [], `${PSEUDOS[i]} ne voit que ses réponses`);
-    assert.doesNotMatch(tout, /"correct"/);
   });
 });
 
@@ -199,10 +192,10 @@ test("intégration : la fiche (format de Partie.fiche) se rend avec ses compéte
   assert.doesNotMatch(html, /undefined|\[object Object\]|NaN/);
   // « faux cheveux » peut apparaître dans la description d'un métier (maquilleur) : ce n'est pas un jugement.
   assert.doesNotMatch(html, /\bfaux\b(?! cheveux)|mauvaise r[ée]ponse/i);
-  for (const c of fiche.jeu) assert.ok(html.includes(c.code), `compétence ${c.code} sur la fiche`);
+  for (const c of fiche.jeu.filter((x) => x.gardee !== false)) assert.ok(html.includes(c.code), `compétence ${c.code} sur la fiche`);
   assert.match(html, /Pour le psy/);
-  // Compétence non gardée (Jade, problème 2) : absente de sa fiche.
-  const jade = etat.joueurs[IDS[2]];
-  const retiree = jade.competences.find((c) => c.problemeIndex === 1);
+  // Compétence non gardée (épisode 2) : gardee:false chez son auteur.
+  const { retenus } = await partie;
+  const retiree = etat.joueurs[retenus[1]].competences.find((c) => c.problemeIndex === 1);
   assert.equal(retiree.gardee, false);
 });

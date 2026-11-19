@@ -21,7 +21,7 @@
 // relance l'étape avec le MJ mock à l'échéance : la partie ne reste jamais bloquée.
 import { DurableObject } from "cloudflare:workers";
 import { appliquer, creerEtat, effetsIAEnAttente, MAX_JOUEURS, vue } from "./jeu.js";
-import { creerMJ, mjMock, participationPour } from "./mj.js";
+import { creerMJ, mjMock } from "./mj.js";
 import { analyser, versCompetenceDepart } from "./analyse.js";
 import { problemes, rome } from "./donnees.js";
 
@@ -108,14 +108,14 @@ export class Partie extends DurableObject {
    * transmettre UNE fois au créateur), ou false si ce code est déjà utilisé (le
    * worker retente alors avec un autre code).
    */
-  async init({ code, nbProblemes, dureeEchange, dureeReponse, solo = false } = {}) {
+  async init({ code, nbProblemes, dureeEchange, dureeReponse } = {}) {
     if (this.etat) return false;
     const graine = crypto.getRandomValues(new Uint32Array(1))[0];
     const maintenant = Date.now();
     const cleEcran = crypto.randomUUID();
     // `cleEcran` vit dans l'état persisté, mais vue() et fiche() construisent leurs
     // objets champ par champ : elle n'en sort jamais.
-    const etat = { ...creerEtat({ code, problemes, nbProblemes, dureeEchange, dureeReponse, graine, maintenant, solo }), cleEcran };
+    const etat = { ...creerEtat({ code, problemes, nbProblemes, dureeEchange, dureeReponse, graine, maintenant }), cleEcran };
     this.etat = etat;
     await this.ctx.storage.put({ etat, activite: maintenant });
     await this.ctx.storage.setAlarm(maintenant + DELAI_ABANDON_MS);
@@ -445,7 +445,7 @@ export class Partie extends DurableObject {
           await this.ctx.storage.put("nettoyage", effet.fin);
           break;
         case "analyser_recit":
-        case "attribuer":
+        case "choisir":
           // Échéance du chien de garde, PERSISTÉE avant l'appel : elle survit à un redémarrage.
           this.gardes[cleIA(effet)] = maintenant + DELAI_GARDE_IA_MS;
           gardesChangees = true;
@@ -553,40 +553,21 @@ export class Partie extends DurableObject {
           competences: res.competences.slice(0, 3).map(versCompetenceDepart),
         };
       }
-      case "attribuer": {
-        const entree = { probleme: effet.probleme, historique: effet.historique, pseudos: this.pseudos() };
-        const historique = effet.historique ?? {};
-        let competences;
+      case "choisir": {
+        // L'idée du tour : le MJ choisit une réponse, son auteur reçoit la compétence.
+        const entree = { probleme: effet.probleme, reponses: effet.reponses ?? [], pseudos: this.pseudos() };
+        let choix;
         try {
-          competences = await mj.attribuer(entree);
+          choix = await mj.choisir(entree);
         } catch (err) {
-          console.warn("[partie] attribution impossible, bascule sur le mock :", err?.message ?? err);
-          competences = await this.attribuerSecours(entree);
+          console.warn("[partie] choix de l'idée impossible, bascule sur le mock :", err?.message ?? err);
+          choix = await mjMock({ rome }).choisir(entree);
         }
-        // UNE compétence par joueur et par problème, même s'il n'a pas trouvé :
-        // un joueur oublié par le MJ est complété par le mock (participation au pire).
-        const manquants = Object.keys(historique).filter((id) => !competences?.[id]?.code);
-        if (manquants.length) {
-          const complement = await this.attribuerSecours({
-            ...entree,
-            historique: Object.fromEntries(manquants.map((id) => [id, historique[id]])),
-          });
-          competences = { ...(competences ?? {}), ...complement };
-        }
-        return { t: "attribution_faite", problemeIndex: effet.problemeIndex, competences };
+        return { t: "attribution_faite", problemeIndex: effet.problemeIndex, joueurId: choix?.joueurId ?? null, competence: choix?.competence ?? null };
       }
       default:
         throw new Error(`Effet IA inconnu : ${effet.type}`);
     }
   }
 
-  /** Attribution par le mock ; si le mock échoue lui aussi, la participation pour chacun. */
-  async attribuerSecours({ probleme, historique }) {
-    try {
-      return await mjMock({ rome }).attribuer({ probleme, historique });
-    } catch (err) {
-      console.error("[partie] mock d'attribution en échec, participation pour chacun :", err?.message ?? err);
-      return Object.fromEntries(Object.keys(historique ?? {}).map((id) => [id, participationPour(rome, probleme)]));
-    }
-  }
 }

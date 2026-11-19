@@ -349,11 +349,11 @@ const TEL_ANCIEN = {"id": "telephone-ancien", "titre": "TÃ©lÃ©phone cassÃ©
 test("mock attribuer : une réponse sérieuse sans mot-clé reçoit une vraie compétence, jamais la participation", async () => {
   const mj = mjMock({ rome: ROME });
   const cas = [
-    ["telephone-casse", "On va chez moi et il envoie le CV depuis mon PC"],
-    ["conflit-discord", "je parle aux deux séparément pour savoir ce qui se passe"],
-    ["scooter-panne", "elle prend un uber ou une trottinette"],
-    ["voisine-formulaire", "je l'emmène à la mairie ou à la mission locale"],
-    ["affiche-evenement", "J'en parle à mes potes et ils en parlent aux leurs"],
+    ["telephone-mystere", "On va chez moi et il envoie les horaires depuis mon PC"],
+    ["embrouille-equipe", "je parle aux deux séparément pour savoir ce qui se passe"],
+    ["jour-j-scooter", "elle prend un uber ou une trottinette"],
+    ["budget-tournoi", "on demande au boulanger du quartier de nous faire un prix"],
+    ["affiche-tournoi", "J'en parle à mes potes et ils en parlent aux leurs"],
   ];
   for (const p of PROBLEMES_JEU) cas.push([p.id, "Je demande conseil à quelqu'un de confiance"]);
   for (const [id, texte] of cas) {
@@ -366,7 +366,7 @@ test("mock attribuer : une réponse sérieuse sans mot-clé reçoit une vraie co
   }
   // Remplissage, réponse trop courte ou hors sujet : participation.
   for (const texte of ["jsp", "lol", "rien", "je sais pas", "aucune idée", "mdr mdr mdr", "J'aime les chats"]) {
-    const { j } = await mj.attribuer({ probleme: pb("conflit-discord"), historique: { j: { reponses: [texte], choix: null } } });
+    const { j } = await mj.attribuer({ probleme: pb("embrouille-equipe"), historique: { j: { reponses: [texte], choix: null } } });
     assert.equal(j.typePreuve, "participation", `« ${texte} »`);
   }
 });
@@ -377,7 +377,7 @@ const HESITATION = "je sais pas trop, on attend de voir";
 
 test("remplissage / hésitation : jamais citée comme preuve, participation", async () => {
   const mj = mjMock({ rome: ROME });
-  const voisine = pb("voisine-formulaire");
+  const voisine = pb("budget-tournoi");
   const sans = (await mj.attribuer({ probleme: voisine, historique: { j: { reponses: [HESITATION], choix: null } } })).j;
   assert.equal(sans.typePreuve, "participation");
   assert.equal(sans.preuve, PREUVE_PARTICIPATION);
@@ -391,14 +391,14 @@ test("remplissage / hésitation : jamais citée comme preuve, participation", as
     }
   }
   // Une réponse courte mais sur le sujet n'est pas du remplissage.
-  const court = (await mj.attribuer({ probleme: pb("telephone-casse"), historique: { j: { reponses: ["je préviens le coach"], choix: null } } })).j;
+  const court = (await mj.attribuer({ probleme: pb("telephone-mystere"), historique: { j: { reponses: ["je préviens le coach"], choix: null } } })).j;
   assert.equal(court.code, "6B201");
   assert.equal(court.preuve, "je préviens le coach");
 });
 
 test("réponse sérieuse sans mot-clé : la compétence générique, preuve tirée de la réponse", async () => {
   const mj = mjMock({ rome: ROME });
-  const voisine = pb("voisine-formulaire");
+  const voisine = pb("budget-tournoi");
   const texte = "je l'emmène à la mission locale demain matin";
   const j = (await mj.attribuer({ probleme: voisine, historique: { j: { reponses: [texte], choix: null } } })).j;
   assert.equal(j.code, voisine.competenceParDefaut);
@@ -406,7 +406,7 @@ test("réponse sérieuse sans mot-clé : la compétence générique, preuve tir�
 });
 
 test("IA attribuer : une citation tirée d'un remplissage est refusée → participation (même priorité que le mock)", async () => {
-  const voisine = pb("voisine-formulaire");
+  const voisine = pb("budget-tournoi");
   const client = fauxClient(sortie({ attributions: [{ joueur: "J1", participation: false, code: "6D116", citation: HESITATION, mots: "Tu as répondu présent." }] }));
   const mj = creerMJ({ apiKey: "x", rome: ROME, client, journal: silencieux });
   const res = await mj.attribuer({ probleme: voisine, historique: { b: { reponses: [HESITATION], choix: null } } });
@@ -505,7 +505,7 @@ test("libellés ROME : majuscule accentuée et « œuvre » sur le titre de la c
   assert.equal(accentuerLibelle("Mettre en oeuvre des actions de communication"), "Mettre en œuvre des actions de communication");
   assert.equal(accentuerLibelle("Eduquer/dresser des animaux"), "Éduquer/dresser des animaux");
   for (const juste of ["Entretenir un véhicule", "Exécuter une étape de fabrication", "Expliquer", "Estimer"]) assert.equal(accentuerLibelle(juste), juste);
-  const enfants = pb("enfants-voisine");
+  const enfants = pb("embrouille-equipe");
   const { j } = await mjMock({ rome: ROME }).attribuer({ probleme: enfants, historique: { j: { reponses: ["je les écoute un moment et je leur demande pourquoi ils se disputent"], choix: null } } });
   assert.equal(j.code, "6D101");
   assert.equal(j.libelle, "Être à l'écoute, faire preuve d'empathie");
@@ -602,8 +602,8 @@ test("preuve sans mot-clé : la proposition la plus riche en sens, jamais l'hés
   );
   const mj = mjMock({ rome: ROME });
   const cas = [
-    ["conflit-discord", "Euh, moi je pense qu'il faut que tout le monde se pose et réfléchisse avant de dire des trucs", "moi je pense qu'il faut que tout le monde se pose et réfléchisse avant de dire des trucs"],
-    ["anniversaire-20-euros", "Bof, perso je lui offrirais juste un truc sympa qui lui ressemble", "perso je lui offrirais juste un truc sympa qui lui ressemble"],
+    ["embrouille-equipe", "Euh, moi je pense qu'il faut que tout le monde se pose et réfléchisse avant de dire des trucs", "moi je pense qu'il faut que tout le monde se pose et réfléchisse avant de dire des trucs"],
+    ["budget-tournoi", "Bof, perso je ferais juste un truc sympa qui ressemble au quartier", "perso je ferais juste un truc sympa qui ressemble au quartier"],
   ];
   for (const [id, texte, preuve] of cas) {
     const { j } = await mj.attribuer({ probleme: pb(id), historique: { j: { reponses: [texte], choix: null } } });
@@ -612,9 +612,9 @@ test("preuve sans mot-clé : la proposition la plus riche en sens, jamais l'hés
   }
 });
 
-test("conflit-discord : bannir, prendre parti ou quitter la partie n'est jamais une « médiation » (1D302)", async () => {
+test("embrouille-equipe : bannir, prendre parti ou quitter la partie n'est jamais une « médiation » (1D302)", async () => {
   const mj = mjMock({ rome: ROME });
-  const conflit = pb("conflit-discord");
+  const conflit = pb("embrouille-equipe");
   for (const texte of [
     "je les ban les deux direct c pas compliqué",
     "je prends parti pour mon pote c lui qui a raison",
@@ -627,5 +627,54 @@ test("conflit-discord : bannir, prendre parti ou quitter la partie n'est jamais 
   for (const texte of ["je parle aux deux pour avoir leur version", "je me mets entre les deux et je reste neutre", "on fait un vocal a trois"]) {
     const { j } = await mj.attribuer({ probleme: conflit, historique: { j: { reponses: [texte], choix: null } } });
     assert.equal(j.code, "1D302", texte);
+  }
+});
+
+// ───────────────────────── L'idée du tour (histoire en groupe) ─────────────────────────
+
+test("choisir (mock) : l'idée la plus riche en mots du sujet, en préférant un joueur pas encore retenu", async () => {
+  const mj = mjMock({ rome: ROME });
+  const caisse = pb("caisse-buvette");
+  const reponses = [
+    { joueurId: "a", texte: "je sais pas trop", dejaRetenu: false },
+    { joueurId: "b", texte: "Je recompte la caisse et la monnaie, puis je compte les canettes qui restent", dejaRetenu: false },
+    { joueurId: "c", texte: "On verra bien", dejaRetenu: false },
+  ];
+  let r = await mj.choisir({ probleme: caisse, reponses });
+  assert.equal(r.joueurId, "b");
+  assert.ok(caisse.competences.some((c) => c.code === r.competence.code));
+  assert.ok(reponses[1].texte.includes(r.competence.preuve), "preuve = ses propres mots");
+  // À idées proches, un joueur pas encore retenu passe devant.
+  r = await mj.choisir({ probleme: caisse, reponses: [
+    { joueurId: "a", texte: "Je recompte la caisse", dejaRetenu: true },
+    { joueurId: "b", texte: "Je recompte la caisse", dejaRetenu: false },
+  ] });
+  assert.equal(r.joueurId, "b");
+  assert.equal(await mj.choisir({ probleme: caisse, reponses: [] }), null);
+});
+
+test("choisir (IA) : un seul appel, joueurs anonymes, citation vérifiée et sans guillemets ; sinon le MJ de secours", async () => {
+  const caisse = pb("caisse-buvette");
+  const reponses = [
+    { joueurId: "id-secret-a", texte: "Je recompte la caisse tranquillement", dejaRetenu: true },
+    { joueurId: "id-secret-b", texte: "On compte les canettes qui restent et on compare avec les tickets", dejaRetenu: false },
+  ];
+  const client = fauxClient(sortie({ joueur: "J2", code: "3H101", citation: "\"On compte les canettes qui restent\"", mots: "Tu as pensé à compter le stock." }));
+  const mj = creerMJ({ apiKey: "x", rome: ROME, client, journal: silencieux });
+  const r = await mj.choisir({ probleme: caisse, reponses, pseudos: ["Lina", "Sam"] });
+  assert.equal(client.appels.length, 1, "un seul appel pour toutes les réponses");
+  const msg = client.appels[0].params.messages[1].content;
+  assert.ok(msg.includes("J1 (déjà retenu") && msg.includes("J2 (pas encore retenu"));
+  assert.ok(!msg.includes("id-secret") && !msg.includes("Lina"), "ni identifiant ni pseudo envoyés à l'IA");
+  assert.equal(r.joueurId, "id-secret-b");
+  assert.equal(r.competence.code, "3H101");
+  assert.equal(r.competence.preuve, "On compte les canettes qui restent", "guillemets retirés");
+  // Citation inventée ou code hors liste : le MJ de secours choisit.
+  for (const faux of [{ joueur: "J2", code: "3H101", citation: "une phrase jamais écrite", mots: "Tu as compté." }, { joueur: "J1", code: "9Z999", citation: "Je recompte la caisse", mots: "Tu as compté." }, { joueur: "J9", code: "3H101", citation: "x", mots: "Tu." }]) {
+    const warns = [];
+    const m = creerMJ({ apiKey: "x", rome: ROME, client: fauxClient(sortie(faux)), journal: { warn: (w) => warns.push(w) } });
+    const res = await m.choisir({ probleme: caisse, reponses });
+    assert.ok(res && reponses.some((x) => x.joueurId === res.joueurId));
+    assert.equal(warns.length, 1);
   }
 });

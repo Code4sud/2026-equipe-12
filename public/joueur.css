@@ -178,3 +178,6 @@ body.avec-demo .toast { bottom: 80px; }
 .fiche-tel .zone { margin: 10px 0 4px; break-inside: avoid; }
 .fiche-tel .zone h4 { margin: 6px 0 2px; }
 .fiche-tel .encart-lien { margin: 6px 0; padding: 8px 12px; border-radius: 10px; background: var(--citation); font-size: 0.95em; }
+
+/* Idée retenue : consigne pour la fiche papier */
+.consigne-fiche { margin: 0; padding: 0.8em 1em; border-radius: var(--rayon-petit); background: var(--accent-doux); font-weight: 600; }

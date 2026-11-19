@@ -99,8 +99,7 @@ function htmlMinuteur(v) {
     </div>`;
 }
 
-// En solo, pas de « 1/1 ont répondu » : il n'y a personne à attendre.
-const htmlCompte = (v) => (v.compte && !v.solo ? `<p class="tel-compte" data-compte></p>` : "");
+const htmlCompte = (v) => (v.compte ? `<p class="tel-compte" data-compte></p>` : "");
 
 // « J'ai lu » : la discussion démarre quand tout le monde l'a fait.
 function boutonLu(v) {
@@ -203,7 +202,6 @@ function ecranPour(v) {
     case "creation":
       return ecranCreation(v);
     case "presentation":
-      if (v.solo) return ecranSituationSolo(v, pi);
       return {
         cle: `presentation:${pi}:${!!moi.aLu}`,
         titre: moi.aLu ? "On attend les autres" : "Regarde l'écran",
@@ -241,27 +239,6 @@ function ecranPour(v) {
         html: `<div class="pile centre large"><h1>Regarde l'écran</h1>${points}</div>`,
       };
   }
-}
-
-// Solo : pas d'écran commun, la situation s'affiche sur l'appareil du joueur.
-function ecranSituationSolo(v, pi) {
-  const p = v.probleme ?? {};
-  const n = Number.isFinite(v.nbProblemes) ? ` ${pi + 1} sur ${v.nbProblemes}` : "";
-  const image = typeof p.illustration === "string" && /^[\w./-]+$/.test(p.illustration)
-    ? `<img class="tel-illustration" src="/${echapper(p.illustration.replace(/^\/+/, ""))}" alt="">` : "";
-  return {
-    cle: `presentation-solo:${pi}`,
-    titre: p.titre ?? "La situation",
-    html: `<div class="pile">
-        <p class="surtitre">Problème${n}</p>
-        <h1>${echapper(p.titre ?? "")}</h1>
-        ${image}
-        <p class="tel-situation">${echapper(p.situation ?? "")}</p>
-        ${p.question ? `<p class="tel-question">${echapper(p.question)}</p>` : ""}
-        <p class="discret">Toutes les idées comptent : dis simplement ce que toi, tu ferais.</p>
-        <button type="button" class="bouton principal large grand" data-action="lu">✓ J'ai lu, je réponds</button>
-      </div>`,
-  };
 }
 
 function ecranCode() {
@@ -466,14 +443,31 @@ function ecranReponse(v, pi) {
 
 function ecranCompetence(v, pi) {
   const c = v.moi.competenceDuProbleme;
-  if (!c) {
+  const idee = v.idee;
+  if (v.attenteIA || !idee) {
     return {
       cle: `competences:${pi}:attente`,
-      titre: "Le MJ prépare ta compétence",
+      titre: "Le MJ lit vos idées",
       html: `<div class="pile centre large">
-          <p class="tel-emoji" aria-hidden="true">🎁</p>
-          <h1>Le MJ prépare vos compétences…</h1>
+          <p class="tel-emoji" aria-hidden="true">💡</p>
+          <h1>Le MJ lit vos idées…</h1>
+          <p>Il choisit celle qui fait avancer l'histoire. Regarde l'écran.</p>
           ${points}
+        </div>`,
+    };
+  }
+  if (!c) {
+    // L'idée d'un autre joueur est retenue (ou aucune) : on regarde l'écran.
+    return {
+      cle: `competences:${pi}:autre:${idee.aucune ? "" : idee.pseudo}`,
+      titre: "L'idée du tour",
+      html: `<div class="pile centre large">
+          <p class="tel-emoji" aria-hidden="true">👀</p>
+          ${idee.aucune
+            ? `<h1>Pas d'idée retenue cette fois</h1><p>L'histoire continue au prochain épisode.</p>`
+            : `<h1>L'idée de ${echapper(idee.pseudo)} est retenue</h1>
+               <blockquote class="citation">« ${echapper(idee.texte ?? "")} »</blockquote>
+               <p>Regarde l'écran : l'histoire continue avec son idée. À toi au prochain épisode !</p>`}
         </div>`,
     };
   }
@@ -481,14 +475,14 @@ function ecranCompetence(v, pi) {
   let bas;
   if (c.gardee === true) {
     bas = `<p>C'est noté : elle va sur ta fiche.</p>
-      <p class="discret centre-texte">On attend les autres. ${points}</p>
+      <p class="discret centre-texte">L'histoire continue. ${points}</p>
       <button type="button" class="bouton discret" data-action="garder" data-garder="0" data-pi="${pi}">Finalement, pas moi</button>`;
   } else if (c.gardee === false) {
     bas = `<p>D'accord, elle ne va pas sur ta fiche.</p>
-      <p class="discret centre-texte">On attend les autres. ${points}</p>
+      <p class="discret centre-texte">L'histoire continue. ${points}</p>
       <button type="button" class="bouton discret" data-action="garder" data-garder="1" data-pi="${pi}">Finalement, je la garde</button>`;
   } else {
-    bas = `
+    bas = `<p class="consigne-fiche">✍️ Écris cette compétence sur ta <strong>fiche papier</strong>, dans « Compétences trouvées pendant le jeu », puis dis-nous si tu la gardes.</p>
       <div class="rangee tel-garde" role="group" aria-label="Ton choix">
         <button type="button" class="bouton succes grand" data-action="garder" data-garder="1" data-pi="${pi}">✓ Je la garde</button>
         <button type="button" class="bouton grand" data-action="garder" data-garder="0" data-pi="${pi}">Pas moi</button>
@@ -496,9 +490,9 @@ function ecranCompetence(v, pi) {
   }
   return {
     cle: `competences:${pi}:${c.code}:${c.gardee}:${!!etat.rome}`,
-    titre: "Tu as gagné une compétence",
+    titre: "Ton idée est retenue",
     html: `<div class="pile large">
-        <h1>Tu as gagné une compétence !</h1>
+        <h1>🎉 Ton idée est retenue pour la suite de l'histoire !</h1>
         ${carteCompetence(c)}
         ${bas}
       </div>`,
@@ -919,11 +913,11 @@ window.addEventListener("online", () => {
 // ---------- Mode démo (?demo=1) : vues factices de chaque phase ----------
 
 const DEMO_PROBLEME = {
-  id: "telephone-casse",
-  titre: "Le téléphone mystère",
-  situation: "Vous êtes avec votre pote Sami quand son téléphone tombe : depuis, l'écran reste noir, mais il vibre quand on l'appelle. Ce soir avant 20 h, Sami doit envoyer son CV pour un job d'été, et son CV est dans le téléphone. Il ne sait pas si c'est l'écran, la batterie ou autre chose.",
+  id: "budget-tournoi",
+  titre: "Le budget du tournoi",
+  situation: "Le club de foot du quartier vous confie l'organisation de son premier tournoi des jeunes, dans un mois. Huit équipes sont attendues, et le club vous donne 150 euros pour tout : ballons, goûter, coupe et récompenses. À vous de décider comment utiliser cet argent.",
   question: "Que faites-vous ?",
-  illustration: "illustrations/telephone-casse.svg",
+  illustration: "illustrations/budget-tournoi.svg"
 };
 const DEMO_PROPOSITIONS = [
   { code: "3E205", libelle: "Réparer un équipement, une machine, une installation", mots: "Tu sais réparer des objets en suivant des explications.", preuve: "j'ai réparé le vélo d'un pote avec des tutos", typePreuve: "vecu", riasec: ["R"], situation: "Vélo réparé", problemeIndex: null, gardee: null },
@@ -953,9 +947,10 @@ function scenesDemo() {
     ["Échange", () => base("echange", { moi: moi(), minuteurFin: dans(120) })],
     ["Réponse", () => base("reponse", { moi: moi(), minuteurFin: dans(90), compte: { repondu: 1, total: 4 } })],
     ["Réponse envoyée", () => base("reponse", { moi: moi({ maReponse: "On regarde sur internet combien ça coûte et on met une protection en attendant." }), minuteurFin: dans(42), compte: { repondu: 3, total: 4 } })],
-    ["Compétences : préparation", () => base("competences", { moi: moi() })],
-    ["Compétence gagnée", () => base("competences", { moi: moi({ competenceDuProbleme: { ...DEMO_COMPETENCE } }) })],
-    ["Compétence gardée", () => base("competences", { moi: moi({ competenceDuProbleme: { ...DEMO_COMPETENCE, gardee: true } }) })],
+    ["Le MJ lit vos idées", () => base("competences", { moi: moi(), attenteIA: true })],
+    ["Idée d'un autre joueur", () => base("competences", { moi: moi(), idee: { pseudo: "Sam", avatar: "🐼", texte: "on demande au boulanger du quartier de nous offrir le goûter", competence: { code: "6D115", libelle: "Faire preuve de créativité, d'inventivité" } } })],
+    ["Ton idée est retenue", () => base("competences", { moi: moi({ competenceDuProbleme: { ...DEMO_COMPETENCE } }), idee: { pseudo: "Lina", avatar: "🦊", texte: DEMO_COMPETENCE.preuve, competence: { code: DEMO_COMPETENCE.code, libelle: DEMO_COMPETENCE.libelle } } })],
+    ["Compétence notée", () => base("competences", { moi: moi({ competenceDuProbleme: { ...DEMO_COMPETENCE, gardee: true } }), idee: { pseudo: "Lina", avatar: "🦊", texte: DEMO_COMPETENCE.preuve, competence: { code: DEMO_COMPETENCE.code, libelle: DEMO_COMPETENCE.libelle }, notee: true } })],
     ["Fin", () => base("fin", {
       phase: "fin", problemeIndex: 2, probleme: null,
       moi: moi({ competences: [

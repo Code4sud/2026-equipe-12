@@ -47,10 +47,6 @@ function lireReglages(corps) {
     }
     reglages[cle] = n;
   }
-  if (corps.solo !== undefined) {
-    if (typeof corps.solo !== "boolean") return { erreur: "solo doit être true ou false." };
-    reglages.solo = corps.solo;
-  }
   return { reglages };
 }
 

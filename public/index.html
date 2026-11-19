@@ -47,25 +47,6 @@
       </form>
     </section>
 
-    <!-- Joueur seul : tout sur son appareil -->
-    <section class="carte" aria-labelledby="titre-solo">
-      <span class="icone" aria-hidden="true">🎮</span>
-      <h2 id="titre-solo">Jouer seul</h2>
-      <p class="aide">Pas d'animateur ni d'écran commun : tu joues sur ton téléphone ou ton ordinateur, et tu repars avec ta fiche.</p>
-      <form id="form-solo" class="pile">
-        <div class="champ">
-          <label for="nb-problemes-solo">Nombre de problèmes</label>
-          <select id="nb-problemes-solo" name="nbProblemes">
-            <option value="2">2 problèmes (≈ 10 min)</option>
-            <option value="3" selected>3 problèmes (≈ 15 min)</option>
-            <option value="6">6 problèmes (≈ 30 min)</option>
-          </select>
-        </div>
-        <button type="submit" class="bouton principal grand large" id="bouton-solo">Jouer seul</button>
-        <p class="message-erreur" id="erreur-solo" role="alert"></p>
-      </form>
-    </section>
-
     <!-- Joueur : rejoindre -->
     <section class="carte" aria-labelledby="titre-rejoindre">
       <span class="icone" aria-hidden="true">📱</span>
@@ -126,34 +107,6 @@
           + '<a href="ecran.html?demo=1">Voir la démo de l\'écran</a>';
         boutonCreer.disabled = false;
         boutonCreer.textContent = "Réessayer";
-      }
-    });
-
-    // Jouer seul : partie solo, puis directement la page du joueur.
-    const formSolo = document.getElementById("form-solo");
-    const boutonSolo = document.getElementById("bouton-solo");
-    const erreurSolo = document.getElementById("erreur-solo");
-    formSolo.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      erreurSolo.textContent = "";
-      boutonSolo.disabled = true;
-      boutonSolo.textContent = "Préparation…";
-      const nbProblemes = Number(document.getElementById("nb-problemes-solo").value) || 3;
-      try {
-        const rep = await fetch("/api/parties", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nbProblemes, solo: true }),
-        });
-        if (!rep.ok) throw new Error(`HTTP ${rep.status}`);
-        const { code } = await rep.json();
-        if (!/^[A-Z]{4}$/.test(code ?? "")) throw new Error("code invalide");
-        location.href = `/p/${code}`;
-      } catch (err) {
-        console.error(err);
-        erreurSolo.textContent = "Impossible de lancer la partie : le serveur de jeu ne répond pas. Réessaie dans un instant.";
-        boutonSolo.disabled = false;
-        boutonSolo.textContent = "Réessayer";
       }
     });
 
