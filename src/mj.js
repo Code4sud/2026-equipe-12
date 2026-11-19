@@ -1,13 +1,13 @@
 // MJ (maître du jeu) IA — SPEC §5.
-// creerMJ : Claude, avec garde-fous côté serveur et bascule sur le mock en cas
+// creerMJ : IA OpenAI (gpt-5-nano, src/openai.js), avec garde-fous côté serveur et bascule sur le mock en cas
 // d'erreur, de timeout, de refus ou de sortie invalide (le jeu ne bloque jamais).
 // mjMock  : version déterministe, sans réseau (démo de secours, tests).
 //
-// Aucun nom, aucun pseudo n'est envoyé à Claude : les joueurs sont « J1 », « J2 »…
-// Les sorties de Claude affichées aux joueurs (synthèse, « mots ») sont contrôlées
+// Aucun nom, aucun pseudo n'est envoyé à l'IA : les joueurs sont « J1 », « J2 »…
+// Les sorties de l'IA affichées aux joueurs (synthèse, « mots ») sont contrôlées
 // côté serveur (longueur, forme, aucun pseudo, aucune reprise d'une réponse) :
 // une sortie hors contrat est remplacée par le texte prévu (injection de prompt).
-import Anthropic from "@anthropic-ai/sdk";
+import { appelerJSON, creerClient, MODELE } from "./openai.js";
 import {
   accentuerLibelle,
   citationTrouvee,
@@ -218,7 +218,7 @@ export function mjMock({ rome } = {}) {
   };
 }
 
-// ───────────────────────── Contrôles des sorties de Claude ─────────────────────────
+// ───────────────────────── Contrôles des sorties de l'IA ─────────────────────────
 
 /**
  * Synthèse affichée à tout le groupe : acceptée seulement si elle commence par
@@ -263,7 +263,7 @@ export function citationValide(citation, textes) {
   return textes.some((t) => normCitation(t) === c);
 }
 
-// ───────────────────────── Claude ─────────────────────────
+// ───────────────────────── IA (OpenAI) ─────────────────────────
 
 const SYSTEM = `Tu es le maître du jeu (MJ) bienveillant d'un jeu de rôle de groupe, au Centre des Possibles (Nice). Les joueurs sont des jeunes de 15 à 25 ans, souvent en décrochage, qui pensent « ne rien savoir faire ». Le jeu leur fait découvrir leurs compétences réelles, reliées au référentiel ROME 4.0 de France Travail. Un psychologue du travail anime la partie.
 
@@ -371,12 +371,12 @@ Donne exactement une attribution par joueur, avec son étiquette exacte (${joueu
 ${js}`;
 }
 
-export function creerMJ({ apiKey, mode, rome, modele = "claude-opus-5-5", client, timeoutMs = TIMEOUT_MS, journal = console } = {}) {
+export function creerMJ({ apiKey, mode, rome, modele = MODELE, client, timeoutMs = TIMEOUT_MS, journal = console } = {}) {
   const mock = mjMock({ rome });
   if (mode === "mock" || (!client && !apiKey)) return mock;
 
   const macros = indexRome(rome);
-  const api = client ?? new Anthropic({ apiKey, timeout: timeoutMs, maxRetries: 1 });
+  const api = client ?? creerClient(apiKey);
   const signaler = (quoi, err) => {
     try {
       journal?.warn?.(`[mj] ${quoi} : bascule sur le mock (${err?.message ?? err})`);
@@ -385,36 +385,17 @@ export function creerMJ({ apiKey, mode, rome, modele = "claude-opus-5-5", client
     }
   };
 
-  async function appeler(contenu, schema) {
-    const ctrl = new AbortController();
-    const minuterie = setTimeout(() => ctrl.abort(), timeoutMs);
-    try {
-      const response = await api.beta.messages.create(
-        {
-          model: modele,
-          max_tokens: 4000,
-          betas: ["server-side-fallback-2026-07-01"],
-          fallbacks: "default",
-          output_config: { effort: "low", format: { type: "json_schema", schema } },
-          system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
-          messages: [{ role: "user", content: contenu }],
-        },
-        { signal: ctrl.signal },
-      );
-      if (response?.stop_reason === "refusal") throw new Error("refus du modèle");
-      const texte = (response?.content ?? []).filter((b) => b.type === "text").map((b) => b.text).join("");
-      return JSON.parse(texte);
-    } finally {
-      clearTimeout(minuterie);
-    }
+  async function appeler(contenu, schema, nom) {
+    const { brut } = await appelerJSON({ client: api, modele, system: SYSTEM, contenu, schema, nom, timeoutMs });
+    return brut;
   }
 
-  /** @param {{ probleme, reponses, pseudos?: string[] }} entree pseudos : jamais envoyés à Claude, servent au contrôle de la sortie. */
+  /** @param {{ probleme, reponses, pseudos?: string[] }} entree pseudos : jamais envoyés à l'IA, servent au contrôle de la sortie. */
   async function evaluer({ probleme, reponses, pseudos = [] }) {
     const textes = (reponses ?? []).map((r) => (typeof r?.texte === "string" ? r.texte.trim() : "")).filter(Boolean);
     if (textes.length === 0) return { resolu: false, synthese: null };
     try {
-      const brut = await appeler(messageEvaluer(probleme, textes), SCHEMA_EVALUER);
+      const brut = await appeler(messageEvaluer(probleme, textes), SCHEMA_EVALUER, "evaluer");
       if (typeof brut?.resolu !== "boolean") throw new Error("sortie invalide");
       if (!brut.resolu) return { resolu: false, synthese: null };
       const s = typeof brut.synthese === "string" ? brut.synthese.trim() : "";
@@ -427,7 +408,7 @@ export function creerMJ({ apiKey, mode, rome, modele = "claude-opus-5-5", client
   }
 
   /**
-   * UN appel à Claude PAR joueur (en parallèle) : la réponse d'un joueur n'est
+   * UN appel à l'IA PAR joueur (en parallèle) : la réponse d'un joueur n'est
    * jamais dans le même prompt que celle d'un autre, il ne peut donc pas viser
    * la compétence ou les « mots » d'un autre joueur.
    */
@@ -444,14 +425,14 @@ export function creerMJ({ apiKey, mode, rome, modele = "claude-opus-5-5", client
     const out = {};
     const codes = new Set((probleme?.competences ?? []).map((c) => c.code));
 
-    // Rien écrit, rien choisi : participation, inutile de demander à Claude.
+    // Rien écrit, rien choisi : participation, inutile de demander à l'IA.
     const aDemander = joueurs.filter((j) => j.textes.length || j.choix);
     for (const j of joueurs) if (!aDemander.includes(j)) out[j.id] = participation(macros, probleme);
 
     await Promise.all(aDemander.map(async (j) => {
       let a = null;
       try {
-        const brut = await appeler(messageAttribuer(macros, probleme, [j]), SCHEMA_ATTRIBUER);
+        const brut = await appeler(messageAttribuer(macros, probleme, [j]), SCHEMA_ATTRIBUER, "attribuer");
         if (!Array.isArray(brut?.attributions)) throw new Error("sortie invalide");
         a = brut.attributions.find((x) => x && x.joueur === j.label) ?? null;
       } catch (err) {
@@ -495,7 +476,7 @@ export function creerMJ({ apiKey, mode, rome, modele = "claude-opus-5-5", client
     }
   }
 
-  return { mode: "claude", evaluer, attribuer };
+  return { mode: "ia", evaluer, attribuer };
 }
 
 // Attribution mock d'UN joueur, avec la participation en dernier recours.

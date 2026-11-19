@@ -34,7 +34,7 @@ const ID_JOUEUR = /^[A-Za-z0-9_-]{8,64}$/;
 const TAILLE_MAX_MESSAGE = 8000;
 const DELAI_ABANDON_MS = 6 * 60 * 60 * 1000;
 const TIMEOUT_IA_MS = 25000;
-/** Échéance du chien de garde IA (l'appel Claude est borné à 25 s, retry compris). */
+/** Échéance du chien de garde IA (l'appel à l'IA est borné à 25 s). */
 export const DELAI_GARDE_IA_MS = 45000;
 
 // Limites contre l'abus (sockets ouvertes, débit de messages).
@@ -487,17 +487,17 @@ export class Partie extends DurableObject {
     }
   }
 
-  // ─────────────────────────── IA (Claude ou mock) ───────────────────────────
+  // ─────────────────────────── IA (OpenAI ou mock) ───────────────────────────
 
   getMJ() {
     if (!this.mj) {
-      this.mj = creerMJ({ apiKey: this.env.ANTHROPIC_API_KEY, mode: this.env.MJ_MODE, rome });
+      this.mj = creerMJ({ apiKey: this.env.OPENAI_API_KEY, mode: this.env.MJ_MODE, rome });
     }
     return this.mj;
   }
 
   modeMock() {
-    return this.env.MJ_MODE === "mock" || !this.env.ANTHROPIC_API_KEY;
+    return this.env.MJ_MODE === "mock" || !this.env.OPENAI_API_KEY;
   }
 
   /** Calcule le résultat d'un effet IA puis réinjecte l'événement *_faite (ou erreur_ia). */
@@ -528,7 +528,7 @@ export class Partie extends DurableObject {
     if (this.etat) await this.ctx.storage.put("gardesIA", this.gardes);
   }
 
-  /** Pseudos de la partie : jamais envoyés à Claude, servent à contrôler ses sorties. */
+  /** Pseudos de la partie : jamais envoyés à l'IA, servent à contrôler ses sorties. */
   pseudos() {
     return Object.values(this.etat?.joueurs ?? {}).map((j) => j.pseudo);
   }
@@ -542,12 +542,12 @@ export class Partie extends DurableObject {
     const mj = secours ? mjMock({ rome }) : this.getMJ();
     switch (effet.type) {
       case "analyser_recit": {
-        const options = { apiKey: this.env.ANTHROPIC_API_KEY, rome, max: 3, effort: "low", timeout: TIMEOUT_IA_MS };
+        const options = { apiKey: this.env.OPENAI_API_KEY, rome, max: 3, effort: "low", timeout: TIMEOUT_IA_MS };
         let res;
         try {
           res = await analyser(effet.texte, { ...options, mode: secours || this.modeMock() ? "mock" : "auto" });
         } catch (err) {
-          console.warn("[partie] analyse Claude impossible, bascule sur le mock :", err?.message ?? err);
+          console.warn("[partie] analyse IA impossible, bascule sur le mock :", err?.message ?? err);
           res = await analyser(effet.texte, { ...options, mode: "mock" });
         }
         return {

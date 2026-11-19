@@ -273,7 +273,7 @@ for (const p of problemes) {
 
 // ───────────── Champs optionnels lus par le MJ (SPEC §4.1) ─────────────
 // competenceParDefaut, choix[i].competence, competences[i].mots : src/mj.js les
-// lit tels quels (le mock les donne au joueur, Claude les reçoit en suggestion).
+// lit tels quels (le mock les donne au joueur, l'IA les reçoit en suggestion).
 const MOTS_LONGUEUR_MAX = 140;
 
 /** Liste des écarts au schéma des champs du MJ pour un problème ([] = conforme). */
@@ -298,7 +298,7 @@ function ecartsChampsMJ(p) {
     if (contientMotInterdit(m)) ecarts.push(`${c.code} : « mots » contient un mot interdit au MJ (faux, tromper, même si…)`);
     const sensibles = mots(m).filter((x) => INTERDITS.has(x));
     if (sensibles.length) ecarts.push(`${c.code} : « mots » touche un sujet sensible (${sensibles.join(", ")})`);
-    // Même contrôle que pour les « mots » de Claude : une seule phrase, forme « Tu … ».
+    // Même contrôle que pour les « mots » de l'IA : une seule phrase, forme « Tu … ».
     if (!motsValides(m)) ecarts.push(`${c.code} : « mots » refusés par motsValides`);
   }
   return ecarts;

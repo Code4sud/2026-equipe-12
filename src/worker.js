@@ -186,13 +186,13 @@ async function analyseSolo(request, env) {
   if (typeof recit !== "string" || recit.trim().length < 30) {
     return erreur(400, "Raconte au moins une ou deux situations (30 caractères minimum).");
   }
-  const options = { apiKey: env.ANTHROPIC_API_KEY, rome, mode: env.MJ_MODE === "mock" ? "mock" : "auto" };
+  const options = { apiKey: env.OPENAI_API_KEY, rome, mode: env.MJ_MODE === "mock" ? "mock" : "auto" };
   try {
     return json(await analyser(recit.slice(0, 10000), options));
   } catch (e) {
     if (e?.message?.startsWith("L'IA")) return erreur(422, e.message);
-    // Claude indisponible : on bascule sur l'analyse de secours (mots-clés), sans bloquer.
-    console.error("Analyse Claude impossible, bascule sur le mock :", e?.status ?? "", e?.message ?? e);
+    // IA indisponible : on bascule sur l'analyse de secours (mots-clés), sans bloquer.
+    console.error("Analyse IA impossible, bascule sur le mock :", e?.status ?? "", e?.message ?? e);
     return json({ ...(await analyser(recit.slice(0, 10000), { ...options, mode: "mock" })), secours: true });
   }
 }
