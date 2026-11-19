@@ -168,3 +168,13 @@ body.avec-demo .toast { bottom: 80px; }
   font-weight: 700; border: 2px solid var(--alerte); border-radius: var(--rayon-petit, 10px);
   padding: 0.5em 0.8em; margin: 0;
 }
+
+/* Fiche sur le modèle du Rapport des Possibles : intérêts classés, zones de métiers. */
+.fiche-tel .interets { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 8px; counter-reset: interet; }
+.fiche-tel .interet { border-left: 5px solid var(--type); padding: 4px 0 4px 10px; counter-increment: interet; }
+.fiche-tel .interet p { margin: 0 0 2px; }
+.fiche-tel .interet strong::before { content: counter(interet) ". "; }
+.fiche-tel .puce-type { display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 50%; background: var(--type); color: #fff; font-weight: 800; font-size: 0.85em; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.fiche-tel .zone { margin: 10px 0 4px; break-inside: avoid; }
+.fiche-tel .zone h4 { margin: 6px 0 2px; }
+.fiche-tel .encart-lien { margin: 6px 0; padding: 8px 12px; border-radius: 10px; background: var(--citation); font-size: 0.95em; }

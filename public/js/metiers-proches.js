@@ -48,6 +48,28 @@ export function metiersProches(poids, metiers, { nbAccessibles = 5, nbLongs = 3,
   };
 }
 
+/**
+ * Métiers proches du profil, rangés par zone de préparation (1 à 5), comme le
+ * « champ des possibles » du Rapport des Possibles : au plus `parZone` métiers
+ * par zone, seulement s'ils ressemblent assez au profil (proximité ≥ `seuil`).
+ * Une zone peut rester vide. null si le profil est vide.
+ */
+export function metiersParZone(poids, metiers, { parZone = 3, seuil = 0.35 } = {}) {
+  const jeune = ORDRE.map((k) => poids[k] || 0);
+  if (!jeune.some((x) => x > 0)) return null;
+  const j = centrer(jeune);
+  const classes = metiers
+    .map((m) => ({ ...m, proximite: cosinus(j, centrer(m.riasec)) }))
+    .filter((m) => m.proximite >= seuil)
+    .sort((a, b) => b.proximite - a.proximite);
+  const zones = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+  for (const m of classes) {
+    const z = Number(m.zone);
+    if (zones[z] && zones[z].length < parZone) zones[z].push(m);
+  }
+  return zones;
+}
+
 // Les 2 types RIASEC dominants d'un métier, pour l'afficher simplement (« S·C »).
 export function typesDominants(m) {
   return ORDRE.map((k, i) => [k, m.riasec[i]])

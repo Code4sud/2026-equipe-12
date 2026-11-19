@@ -9,16 +9,22 @@ export const ORDRE_RIASEC = ["R", "I", "A", "S", "E", "C"];
 
 export const RIASEC = {
   R: { nom: "Réaliste", verbe: "Faire, réparer, construire", couleur: "#c8743a",
+       description: "Tu aimes les activités concrètes et pratiques : te servir de tes mains, d'outils ou de machines, souvent dehors. Tu préfères faire plutôt que réfléchir longtemps.",
        question: "Qu'est-ce qui te plaît quand tu fais quelque chose de tes mains ? Tu te verrais plutôt en atelier, dehors, sur un chantier ?" },
   I: { nom: "Investigateur", verbe: "Chercher, comprendre", couleur: "#3a7bc8",
+       description: "Tu aimes observer, chercher et comprendre comment les choses marchent, et résoudre des problèmes.",
        question: "Quand tu ne sais pas faire un truc, comment tu t'y prends pour trouver ? Qu'est-ce que tu aimes comprendre ?" },
   A: { nom: "Artistique", verbe: "Créer, imaginer, s'exprimer", couleur: "#a24fc0",
+       description: "Tu aimes créer, imaginer et t'exprimer avec de la liberté : dessin, musique, écriture, vidéo…",
        question: "Qu'est-ce que tu as déjà créé dont tu es fier·e ? Tu aimerais que ton travail laisse de la place à ton style ?" },
   S: { nom: "Social", verbe: "Aider, accompagner, transmettre", couleur: "#2e9b6a",
+       description: "Tu aimes être avec les autres et pour les autres : aider, écouter, expliquer, prendre soin.",
        question: "Qu'est-ce que tu ressens quand tu aides quelqu'un ? Tu préfères aider des enfants, des jeunes, des adultes, des personnes âgées ?" },
   E: { nom: "Entreprenant", verbe: "Convaincre, organiser, mener", couleur: "#d8a019",
+       description: "Tu aimes prendre des initiatives, convaincre, organiser et entraîner les autres vers un but.",
        question: "Quand tu organises un truc ou que tu convaincs quelqu'un, qu'est-ce qui te motive ? Tu aimes prendre des décisions ?" },
   C: { nom: "Conventionnel", verbe: "Gérer, classer, être précis", couleur: "#5f6b85",
+       description: "Tu aimes quand c'est organisé et précis : ranger, compter, suivre une méthode, ne pas faire d'erreur.",
        question: "Ça te plaît quand les choses sont bien rangées, comptées, sans erreur ? Dans quelles situations tu es le plus carré·e ?" },
 };
 
@@ -163,6 +169,36 @@ export function blocRiasec(competences, rome, o = {}) {
     ${intro ? `<p class="discret">${echapper(intro)}</p>` : ""}
     <div class="riasec-grille">${tuiles}</div>
     ${questions && o.questions !== false ? `<p><strong>${echapper(dominantsIntro)}</strong> ${dominants.map((k) => RIASEC[k].nom).join(" et ")}. Pour en parler :</p><ul>${questions}</ul>` : ""}
+  </section>`;
+}
+
+/**
+ * Intérêts « classés par ordre », comme dans le Rapport des Possibles : les types
+ * qui ressortent des compétences, du plus présent au moins présent, avec une
+ * description et les compétences qui les montrent. Aucun score affiché.
+ */
+export function blocInteretsOrdonnes(competences, rome, o = {}) {
+  const libelle = o.libelle ?? ((c) => c.libelle ?? c.libelle_rome ?? codeDe(c));
+  const { parType } = reperesRiasec(competences, rome);
+  const presents = ORDRE_RIASEC
+    .filter((k) => parType[k].majeur.length || parType[k].mineur.length)
+    .sort((a, b) => parType[b].majeur.length - parType[a].majeur.length || parType[b].mineur.length - parType[a].mineur.length);
+  if (!presents.length) return "";
+  const absents = ORDRE_RIASEC.filter((k) => !presents.includes(k));
+  const items = presents.map((k) => {
+    const t = RIASEC[k];
+    const comps = [...parType[k].majeur, ...parType[k].mineur].map((c) => echapper(libelle(c)));
+    return `<li class="interet" style="--type:${t.couleur}">
+        <p><span class="puce-type" aria-hidden="true">${k}</span> <strong>${t.nom}</strong></p>
+        <p>${echapper(t.description)}</p>
+        <p class="discret">Tes compétences : ${comps.join(" · ")}</p>
+      </li>`;
+  }).join("");
+  return `<section class="bloc bloc-interets">
+    <h3>${echapper(o.titre ?? "Tes intérêts, classés par ordre")}</h3>
+    <p class="discret">${echapper(o.intro ?? "Les mêmes six profils (RIASEC) que dans ton Rapport des Possibles. Ici, ils viennent des compétences que tu as montrées : c'est un repère à comparer avec ton rapport, pas un résultat de test.")}</p>
+    <ol class="interets">${items}</ol>
+    ${absents.length ? `<p class="discret">Pas apparus pendant la partie, ce qui ne veut pas dire absents : ${absents.map((k) => RIASEC[k].nom).join(", ")}.</p>` : ""}
   </section>`;
 }
 
