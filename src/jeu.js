@@ -29,53 +29,16 @@ const INTERNES = new Set([
 
 const PHASES_MINUTEUR = new Set(["echange", "reponse"]);
 
-// ───────────────────────── Tirage déterministe ─────────────────────────
+// ───────────────────────── Épisodes de l'histoire ─────────────────────────
 
-function hacherGraine(g) {
-  if (typeof g === "number" && Number.isFinite(g)) return g >>> 0;
-  const s = String(g ?? "");
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return h >>> 0;
-}
-
-function mulberry32(a) {
-  return function () {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-const dominant = (p) => lettresRiasec(p.riasec)[0] ?? "?";
-
-// Mélange (graine) puis privilégie des types RIASEC dominants différents.
-export function tirerProblemes(problemes, nb, graine) {
-  const alea = mulberry32(hacherGraine(graine));
-  const melange = problemes.slice();
-  for (let i = melange.length - 1; i > 0; i--) {
-    const j = Math.floor(alea() * (i + 1));
-    [melange[i], melange[j]] = [melange[j], melange[i]];
-  }
-  const choisis = [];
-  const types = new Set();
-  for (const p of melange) {
-    if (choisis.length >= nb) break;
-    if (!types.has(dominant(p))) {
-      choisis.push(p);
-      types.add(dominant(p));
-    }
-  }
-  for (const p of melange) {
-    if (choisis.length >= nb) break;
-    if (!choisis.includes(p)) choisis.push(p);
-  }
-  return choisis;
+// Une histoire : les épisodes se jouent dans l'ordre (champ `episode`), en partant
+// du début. `graine` est gardée pour la compatibilité, elle ne sert plus.
+export function tirerProblemes(problemes, nb, _graine) {
+  return problemes
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => (a.p.episode ?? a.i + 1) - (b.p.episode ?? b.i + 1))
+    .slice(0, nb)
+    .map(({ p }) => p);
 }
 
 // ───────────────────────── Création ─────────────────────────
@@ -86,7 +49,7 @@ const entierBorne = (v, min, max, defaut) => {
   return Math.min(max, Math.max(min, Math.round(n)));
 };
 
-export function creerEtat({ code, problemes, nbProblemes = 3, dureeEchange = 120, dureeReponse = 90, graine = 0, maintenant = null, solo = false } = {}) {
+export function creerEtat({ code, problemes, nbProblemes = 3, dureeEchange = 120, dureeReponse = 90, graine = 0, maintenant = null } = {}) {
   const liste = Array.isArray(problemes) ? problemes : problemes?.problemes ?? [];
   if (liste.length === 0) throw new Error("Aucun problème disponible pour créer la partie.");
   const nb = Math.min(entierBorne(nbProblemes, 1, 6, 3), liste.length);
@@ -94,9 +57,6 @@ export function creerEtat({ code, problemes, nbProblemes = 3, dureeEchange = 120
   return {
     code,
     phase: "accueil",
-    // Mode solo : un seul joueur, tout sur son appareil, sans écran commun ni
-    // animateur. La partie démarre dès qu'il a rejoint ; pas de discussion ni de minuteur.
-    solo: solo === true,
     creeA: maintenant,
     graine,
     reglages: {
@@ -118,6 +78,7 @@ export function creerEtat({ code, problemes, nbProblemes = 3, dureeEchange = 120
     tempsEcoule: false,
     joueurs: {},
     attribution: null,
+    idee: null,
     finA: null,
   };
 }
@@ -154,6 +115,7 @@ function entrerProbleme(e, index) {
   e.minuteurDebut = null;
   e.tempsEcoule = false;
   e.attribution = null;
+  e.idee = null;
   for (const j of listeJoueurs(e)) j.reponses[index] = nouvelleReponse();
   return [];
 }
@@ -179,18 +141,22 @@ function departEnAttente(j) {
   j.competences = j.competences.filter((c) => c.problemeIndex !== null).concat(propositions.map((c) => ({ ...c })));
 }
 
-function effetAttribuer(e) {
-  const historique = {};
+// Ce joueur a-t-il déjà eu une idée retenue dans un épisode précédent ? (Le MJ
+// préfère, à idées égales, quelqu'un qui n'a pas encore été retenu.)
+const dejaRetenu = (e, j) => j.competences.some((c) => c.problemeIndex !== null && c.problemeIndex !== e.problemeIndex);
+
+function effetChoisir(e) {
+  const reponses = [];
   for (const j of listeJoueurs(e)) {
-    const r = reponseCourante(j, e);
-    const t = typeof r.tour1 === "string" ? r.tour1.trim() : "";
-    historique[j.id] = { reponses: t ? [t] : [], choix: null };
+    const t = typeof reponseCourante(j, e).tour1 === "string" ? reponseCourante(j, e).tour1.trim() : "";
+    if (t) reponses.push({ joueurId: j.id, texte: t, dejaRetenu: dejaRetenu(e, j) });
   }
-  return { type: "attribuer", problemeIndex: e.problemeIndex, probleme: problemeCourant(e), historique };
+  return { type: "choisir", problemeIndex: e.problemeIndex, probleme: problemeCourant(e), reponses };
 }
 
-// Toutes les réponses sont là (ou l'animateur passe) : pas de « bonne réponse »
-// à chercher, le MJ donne directement une compétence à chacun.
+// Toutes les réponses sont là (ou l'animateur passe) : le MJ choisit l'idée du tour,
+// celle qui fait avancer l'histoire. Son auteur reçoit la compétence (et l'écrit sur
+// sa fiche papier). Personne n'a rien écrit : pas d'idée retenue, on continue.
 function finReponse(e, parMinuteur) {
   const effets = arreterMinuteur(e, parMinuteur);
   for (const j of listeJoueurs(e)) {
@@ -199,13 +165,20 @@ function finReponse(e, parMinuteur) {
   }
   e.phase = "competences";
   e.attribution = null;
-  effets.push(effetAttribuer(e));
+  e.idee = null;
+  const choisir = effetChoisir(e);
+  if (!choisir.reponses.length) {
+    e.attribution = {};
+    e.idee = { joueurId: null };
+    return effets;
+  }
+  effets.push(choisir);
   return effets;
 }
 
 /**
  * Effets IA que l'état attend encore (appel en cours, ou perdu si le Durable
- * Object a redémarré) : attribuer en `competences` sans attribution,
+ * Object a redémarré) : choisir (l'idée du tour) en `competences` sans attribution,
  * analyser_recit pour chaque joueur en `analyse` pendant la création.
  * Le DO s'en sert pour son chien de garde (repli sur le mock à l'échéance).
  */
@@ -213,7 +186,7 @@ export function effetsIAEnAttente(etat) {
   if (!etat) return [];
   const e = structuredClone(etat);
   const effets = [];
-  if (e.phase === "competences" && !e.attribution) effets.push(effetAttribuer(e));
+  if (e.phase === "competences" && !e.attribution) effets.push(effetChoisir(e));
   // Analyse du récit : pendant la création, et après si l'animateur a clos la
   // création pendant l'analyse (le résultat deviendra des compétences en attente).
   for (const j of listeJoueurs(e)) {
@@ -264,30 +237,13 @@ function competenceJeu(c, problemeIndex) {
   };
 }
 
-// Dernier recours si l'IA ET le mock échouent : chaque joueur reçoit au moins la
-// compétence de participation du problème (jamais bloqué, jamais sans compétence).
-const LIBELLES_PARTICIPATION = { "6D102": "Avoir l'esprit d'équipe" };
-function competenceParticipation(e) {
-  const p = problemeCourant(e);
-  const code = p?.competenceParticipation || "6D102";
-  return {
-    code,
-    libelle: LIBELLES_PARTICIPATION[code] ?? null,
-    mots: "Tu as pris part à la réflexion du groupe, et ça compte.",
-    preuve: "A participé à la discussion de groupe",
-    typePreuve: "participation",
-    riasec: lettresRiasec(p?.riasec).slice(0, 2),
-  };
-}
-
+// Le joueur dont l'idée est retenue a dit s'il garde la compétence (après l'avoir
+// écrite sur sa fiche papier) : l'histoire continue.
 function tousLesJoueursOntGarde(e) {
-  const js = listeJoueurs(e);
-  if (js.length === 0 || !e.attribution) return false;
-  return js.every((j) => {
-    if (!e.attribution[j.id]) return false;
-    const c = j.competences.find((x) => x.problemeIndex === e.problemeIndex);
-    return c && c.gardee !== null;
-  });
+  const id = e.idee?.joueurId;
+  if (!e.attribution || !id || !e.joueurs[id]) return false;
+  const c = e.joueurs[id].competences.find((x) => x.problemeIndex === e.problemeIndex);
+  return !!c && c.gardee !== null;
 }
 
 // ───────────────────────── Gestionnaires ─────────────────────────
@@ -310,7 +266,6 @@ H.rejoindre = { role: "joueur", f(e, ev) {
   if (longueur(pseudo) < 1 || longueur(pseudo) > 20) return "Choisis un pseudo de 1 à 20 caractères, avec au moins une lettre ou un chiffre.";
   if (!AVATARS.includes(ev.avatar)) return "Choisis un avatar dans la liste.";
   const js = listeJoueurs(e);
-  if (e.solo && js.length >= 1) return "Cette partie se joue en solo.";
   if (js.length >= MAX_JOUEURS) return `La partie est complète (${MAX_JOUEURS} joueurs maximum).`;
   if (js.some((j) => clePseudo(j.pseudo) === clePseudo(pseudo))) return "Ce pseudo est déjà pris. Choisis-en un autre.";
   if (js.some((j) => j.avatar === ev.avatar)) return "Cet avatar est déjà pris. Choisis-en un autre.";
@@ -324,8 +279,6 @@ H.rejoindre = { role: "joueur", f(e, ev) {
     reponses: {},
     competences: [],
   };
-  // Solo : pas d'animateur pour « Démarrer », la création du personnage commence tout de suite.
-  if (e.solo) e.phase = "creation";
   return [];
 } };
 
@@ -397,11 +350,6 @@ H.lu = { role: "joueur", f(e, ev) {
   if (r.lu) return [];
   r.lu = true;
   if (!listeJoueurs(e).every((x) => reponseCourante(x, e).lu)) return [];
-  // Solo : personne avec qui discuter, on passe directement à la réponse, sans minuteur.
-  if (e.solo) {
-    e.phase = "reponse";
-    return arreterMinuteur(e, true);
-  }
   return lancerMinuteur(e, "echange", e.reglages.dureeEchange, ev.__maintenant);
 } };
 
@@ -494,27 +442,31 @@ H.suivant = { role: "ecran", f(e, ev) {
     // l'étape avec le MJ de secours (mock), immédiat. Un résultat en double est
     // refusé par les gardes de problemeIndex / attribution déjà présente.
     case "competences":
-      if (!e.attribution) return [{ ...effetAttribuer(e), secours: true }];
+      if (!e.attribution) return [{ ...effetChoisir(e), secours: true }];
       return problemeSuivant(e, maintenant);
     case "accueil": return "Pour commencer, utilise « Démarrer ».";
     default: return "Impossible de passer à l'étape suivante maintenant.";
   }
 } };
 
+// L'idée du tour : { problemeIndex, joueurId, competence }. Un seul joueur reçoit une
+// compétence (sa preuve = ses propres mots, affichés à l'écran avec son pseudo).
 H.attribution_faite = { f(e, ev) {
   if (e.phase !== "competences") return "Attribution reçue hors phase.";
   if (ev.problemeIndex !== e.problemeIndex) return "Attribution périmée.";
-  if (e.attribution) return "Les compétences de ce problème sont déjà attribuées.";
-  const recues = ev.competences && typeof ev.competences === "object" ? ev.competences : {};
+  if (e.attribution) return "L'idée de cet épisode est déjà choisie.";
+  const j = typeof ev.joueurId === "string" ? e.joueurs[ev.joueurId] : null;
+  const c = ev.competence;
+  const texte = j ? String(reponseCourante(j, e).tour1 ?? "").trim() : "";
   e.attribution = {};
-  for (const j of listeJoueurs(e)) {
-    const c = recues[j.id];
-    if (!c || !c.code) continue;
-    const comp = competenceJeu(c, e.problemeIndex);
-    // UNE seule compétence par joueur et par problème.
-    j.competences = j.competences.filter((x) => x.problemeIndex !== e.problemeIndex).concat([comp]);
-    e.attribution[j.id] = { ...comp };
+  if (!j || !texte || !c || !c.code) {
+    e.idee = { joueurId: null };
+    return [];
   }
+  const comp = competenceJeu(c, e.problemeIndex);
+  j.competences = j.competences.filter((x) => x.problemeIndex !== e.problemeIndex).concat([comp]);
+  e.attribution[j.id] = { ...comp };
+  e.idee = { joueurId: j.id };
   return [];
 } };
 
@@ -527,13 +479,10 @@ H.erreur_ia = { f(e, ev) {
     j.depart = { etat: e.phase === "creation" ? "a_valider" : "valide", propositions: [], gardees: [] };
     return [];
   }
+  // L'IA et le MJ de secours ont échoué : pas d'idée retenue cette fois, l'histoire continue.
   if (e.phase === "competences" && !e.attribution) {
     e.attribution = {};
-    for (const j of listeJoueurs(e)) {
-      const comp = competenceJeu(competenceParticipation(e), e.problemeIndex);
-      j.competences = j.competences.filter((x) => x.problemeIndex !== e.problemeIndex).concat([comp]);
-      e.attribution[j.id] = { ...comp };
-    }
+    e.idee = { joueurId: null };
     return [];
   }
   return "Erreur IA hors contexte.";
@@ -590,7 +539,9 @@ function aFini(e, j) {
     case "presentation": return !!r?.lu;
     case "reponse": return r?.tour1 != null;
     case "competences":
-      return e.attribution ? j.competences.some((c) => c.problemeIndex === e.problemeIndex && c.gardee !== null) : null;
+      // Seul le joueur dont l'idée est retenue a quelque chose à faire.
+      if (!e.attribution || e.idee?.joueurId !== j.id) return null;
+      return j.competences.some((c) => c.problemeIndex === e.problemeIndex && c.gardee !== null);
     default: return null;
   }
 }
@@ -609,7 +560,6 @@ function partiesCommunes(e) {
   return {
     code: e.code,
     phase: e.phase,
-    solo: !!e.solo,
     problemeIndex: e.problemeIndex,
     nbProblemes: e.problemes.length,
     probleme: avecProbleme ? vueProbleme(p) : null,
@@ -621,6 +571,23 @@ function partiesCommunes(e) {
     minuteurDuree: avecMinuteur ? e.minuteurFin - e.minuteurDebut : null,
     tempsEcoule: avecMinuteur && !!e.tempsEcoule,
     compte: compte(e),
+    // L'idée du tour, montrée à tout le monde (écran et téléphones) : le pseudo de
+    // son auteur, ses propres mots et la compétence qu'il écrit sur sa fiche papier.
+    idee: vueIdee(e),
+  };
+}
+
+function vueIdee(e) {
+  if (e.phase !== "competences" || !e.attribution || !e.idee) return null;
+  const j = e.idee.joueurId ? e.joueurs[e.idee.joueurId] : null;
+  const c = j ? j.competences.find((x) => x.problemeIndex === e.problemeIndex) : null;
+  if (!j || !c) return { aucune: true };
+  return {
+    pseudo: j.pseudo,
+    avatar: j.avatar,
+    texte: c.preuve,
+    competence: { code: c.code, libelle: c.libelle, riasec: c.riasec, mots: c.mots },
+    notee: c.gardee !== null,
   };
 }
 

@@ -6,20 +6,18 @@ Projet réalisé à Nice les 18, 19 et 20 novembre 2026, sur le thème **« L'or
 
 ## Le projet
 
-Sujet 4 : le détecteur du potentiel caché. **Déclic est un jeu de rôle des compétences** : chaque jeune joue son propre rôle face à des problèmes du quotidien (un scooter en panne, deux enfants à garder un mercredi de pluie, le serveur Discord de l'équipe à remotiver, la caisse de la buvette du club qui ne tombe pas juste… : une situation par profil RIASEC, d'après les exemples du sujet). Un maître du jeu (MJ) IA révèle les compétences qu'il montre, et chacun repart avec sa fiche pour l'entretien avec le psychologue du travail ou le conseiller.
+Sujet 4 : le détecteur du potentiel caché. **Déclic est un jeu de rôle des compétences** : chaque jeune joue son propre rôle face à des problèmes du quotidien (l'histoire du tournoi du quartier, du budget à la caisse de la buvette). Un maître du jeu (MJ) IA révèle les compétences qu'il montre, et chacun repart avec sa fiche pour l'entretien avec le psychologue du travail ou le conseiller.
 
 Une partie se joue à 1 à 6 joueurs autour d'un **écran commun**, chacun avec **son téléphone** (QR code, rien à installer) et une **fiche personnage papier** :
 
 1. **Création du personnage** : chacun raconte 1 ou 2 choses qu'il a déjà faites ; le MJ en tire ses premières compétences, qu'il garde ou refuse.
-2. **Un problème illustré** s'affiche. Chacun valide « J'ai lu », le groupe discute à voix haute (minuteur), puis chacun répond **en privé** sur son téléphone.
+2. **Une histoire, « Le tournoi du quartier »** : 6 épisodes qui s'enchaînent (le budget, l'affiche, une embrouille dans l'équipe, le téléphone mystère, le jour J, la caisse de la buvette), un par profil RIASEC. Chaque épisode s'affiche sur l'écran commun ; chacun valide « J'ai lu », le groupe discute à voix haute (minuteur), puis chacun répond **en privé** sur son téléphone.
 3. **Il n'y a ni bonne ni mauvaise réponse.** Seuls « je ne sais pas » et la violence sont refusés, au joueur concerné seulement, qui réécrit sa réponse.
-4. **Chaque joueur reçoit une compétence** tirée de sa réponse, avec sa propre phrase comme preuve. Il la garde ou non.
-5. À la fin : une **fiche imprimable** (3 pages A4) qui **complète le Rapport des Possibles** du Centre, sur son modèle : les compétences révélées avec leurs preuves (ce que le rapport ne contient pas, pour le 4e temps de l'entretien), les intérêts RIASEC classés par ordre, et le champ des possibles rangé par les 5 zones de métiers du rapport, avec un lien vers orientation-regionsud.fr pour les formations et les salaires.
-
-**Mode solo** : le bouton « Jouer seul » de l'accueil lance une partie sur un seul appareil (téléphone ou PC), sans animateur ni écran commun : la situation s'affiche sur l'appareil, pas de discussion ni de minuteur, et la même fiche à la fin.
+4. **L'idée du tour** : le MJ IA retient l'idée qui fait avancer l'histoire et l'affiche sur l'écran, avec le pseudo de son auteur et ses propres mots. Ce joueur reçoit la compétence sur son téléphone et **l'écrit sur sa fiche papier**. À idées comparables, le MJ préfère quelqu'un qui n'a pas encore été retenu : chacun a sa chance.
+5. À la fin : une **fiche imprimable** (3 pages A4) qui **complète le Rapport des Possibles** du Centre, sur son modèle : les compétences révélées avec leurs preuves, les intérêts RIASEC classés par ordre, et le champ des possibles rangé par les 5 zones de métiers du rapport.
 
 Garde-fous :
-- les réponses sont privées : l'écran commun montre **qui** a répondu, jamais **ce qu'il** a répondu, ni qui a trouvé ;
+- les réponses sont privées : l'écran commun montre **qui** a répondu ; seule l'idée retenue est affichée, avec le pseudo de son auteur ;
 - pas de bonne ni de mauvaise réponse : personne n'est jamais jugé ;
 - le MJ ne choisit que dans une liste fermée de compétences ROME 4.0 par problème, et la preuve doit être une citation exacte du joueur ;
 - un MJ de secours déterministe prend le relais si l'IA ne répond pas : la partie ne bloque jamais ;
