@@ -1,10 +1,10 @@
 {
-  "nom": "Nom du projet",
-  "pitch": "Une phrase qui dit ce que fait le projet.",
-  "description": "Premier paragraphe : le problème que vous résolvez.\n\nDeuxième paragraphe : comment ça marche, et ce que vous avez construit en trois jours.",
+  "nom": "Potentiel caché",
+  "pitch": "Un jeu de rôle où chaque jeune joue son propre rôle : un maître du jeu IA révèle les compétences qu'il montre, preuves à l'appui, et il repart avec sa fiche pour son conseiller.",
+  "description": "Beaucoup de jeunes en décrochage disent ne rien savoir faire, alors qu'ils gardent leurs frères, réparent des scooters ou animent une communauté en ligne. Ces compétences restent cachées, et les tests classiques avantagent ceux qui savent déjà parler d'eux.\n\nPotentiel caché en fait un jeu de groupe. L'écran commun affiche un problème du quotidien illustré (un téléphone cassé, un conflit sur Discord, un scooter en panne). Chacun lit, on discute à voix haute, puis chacun répond en privé sur son téléphone : personne ne voit la réponse des autres, et personne n'apprend qu'il s'est trompé. Le maître du jeu IA lit toutes les réponses, donne un indice si besoin, puis attribue à chaque joueur une compétence du référentiel ROME 4.0, justifiée par sa propre phrase. Le joueur la garde ou la refuse, et colle la gommette de sa couleur RIASEC sur sa fiche papier.\n\nÀ la fin, chacun repart avec une fiche pour le psychologue du travail ou le conseiller : compétences gardées et leurs preuves, profil d'intérêts RIASEC, et métiers proches tirés d'O*NET et d'ESCO. Pas de score, pas de verdict : le jeu fait parler, l'humain décide.",
   "ecoles": ["École 1", "École 2"],
-  "stack": ["HTML", "JavaScript"],
-  "demo": "",
+  "stack": ["Cloudflare Workers", "Durable Objects", "JavaScript", "Claude (Anthropic)", "ROME 4.0", "O*NET", "ESCO"],
+  "demo": "https://potentiel-cache.planbhunalp.workers.dev",
   "video": "",
   "captures": []
 }
