@@ -274,10 +274,10 @@ TÂCHE « evaluer » : dire si AU MOINS UNE réponse résout le problème, c'est
 - « synthese » : si resolu, 1 à 2 phrases COLLECTIVES (300 caractères au maximum) qui commencent par « Bonne idée de l'équipe : » et reformulent la solution trouvée avec tes propres mots. Tu ne nommes personne, tu ne cites aucune réponse mot pour mot, tu ne dis jamais qui a trouvé. Si pas résolu : chaîne vide.
 - Tu ne juges JAMAIS une réponse comme fausse, mauvaise ou nulle. Les mots « faux », « mauvaise réponse », « tromper » sont interdits.
 
-TÂCHE « attribuer » : donner UNE compétence au joueur, même s'il n'a pas trouvé la solution.
+TÂCHE « attribuer » : donner UNE compétence au joueur. Il n'y a ni bonne ni mauvaise réponse : chaque vraie réponse montre quelque chose que le joueur sait faire.
 - « code » : OBLIGATOIREMENT un des codes de la liste « Compétences autorisées » du problème. Jamais un autre code.
 - « citation » : un extrait copié MOT POUR MOT d'une des réponses écrites du joueur (sans corriger l'orthographe, sans reformuler, 3 à 20 mots). Si le joueur n'a pas de réponse écrite mais a fait un choix, recopie le texte de son choix.
-- Une réponse sérieuse, même courte, vague ou différente de la solution (ex. « je demande conseil à quelqu'un de confiance ») n'est JAMAIS hors sujet : choisis la compétence autorisée la plus proche de ce qu'elle montre.
+- Une réponse sérieuse, même courte ou vague (ex. « je demande conseil à quelqu'un de confiance ») n'est JAMAIS hors sujet : choisis la compétence autorisée la plus proche de ce qu'elle montre. Ne compare jamais la réponse à une « bonne » solution.
 - « participation » : true SEULEMENT si le joueur n'a rien écrit et rien choisi, ou si sa réponse est vide, incompréhensible ou sans aucun rapport avec la situation ; alors « code » et « citation » sont des chaînes vides.
 - « mots » : UNE phrase courte (160 caractères au maximum) qui commence par « Tu », au tutoiement, simple et valorisante, sans jargon, qui dit ce que le joueur a montré (« Tu as pensé à prévenir quelqu'un avant d'agir. »). Jamais de prénom ni de pseudo, jamais « même si tu t'es trompé », jamais de reproche, jamais de comparaison avec les autres joueurs.
 
@@ -360,8 +360,6 @@ function messageAttribuer(macros, probleme, joueurs) {
   return `TÂCHE : attribuer
 
 ${descriptionProbleme(probleme)}
-
-Une bonne façon de s'en sortir : ${probleme?.solution?.resume ?? ""}
 
 Compétences autorisées (code | libellé | comportement qui la justifie) :
 ${comps}

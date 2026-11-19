@@ -2,7 +2,8 @@
 // avec la vraie machine à états (src/jeu.js), le MJ mock (src/mj.js), l'analyse mock
 // (src/analyse.js), le rendu de l'écran commun (public/js/ecran.js) et de la fiche
 // (public/js/fiche.js). Aucun réseau. Vérifie les règles critiques de la SPEC :
-// réponses privées, une compétence par joueur et par problème, les deux branches,
+// réponses privées, une compétence par joueur et par problème, pas de bonne réponse
+// (« je ne sais pas » refusé, le joueur réécrit),
 // aucun mot interdit, aucun « undefined » à l'écran.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -32,7 +33,7 @@ async function jouerPartie() {
   const effets = [];
   const vuesEcran = [];
   const vuesJoueurs = Object.fromEntries(IDS.map((id) => [id, []]));
-  const branches = { resolu: 0, indice: 0 };
+  let refus = 0;
   const reponses = {}; // problemeIndex → [texte par joueur]
 
   const capturer = () => {
@@ -54,8 +55,6 @@ async function jouerPartie() {
       if (e.type === "analyser_recit") {
         const res = await analyser(e.texte, { rome: ROME, mode: "mock", max: 3 });
         app({ t: "analyse_faite", joueurId: e.joueurId, competences: res.competences.slice(0, 3).map(versCompetenceDepart) });
-      } else if (e.type === "evaluer") {
-        app({ t: "evaluation_faite", tourId: e.tourId, resultat: await mj.evaluer(e) });
       } else if (e.type === "attribuer") {
         app({ t: "attribution_faite", problemeIndex: e.problemeIndex, competences: await mj.attribuer(e) });
       }
@@ -80,55 +79,41 @@ async function jouerPartie() {
 
   for (let k = 0; k < 6; k++) {
     const p = etat.catalogue[etat.problemes[k]];
-    const correct = p.choix.findIndex((c) => c.correct);
-    const resoudre = k % 2 === 0; // un problème sur deux : résolu, l'autre : indice
     ecran({ t: "suivant" }); // presentation → echange (minuteur)
     assert.equal(etat.phase, "echange");
     assert.ok(etat.minuteurFin > 0, "minuteur sur l'échange");
     ecran({ t: "fin_minuteur" });
     assert.equal(etat.phase, "reponse");
+    // « Je ne sais pas » : refusé pour ce joueur seulement, il réécrit.
+    const r = appliquer(etat, { t: "reponse", texte: "Je sais pas trop, on verra bien", role: "joueur", joueurId: IDS[0] }, t);
+    assert.match(r.erreur ?? "", /Toutes les idées comptent/);
+    assert.equal(r.etat, etat);
+    refus++;
     reponses[k] = [
-      resoudre ? `${p.choix[correct].texte} ${marque(k, 0)}` : `Je sais pas trop, on verra bien ${marque(k, 0)}`,
-      `Peut-être attendre un peu ${marque(k, 1)}`,
+      k % 2 === 0 ? `${p.choix[0].texte} ${marque(k, 0)}` : `Je demande conseil à quelqu'un de confiance ${marque(k, 0)}`,
+      `Je propose qu'on en parle tous ensemble ${marque(k, 1)}`,
     ];
     joueur(0, { t: "reponse", texte: reponses[k][0] });
     joueur(1, { t: "reponse", texte: reponses[k][1] });
-    // Le joueur 3 ne répond pas : la fin du minuteur rend sa réponse vide.
+    // Le joueur 3 ne répond pas : l'animateur passe, sa réponse est vide.
     ecran({ t: "fin_minuteur" });
-    assert.equal(etat.phase, "evaluation");
-    await vider();
-    if (resoudre) {
-      assert.equal(etat.phase, "solution", `${p.id} : la bonne proposition doit résoudre (mock)`);
-      branches.resolu++;
-    } else {
-      assert.equal(etat.phase, "indice", `${p.id} : réponses sans mot-clé → indice`);
-      branches.indice++;
-      ecran({ t: "suivant" });
-      assert.equal(etat.phase, "echange2");
-      assert.ok(etat.minuteurFin > 0, "minuteur sur le 2e échange");
-      ecran({ t: "fin_minuteur" });
-      assert.equal(etat.phase, "choix");
-      joueur(0, { t: "choix", index: correct });
-      joueur(1, { t: "choix", index: (correct + 1) % 4 });
-      ecran({ t: "fin_minuteur" });
-      assert.equal(etat.phase, "solution");
-    }
-    ecran({ t: "suivant" }); // solution → competences
+    assert.equal(etat.phase, "competences", "directement les compétences");
     await vider();
     joueur(0, { t: "garder_competence", garder: true });
     joueur(1, { t: "garder_competence", garder: true });
     joueur(2, { t: "garder_competence", garder: k !== 1 });
   }
   assert.equal(etat.phase, "fin");
-  return { etat, vuesEcran, vuesJoueurs, branches, reponses };
+  return { etat, vuesEcran, vuesJoueurs, refus, reponses };
 }
 
 const partie = jouerPartie();
 
-test("intégration : partie de 6 problèmes, les deux branches", async () => {
-  const { branches } = await partie;
-  assert.equal(branches.resolu, 3);
-  assert.equal(branches.indice, 3);
+test("intégration : partie de 6 problèmes, sans évaluation, indice ni choix parmi 4", async () => {
+  const { refus, vuesEcran } = await partie;
+  assert.equal(refus, 6, "« je ne sais pas » refusé à chaque problème");
+  const phases = new Set(vuesEcran.map((v) => v.phase));
+  for (const ph of ["evaluation", "indice", "echange2", "choix", "solution"]) assert.ok(!phases.has(ph), `plus de phase ${ph}`);
 });
 
 test("intégration : une compétence par joueur et par problème, même sans réponse", async () => {
@@ -150,7 +135,7 @@ test("intégration : une compétence par joueur et par problème, même sans ré
       }
     }
   }
-  // Le joueur qui n'a rien écrit : participation aux problèmes résolus (aucun choix possible).
+  // Le joueur qui n'a rien écrit (l'animateur est passé) : participation.
   const silencieux = etat.joueurs[IDS[2]].competences.filter((c) => c.problemeIndex !== null);
   assert.ok(silencieux.every((c) => c.typePreuve === "participation"));
 });
@@ -213,7 +198,8 @@ test("intégration : la fiche (format de Partie.fiche) se rend avec ses compéte
   const html = rendreFiche(fiche, { rome: ROME, onet: ONET });
   assert.match(html, /Lina/);
   assert.doesNotMatch(html, /undefined|\[object Object\]|NaN/);
-  assert.doesNotMatch(html, /\bfaux\b|mauvaise r[ée]ponse/i);
+  // « faux cheveux » peut apparaître dans la description d'un métier (maquilleur) : ce n'est pas un jugement.
+  assert.doesNotMatch(html, /\bfaux\b(?! cheveux)|mauvaise r[ée]ponse/i);
   for (const c of fiche.jeu) assert.ok(html.includes(c.code), `compétence ${c.code} sur la fiche`);
   assert.match(html, /Pour le psy/);
   // Compétence non gardée (Jade, problème 2) : absente de sa fiche.

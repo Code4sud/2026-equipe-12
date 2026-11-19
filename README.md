@@ -12,13 +12,13 @@ Une partie se joue à 1 à 6 joueurs autour d'un **écran commun**, chacun avec 
 
 1. **Création du personnage** : chacun raconte 1 ou 2 choses qu'il a déjà faites ; le MJ en tire ses premières compétences, qu'il garde ou refuse.
 2. **Un problème illustré** s'affiche. Chacun valide « J'ai lu », le groupe discute à voix haute (minuteur), puis chacun répond **en privé** sur son téléphone.
-3. Le MJ lit toutes les réponses. Dès qu'une personne a trouvé, le problème est résolu ; sinon, un indice, une nouvelle discussion et 4 propositions.
-4. **Chaque joueur reçoit une compétence**, même s'il n'a pas trouvé, avec sa propre phrase comme preuve. Il la garde ou non, et colle la gommette de sa couleur RIASEC sur sa fiche.
+3. **Il n'y a ni bonne ni mauvaise réponse.** Seuls « je ne sais pas » et la violence sont refusés, au joueur concerné seulement, qui réécrit sa réponse.
+4. **Chaque joueur reçoit une compétence** tirée de sa réponse, avec sa propre phrase comme preuve. Il la garde ou non, et colle la gommette de sa couleur RIASEC sur sa fiche.
 5. À la fin : une **fiche imprimable** avec les compétences gardées, le profil d'intérêts RIASEC et des métiers proches (O\*NET, ESCO).
 
 Garde-fous :
 - les réponses sont privées : l'écran commun montre **qui** a répondu, jamais **ce qu'il** a répondu, ni qui a trouvé ;
-- personne n'est jamais informé qu'il s'est trompé ;
+- pas de bonne ni de mauvaise réponse : personne n'est jamais jugé ;
 - le MJ ne choisit que dans une liste fermée de compétences ROME 4.0 par problème, et la preuve doit être une citation exacte du joueur ;
 - un MJ de secours déterministe prend le relais si l'IA ne répond pas : la partie ne bloque jamais ;
 - pas de score, pas de verdict : le jeune valide chaque compétence ;

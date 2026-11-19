@@ -4,7 +4,8 @@
 //   npm run simulate [-- http://localhost:8787]
 //
 // Crée une partie de 2 problèmes, connecte 1 écran + 3 joueurs en WebSocket
-// (WebSocket global de Node 22), joue un problème RÉSOLU puis un NON RÉSOLU, et vérifie :
+// (WebSocket global de Node 22), joue 2 problèmes (pas de bonne réponse : directement
+// les compétences ; « je ne sais pas » et la violence sont refusés au joueur concerné), et vérifie :
 //   - chaque joueur finit avec 2 compétences de jeu (une par problème) ;
 //   - l'écran n'a JAMAIS reçu le texte d'une réponse (ni d'un récit) ;
 //   - aucun message ne contient « faux » ou « mauvaise réponse » ;
@@ -178,7 +179,7 @@ async function main() {
       const v = msg.vue;
       console.log(
         `  [écran] etat phase=${v.phase} probleme=${v.problemeIndex ?? "-"} compte=${v.compte ? `${v.compte.repondu}/${v.compte.total}` : "-"}` +
-          `${v.evaluation ? ` resolu=${v.evaluation.resolu}` : ""}${v.indice ? " indice" : ""}${v.choix ? ` choix=${v.choix.length}` : ""}${v.solution ? " solution" : ""}`,
+          "",
       );
     } else console.log(`  [écran] ${brut}`);
   };
@@ -250,12 +251,9 @@ async function main() {
     `On en parle ensemble et on cherche une idée ${marque("a2")}`,
     `Je demande conseil à quelqu'un de confiance ${marque("a3")}`,
   ];
-  exiger(nbMotsCles(reponses1[0], p1.solution.motsCles) >= 2, "la réponse 1 contient au moins 2 mots-clés (mock : résolu)");
   joueurs.forEach((j, i) => j.envoyer({ t: "reponse", texte: reponses1[i] }));
-  v = (await ecran.attendreVue((v) => v.phase === "solution" && v.problemeIndex === 0, "la solution du problème 1")).vue;
-  verifier(v.evaluation?.resolu === true, "problème 1 résolu");
-  verifier(typeof v.solution === "string" && v.solution.length > 0, "l'écran affiche la solution commune");
-  ecran.envoyer({ t: "suivant" });
+  await ecran.attendreVue((v) => v.phase === "competences" && v.problemeIndex === 0, "les compétences du problème 1");
+  verifier(true, "toutes les réponses reçues : directement les compétences (ni évaluation, ni indice, ni choix)");
   for (const j of joueurs) {
     const vj = (await j.attendreVue((v) => v.phase === "competences" && v.problemeIndex === 0 && v.moi?.competenceDuProbleme, "sa compétence du problème 1")).vue;
     const c = vj.moi.competenceDuProbleme;
@@ -277,7 +275,7 @@ async function main() {
 
   joueurs.forEach((j) => j.envoyer({ t: "garder_competence", garder: true }));
 
-  // 5. Problème 2 : non résolu.
+  // 5. Problème 2 : « je ne sais pas » et violence refusés, le joueur réécrit.
   v = (await ecran.attendreVue((v) => v.phase === "presentation" && v.problemeIndex === 1, "le problème 2")).vue;
   const p2 = PROBLEMES.get(v.probleme?.id);
   exiger(p2, `problème 2 connu : ${v.probleme?.id}`);
@@ -285,22 +283,19 @@ async function main() {
   await ecran.attendreVue((v) => v.phase === "echange" && v.problemeIndex === 1, "l'échange 2");
   ecran.envoyer({ t: "fin_minuteur" });
   await ecran.attendreVue((v) => v.phase === "reponse" && v.problemeIndex === 1, "la réponse 2");
-  const reponses2 = [`Je sais pas trop, on verra bien ${marque("b1")}`, `Peut-être attendre un peu ${marque("b2")}`, ""];
-  for (const t of reponses2) exiger(nbMotsCles(t, p2.solution.motsCles) < 2, `réponse « ${t || "(vide)"} » sans mots-clés (mock : non résolu)`);
-  joueurs.forEach((j, i) => j.envoyer({ t: "reponse", texte: reponses2[i] }));
-  v = (await ecran.attendreVue((v) => v.phase === "indice", "l'indice du problème 2")).vue;
-  verifier(typeof v.indice === "string" && v.indice.length > 0, "problème 2 non résolu : l'écran affiche un indice");
-  joueurs.forEach((j) => j.envoyer({ t: "lu" }));
-  await ecran.attendreVue((v) => v.phase === "echange2", "le 2e échange");
-  verifier(true, "tout le monde a lu l'indice : le 2e échange démarre seul");
+  const reponses2 = [`Je propose qu'on demande de l'aide ${marque("b1")}`, `Peut-être attendre un peu et en parler à un adulte ${marque("b2")}`, ""];
+  joueurs[0].envoyer({ t: "reponse", texte: reponses2[0] });
+  for (const [texte, motif] of [["Je sais pas trop, on verra bien", /Toutes les idées comptent/], ["Je le frappe", /sans violence/]]) {
+    const depuis = joueurs[1].messages.length;
+    joueurs[1].envoyer({ t: "reponse", texte });
+    const m = await joueurs[1].attendre((x) => x.t === "erreur", `le refus de « ${texte} »`, depuis);
+    verifier(motif.test(m.message ?? ""), `« ${texte} » refusé à ce joueur seulement : « ${m.message} »`);
+  }
+  joueurs[1].envoyer({ t: "reponse", texte: reponses2[1] });
+  // Le 3e joueur ne répond pas : l'animateur passe (il reçoit la participation).
+  await ecran.attendreVue((v) => v.phase === "reponse" && v.compte?.repondu === 2, "2 réponses sur 3");
+  verifier(ecran.vue?.phase === "reponse", "le refus n'a rien changé pour les autres");
   ecran.envoyer({ t: "fin_minuteur" });
-  v = (await ecran.attendreVue((v) => v.phase === "choix", "les 4 propositions")).vue;
-  verifier(Array.isArray(v.choix) && v.choix.length === 4, "4 propositions affichées");
-  verifier(!JSON.stringify(v).includes('"correct"'), "l'écran ne dit pas quelle proposition est correcte");
-  joueurs.forEach((j, i) => j.envoyer({ t: "choix", index: i }));
-  v = (await ecran.attendreVue((v) => v.phase === "solution" && v.problemeIndex === 1, "la solution du problème 2")).vue;
-  verifier(v.evaluation?.resolu === false && typeof v.solution === "string", "l'écran affiche la bonne solution");
-  ecran.envoyer({ t: "suivant" });
   for (const j of joueurs) {
     const vj = (await j.attendreVue((v) => v.phase === "competences" && v.problemeIndex === 1 && v.moi?.competenceDuProbleme, "sa compétence du problème 2")).vue;
     const c = vj.moi.competenceDuProbleme;
@@ -362,6 +357,6 @@ main()
       console.error(`\n${echecs} vérification(s) en échec.`);
       process.exit(1);
     }
-    console.log("\n✔ Simulation réussie : partie complète, 2 problèmes (un résolu, un non résolu).");
+    console.log("\n✔ Simulation réussie : partie complète, 2 problèmes (réponses refusées puis réécrites, absent → participation).");
     process.exit(0);
   });

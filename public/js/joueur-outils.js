@@ -2,13 +2,13 @@
 // Aucune logique de jeu : seulement de la mise en forme à partir de la vue.
 
 /** Phases où un minuteur tourne (SPEC §3.1). */
-const PHASES_MINUTEUR = new Set(["echange", "echange2", "reponse", "choix"]);
+const PHASES_MINUTEUR = new Set(["echange", "reponse"]);
 
 /** Durée nominale (s) du minuteur d'une phase d'après les réglages ; null si inconnue. */
 export function dureePhase(phase, reglages) {
   if (!reglages || typeof reglages !== "object") return null;
-  const s = phase === "echange" || phase === "echange2" ? reglages.dureeEchange
-    : phase === "reponse" || phase === "choix" ? reglages.dureeReponse
+  const s = phase === "echange" ? reglages.dureeEchange
+    : phase === "reponse" ? reglages.dureeReponse
     : null;
   return Number.isFinite(s) && s > 0 ? s : null;
 }

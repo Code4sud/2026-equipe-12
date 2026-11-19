@@ -166,7 +166,7 @@ const MOTS_HESITATION = new Set((
   "sais sait savoir savais jsp jsais chais sai jss idk dunno aucune aucun idee idees vois voit voir " +
   "attend attends attendre attendons attendrait attendrais verra verrai verrons rien bof euh heu hum hmm " +
   "bah ben beh trop peut etre peutetre comme ca jamais genre bref enfin voila quoi " +
-  "osef lol mdr ptdr xd ok okay oui non nan nope pas ne"
+  "osef lol mdr ptdr xd ok okay oui non nan nope pas ne bien"
 ).split(" "));
 
 /**
@@ -184,6 +184,47 @@ export function estRemplissage(texte, motsCles = []) {
   if (!reste) return true;
   if (compterMots(reste, motsCles) > 0) return false;
   return motsSignificatifs(reste).length < 3;
+}
+
+// ───────────────────────── Réponses refusées ─────────────────────────
+// Il n'y a ni bonne ni mauvaise réponse. Seules deux réponses sont refusées, et le
+// joueur réécrit la sienne : « je ne sais pas » (rien d'autre que de l'hésitation)
+// et la violence.
+
+/** Vrai si, une fois retirés les mots d'hésitation, il ne reste AUCUN mot porteur de sens. */
+export function estSansReponse(texte) {
+  const reste = sansAccents(texte)
+    .split(/[^a-z0-9]+/)
+    .filter((m) => m && !MOTS_HESITATION.has(m) && !/^(.)\1*$/.test(m) && !/^(e+u+h+|h+e+u+|h+m+)$/.test(m))
+    .join(" ");
+  return motsSignificatifs(reste).length === 0;
+}
+
+// Violence physique ou menace d'arme. Volontairement étroit : « frapper à la
+// porte », « taper un message », « signaler les insultes » restent acceptés.
+const VIOLENCE = [
+  /\bfrapp\w*\b(?!\s+(a|chez|au|aux)\b)/,
+  /\b(le|la|les|lui|leur)\s+(tape|taper|tapes|tapent|cogne|cogner|frappe|tue|tuer|bute|buter|plante|planter)\b/,
+  /\b(cogn|tabass|poignard|flingu|gifl|baffe|bagarr)\w*/,
+  /\b(tuer|buter)\b/,
+  /\b(cass|pet|explos|niqu|eclat|defonc)\w*\s+(la|sa|ta|leur|les)\s+(gueule|gueules|tronche|tete|face|figure|bouche)\b/,
+  /\bcoups?\s+de\s+(poing|pied|boule|tete|couteau)\b/,
+  /\b(couteau|arme|flingue|pistolet)\b/,
+  /\bse\s+battre\b|\bon\s+se\s+bat\b|\bje\s+me\s+bats?\b/,
+];
+export const estViolente = (texte) => {
+  const t = sansAccents(texte);
+  return VIOLENCE.some((r) => r.test(t));
+};
+
+export const MESSAGE_SANS_REPONSE = "Toutes les idées comptent ! Écris ce que tu ferais, même une toute petite idée.";
+export const MESSAGE_VIOLENCE = "Ici, on cherche une solution sans violence. Qu'est-ce que tu pourrais faire d'autre ?";
+
+/** Message à renvoyer au joueur si sa réponse est refusée, sinon null. */
+export function refusReponse(texte) {
+  if (estSansReponse(texte)) return MESSAGE_SANS_REPONSE;
+  if (estViolente(texte)) return MESSAGE_VIOLENCE;
+  return null;
 }
 
 // ───────────────────────── Preuve : une proposition entière ─────────────────────────

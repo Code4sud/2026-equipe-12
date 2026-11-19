@@ -6,7 +6,7 @@
 //   succès → { etat: <nouvel état (copie)>, effets: [...] }
 //   refus  → { etat: <le MÊME objet état, inchangé>, effets: [], erreur: "message en français" }
 
-import { clePseudo, lettresRiasec, normaliserPseudo } from "./texte.js";
+import { clePseudo, lettresRiasec, normaliserPseudo, refusReponse } from "./texte.js";
 
 export const AVATARS = ["🦊", "🐼", "🦁", "🐸", "🐙", "🦉", "🐢", "🐝", "🦄", "🐧", "🐯", "🐨"];
 
@@ -21,14 +21,13 @@ const MAX_DEPART = 3;
 const INTERNES = new Set([
   "minuteur_fini",
   "analyse_faite",
-  "evaluation_faite",
   "attribution_faite",
   "erreur_ia",
   "connexion",
   "deconnexion",
 ]);
 
-const PHASES_MINUTEUR = new Set(["echange", "reponse", "echange2", "choix"]);
+const PHASES_MINUTEUR = new Set(["echange", "reponse"]);
 
 // ───────────────────────── Tirage déterministe ─────────────────────────
 
@@ -115,7 +114,6 @@ export function creerEtat({ code, problemes, nbProblemes = 3, dureeEchange = 120
     // tout le monde ait répondu, ou que l'animateur passe à la suite.
     tempsEcoule: false,
     joueurs: {},
-    evaluation: null,
     attribution: null,
     finA: null,
   };
@@ -126,7 +124,7 @@ export function creerEtat({ code, problemes, nbProblemes = 3, dureeEchange = 120
 const longueur = (s) => [...s].length;
 const listeJoueurs = (e) => Object.values(e.joueurs);
 const problemeCourant = (e) => (e.problemeIndex === null ? null : e.catalogue[e.problemes[e.problemeIndex]] ?? null);
-const nouvelleReponse = () => ({ tour1: null, choix: null, lu: false, luIndice: false });
+const nouvelleReponse = () => ({ tour1: null, lu: false });
 const reponseCourante = (j, e) => j.reponses[e.problemeIndex] ?? (j.reponses[e.problemeIndex] = nouvelleReponse());
 
 function lancerMinuteur(e, phase, dureeS, maintenant) {
@@ -152,17 +150,9 @@ function entrerProbleme(e, index) {
   e.minuteurFin = null;
   e.minuteurDebut = null;
   e.tempsEcoule = false;
-  e.evaluation = null;
   e.attribution = null;
   for (const j of listeJoueurs(e)) j.reponses[index] = nouvelleReponse();
   return [];
-}
-
-// Indice lu (par tous, ou l'animateur passe) : 2e tour, nouvel échange.
-function lancerTour2(e, maintenant) {
-  e.tour = 2;
-  e.tourId = `${e.code}-${e.problemeIndex}-2`;
-  return lancerMinuteur(e, "echange2", e.reglages.dureeEchange, maintenant);
 }
 
 // Création close par l'animateur (écran `suivant`) : un joueur dont l'analyse
@@ -186,59 +176,40 @@ function departEnAttente(j) {
   j.competences = j.competences.filter((c) => c.problemeIndex !== null).concat(propositions.map((c) => ({ ...c })));
 }
 
-function effetEvaluer(e) {
-  return {
-    type: "evaluer",
-    tourId: e.tourId,
-    probleme: problemeCourant(e),
-    reponses: listeJoueurs(e).map((j) => ({ joueurId: j.id, texte: reponseCourante(j, e).tour1 ?? "" })),
-  };
-}
-
 function effetAttribuer(e) {
   const historique = {};
   for (const j of listeJoueurs(e)) {
     const r = reponseCourante(j, e);
     const t = typeof r.tour1 === "string" ? r.tour1.trim() : "";
-    historique[j.id] = { reponses: t ? [t] : [], choix: Number.isInteger(r.choix) ? r.choix : null };
+    historique[j.id] = { reponses: t ? [t] : [], choix: null };
   }
   return { type: "attribuer", problemeIndex: e.problemeIndex, probleme: problemeCourant(e), historique };
 }
 
+// Toutes les réponses sont là (ou l'animateur passe) : pas de « bonne réponse »
+// à chercher, le MJ donne directement une compétence à chacun.
 function finReponse(e, parMinuteur) {
   const effets = arreterMinuteur(e, parMinuteur);
   for (const j of listeJoueurs(e)) {
     const r = reponseCourante(j, e);
-    if (r.tour1 === null) r.tour1 = ""; // pas de réponse = réponse vide
+    if (r.tour1 === null) r.tour1 = ""; // pas de réponse (animateur passé) = réponse vide
   }
-  e.phase = "evaluation";
-  effets.push(effetEvaluer(e));
-  return effets;
-}
-
-function finChoix(e, parMinuteur) {
-  const effets = arreterMinuteur(e, parMinuteur);
-  e.phase = "solution";
-  return effets;
-}
-
-function lancerAttribution(e) {
   e.phase = "competences";
   e.attribution = null;
-  return [effetAttribuer(e)];
+  effets.push(effetAttribuer(e));
+  return effets;
 }
 
 /**
  * Effets IA que l'état attend encore (appel en cours, ou perdu si le Durable
- * Object a redémarré) : evaluer en `evaluation`, attribuer en `competences` sans
- * attribution, analyser_recit pour chaque joueur en `analyse` pendant la création.
+ * Object a redémarré) : attribuer en `competences` sans attribution,
+ * analyser_recit pour chaque joueur en `analyse` pendant la création.
  * Le DO s'en sert pour son chien de garde (repli sur le mock à l'échéance).
  */
 export function effetsIAEnAttente(etat) {
   if (!etat) return [];
   const e = structuredClone(etat);
   const effets = [];
-  if (e.phase === "evaluation") effets.push(effetEvaluer(e));
   if (e.phase === "competences" && !e.attribution) effets.push(effetAttribuer(e));
   // Analyse du récit : pendant la création, et après si l'animateur a clos la
   // création pendant l'analyse (le résultat deviendra des compétences en attente).
@@ -412,18 +383,15 @@ H.valider_depart = { role: "joueur", f(e, ev) {
   return [];
 } };
 
-// « J'ai lu » : la situation (presentation) ou l'indice. Quand TOUT le monde a lu,
-// la partie passe d'elle-même à la discussion ; l'animateur peut aussi passer.
+// « J'ai lu » : quand TOUT le monde a lu la situation, la partie passe d'elle-même
+// à la discussion ; l'animateur peut aussi passer.
 H.lu = { role: "joueur", f(e, ev) {
-  const champ = e.phase === "presentation" ? "lu" : e.phase === "indice" ? "luIndice" : null;
-  if (!champ) return "Il n'y a rien à lire pour l'instant.";
+  if (e.phase !== "presentation") return "Il n'y a rien à lire pour l'instant.";
   const r = reponseCourante(e.joueurs[ev.joueurId], e);
-  if (r[champ]) return [];
-  r[champ] = true;
-  if (!listeJoueurs(e).every((x) => reponseCourante(x, e)[champ])) return [];
-  return champ === "lu"
-    ? lancerMinuteur(e, "echange", e.reglages.dureeEchange, ev.__maintenant)
-    : lancerTour2(e, ev.__maintenant);
+  if (r.lu) return [];
+  r.lu = true;
+  if (!listeJoueurs(e).every((x) => reponseCourante(x, e).lu)) return [];
+  return lancerMinuteur(e, "echange", e.reglages.dureeEchange, ev.__maintenant);
 } };
 
 H.reponse = { role: "joueur", f(e, ev) {
@@ -431,20 +399,13 @@ H.reponse = { role: "joueur", f(e, ev) {
   if (typeof ev.texte !== "string") return "Réponse invalide.";
   const texte = ev.texte.trim();
   if (longueur(texte) > 500) return "Ta réponse est trop longue (500 caractères maximum).";
+  // « Je ne sais pas » ou violence : refusée, le joueur réécrit (on boucle tant
+  // que tout le monde n'a pas donné une vraie réponse).
+  const refus = refusReponse(texte);
+  if (refus) return refus;
   const j = e.joueurs[ev.joueurId];
   reponseCourante(j, e).tour1 = texte;
   if (listeJoueurs(e).every((x) => reponseCourante(x, e).tour1 !== null)) return finReponse(e, false);
-  return [];
-} };
-
-H.choix = { role: "joueur", f(e, ev) {
-  if (e.phase !== "choix") return "Ce n'est pas le moment de choisir.";
-  const p = problemeCourant(e);
-  const n = p?.choix?.length ?? 4;
-  if (!Number.isInteger(ev.index) || ev.index < 0 || ev.index >= n) return "Choix invalide.";
-  const j = e.joueurs[ev.joueurId];
-  reponseCourante(j, e).choix = ev.index;
-  if (listeJoueurs(e).every((x) => reponseCourante(x, e).choix !== null)) return finChoix(e, false);
   return [];
 } };
 
@@ -504,8 +465,6 @@ function finMinuteur(e, parMinuteur, maintenant) {
   switch (e.phase) {
     case "echange": return lancerMinuteur(e, "reponse", e.reglages.dureeReponse, maintenant);
     case "reponse": return finReponse(e, parMinuteur);
-    case "echange2": return lancerMinuteur(e, "choix", e.reglages.dureeReponse, maintenant);
-    case "choix": return finChoix(e, parMinuteur);
     default: return "Pas de minuteur en cours.";
   }
 }
@@ -520,35 +479,15 @@ H.suivant = { role: "ecran", f(e, ev) {
     case "presentation": return lancerMinuteur(e, "echange", e.reglages.dureeEchange, maintenant);
     case "echange": return lancerMinuteur(e, "reponse", e.reglages.dureeReponse, maintenant);
     case "reponse": return finReponse(e, false);
-    case "indice": return lancerTour2(e, maintenant);
-    case "echange2": return lancerMinuteur(e, "choix", e.reglages.dureeReponse, maintenant);
-    case "choix": return finChoix(e, false);
-    case "solution": return lancerAttribution(e);
     // Le MJ IA ne répond pas (appel perdu, réseau lent) : l'animateur relance
     // l'étape avec le MJ de secours (mock), immédiat. Un résultat en double est
-    // refusé par les gardes de tourId / problemeIndex / attribution déjà présente.
-    case "evaluation": return [{ ...effetEvaluer(e), secours: true }];
+    // refusé par les gardes de problemeIndex / attribution déjà présente.
     case "competences":
       if (!e.attribution) return [{ ...effetAttribuer(e), secours: true }];
       return problemeSuivant(e, maintenant);
     case "accueil": return "Pour commencer, utilise « Démarrer ».";
     default: return "Impossible de passer à l'étape suivante maintenant.";
   }
-} };
-
-H.evaluation_faite = { f(e, ev) {
-  if (e.phase !== "evaluation") return "Évaluation reçue hors phase.";
-  if (ev.tourId !== e.tourId) return "Évaluation périmée.";
-  const r = ev.resultat ?? {};
-  if (r.resolu === true) {
-    const s = typeof r.synthese === "string" && r.synthese.trim() ? r.synthese.trim() : null;
-    e.evaluation = { resolu: true, synthese: s, indiceIndex: null };
-    e.phase = "solution";
-  } else {
-    e.evaluation = { resolu: false, synthese: null, indiceIndex: 0 };
-    e.phase = "indice";
-  }
-  return [];
 } };
 
 H.attribution_faite = { f(e, ev) {
@@ -575,11 +514,6 @@ H.erreur_ia = { f(e, ev) {
     if (!j || j.depart.etat !== "analyse") return "Erreur IA hors contexte.";
     // Pendant la création, le joueur peut valider (0 proposition) ; après, la création est close.
     j.depart = { etat: e.phase === "creation" ? "a_valider" : "valide", propositions: [], gardees: [] };
-    return [];
-  }
-  if (e.phase === "evaluation" && ev.tourId === e.tourId) {
-    e.evaluation = { resolu: false, synthese: null, indiceIndex: 0 };
-    e.phase = "indice";
     return [];
   }
   if (e.phase === "competences" && !e.attribution) {
@@ -637,15 +571,13 @@ function vueProbleme(p) {
 }
 
 // Ce joueur a-t-il fait ce qu'on attend de lui dans cette phase (lu, répondu,
-// choisi, gardé sa compétence…) ? null si la phase n'attend rien des joueurs.
+// gardé sa compétence…) ? null si la phase n'attend rien des joueurs.
 function aFini(e, j) {
   const r = e.problemeIndex !== null ? j.reponses[e.problemeIndex] : null;
   switch (e.phase) {
     case "creation": return j.depart.etat === "valide";
     case "presentation": return !!r?.lu;
-    case "indice": return !!r?.luIndice;
     case "reponse": return r?.tour1 != null;
-    case "choix": return r?.choix != null;
     case "competences":
       return e.attribution ? j.competences.some((c) => c.problemeIndex === e.problemeIndex && c.gardee !== null) : null;
     default: return null;
@@ -663,12 +595,6 @@ function partiesCommunes(e) {
   const p = problemeCourant(e);
   const avecProbleme = !["accueil", "creation", "fin"].includes(e.phase);
   const avecMinuteur = PHASES_MINUTEUR.has(e.phase) && Number.isFinite(e.minuteurFin) && Number.isFinite(e.minuteurDebut);
-  const nonResolu = e.evaluation && e.evaluation.resolu === false;
-  const apresIndice = ["indice", "echange2", "choix", "solution", "competences"].includes(e.phase);
-  let solution = null;
-  if (e.phase === "solution" && p) {
-    solution = e.evaluation?.resolu ? e.evaluation.synthese ?? p.solution?.resume ?? null : p.solution?.resume ?? null;
-  }
   return {
     code: e.code,
     phase: e.phase,
@@ -683,12 +609,6 @@ function partiesCommunes(e) {
     minuteurDuree: avecMinuteur ? e.minuteurFin - e.minuteurDebut : null,
     tempsEcoule: avecMinuteur && !!e.tempsEcoule,
     compte: compte(e),
-    evaluation: ["solution", "competences"].includes(e.phase) && e.evaluation
-      ? { resolu: e.evaluation.resolu, synthese: e.evaluation.resolu ? e.evaluation.synthese : null }
-      : null,
-    indice: nonResolu && apresIndice && p ? p.indices?.[e.evaluation.indiceIndex] ?? null : null,
-    choix: e.phase === "choix" && p ? (p.choix ?? []).map((c) => c.texte) : null,
-    solution,
   };
 }
 
@@ -699,10 +619,10 @@ export function vue(etat, role, joueurId) {
     return {
       ...base,
       reglages: { ...etat.reglages },
-      // `aFini` : qui a lu / répondu / choisi, pour que l'animateur sache qui
+      // `aFini` : qui a lu / répondu / gardé sa compétence, pour que l'animateur sache qui
       // attendre. JAMAIS le contenu d'une réponse ni d'un choix.
       joueurs: js.map((j) => ({ pseudo: j.pseudo, avatar: j.avatar, connecte: j.connecte, aFini: aFini(etat, j) })),
-      attenteIA: etat.phase === "evaluation" || (etat.phase === "competences" && !etat.attribution),
+      attenteIA: etat.phase === "competences" && !etat.attribution,
       fin: etat.phase === "fin"
         ? { nbCompetencesTotal: js.reduce((n, j) => n + j.competences.filter((c) => c.gardee !== false).length, 0) }
         : null,
@@ -729,9 +649,8 @@ export function vue(etat, role, joueurId) {
       pseudo: j.pseudo,
       avatar: j.avatar,
       depart: structuredClone(j.depart),
-      aLu: etat.phase === "indice" ? !!r?.luIndice : !!r?.lu,
+      aLu: !!r?.lu,
       maReponse: r?.tour1 ?? null,
-      monChoix: r?.choix ?? null,
       competenceDuProbleme: competenceDuProbleme ? { ...competenceDuProbleme } : null,
       // Compétences encore sans réponse (gardee: null), hors celle du problème en
       // cours déjà montrée dans competenceDuProbleme : compétences de jeu (le
@@ -745,7 +664,7 @@ export function vue(etat, role, joueurId) {
         .sort((a, b) => (a.problemeIndex ?? -1) - (b.problemeIndex ?? -1) || (a.departIndex ?? 0) - (b.departIndex ?? 0)),
       competences: structuredClone(j.competences),
     },
-    attenteIA: etat.phase === "evaluation" || (etat.phase === "competences" && !etat.attribution) || j.depart.etat === "analyse",
+    attenteIA: (etat.phase === "competences" && !etat.attribution) || j.depart.etat === "analyse",
     fin: etat.phase === "fin"
       ? { lienFiche: `/fiche.html?code=${encodeURIComponent(etat.code)}&joueur=${encodeURIComponent(j.id)}` }
       : null,

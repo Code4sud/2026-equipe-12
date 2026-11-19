@@ -29,11 +29,6 @@ export const LIBELLES_PHASES = {
   presentation: "Présentation du problème",
   echange: "Discussion",
   reponse: "Réponses sur les téléphones",
-  evaluation: "Le MJ réfléchit",
-  indice: "Indice",
-  echange2: "Nouvelle discussion",
-  choix: "Propositions",
-  solution: "Solution",
   competences: "Compétences",
   fin: "Fin de la partie",
 };
@@ -50,7 +45,7 @@ export const RIASEC = {
 const DUREES_DEFAUT = { dureeEchange: 120, dureeReponse: 90 };
 const OPTIONS_ECHANGE = [60, 90, 120, 180, 240, 300];
 const OPTIONS_REPONSE = [45, 60, 90, 120, 180];
-const PHASES_MINUTEUR = new Set(["echange", "echange2", "reponse", "choix"]);
+const PHASES_MINUTEUR = new Set(["echange", "reponse"]);
 
 // ---------------------------------------------------------------------------
 // Fonctions pures (testables sous Node)
@@ -187,8 +182,8 @@ export function compteReponses(vue) {
 /** Durée nominale (s) du minuteur de la phase, d'après les réglages connus. */
 export function dureePhase(phase, reglages = {}) {
   const r = { ...DUREES_DEFAUT, ...reglages };
-  if (phase === "echange" || phase === "echange2") return r.dureeEchange;
-  if (phase === "reponse" || phase === "choix") return r.dureeReponse;
+  if (phase === "echange") return r.dureeEchange;
+  if (phase === "reponse") return r.dureeReponse;
   return null;
 }
 
@@ -198,21 +193,6 @@ export function progressionMinuteur(fin, total, maintenant) {
   return Math.max(0, Math.min(1, (fin - maintenant) / total));
 }
 
-/** Textes des 4 propositions (accepte des chaînes ou des objets { texte }). Jamais de « correct ». */
-export function textesChoix(vue) {
-  return (Array.isArray(vue?.choix) ? vue.choix : [])
-    .map((c) => (typeof c === "string" ? c : c?.texte ?? ""))
-    .filter(Boolean);
-}
-
-/** Texte de solution à afficher : synthèse collective si résolu, sinon la solution du problème. */
-export function texteSolution(vue) {
-  const ev = vue?.evaluation;
-  if (ev?.resolu && ev.synthese) return ev.synthese;
-  const s = vue?.solution;
-  if (typeof s === "string") return s;
-  return s?.resume ?? ev?.synthese ?? "";
-}
 
 /** Texte lu par la synthèse vocale pendant la présentation. */
 export function texteALire(vue) {
@@ -285,8 +265,7 @@ export function estRaccourciSuivant(e) {
 export function cleScene(vue) {
   return JSON.stringify([
     vue?.phase, vue?.problemeIndex ?? null, vue?.probleme?.id ?? null,
-    vue?.indice ?? null, vue?.choix ?? null, vue?.solution ?? null,
-    vue?.evaluation ?? null, vue?.fin ?? null,
+    vue?.fin ?? null,
     vue?.phase === "competences" ? !!vue.attenteIA : null,
   ]);
 }
@@ -304,22 +283,15 @@ export function commandesPour(vue) {
     case "presentation":
       return [{ id: "suivant", libelle: "Lancer la discussion", message: { t: "suivant" }, principal: true,
         aide: "La discussion démarre seule quand tout le monde a appuyé sur « J'ai lu ». Ce bouton n'attend pas." }];
-    case "indice":
-      return [{ id: "suivant", libelle: "Lancer la discussion", message: { t: "suivant" }, principal: true,
-        aide: "La discussion démarre seule quand tout le monde a lu l'indice. Ce bouton n'attend pas." }];
     // À la fin du minuteur, la partie N'AVANCE PAS seule : c'est l'animateur qui
-    // lance la suite (ou, pour les réponses et les choix, le dernier joueur qui répond).
+    // lance la suite (ou, pour les réponses, le dernier joueur qui répond).
     case "echange":
-    case "echange2":
-      return [{ id: "fin_minuteur", libelle: vue.phase === "echange" ? "Passer aux réponses" : "Passer aux propositions",
+      return [{ id: "fin_minuteur", libelle: "Passer aux réponses",
         message: { t: "fin_minuteur" }, principal: true,
         aide: vue.tempsEcoule ? "Le temps est écoulé : lance la suite quand le groupe est prêt." : "Arrête la discussion maintenant." }];
     case "reponse":
-    case "choix":
       return [{ id: "fin_minuteur", libelle: "Continuer sans attendre", message: { t: "fin_minuteur" }, principal: true,
         aide: "La suite démarre seule quand tout le monde a répondu. Ceux qui n'ont pas répondu ne perdent rien : ils auront quand même une compétence." }];
-    case "solution":
-      return [{ id: "suivant", libelle: "Suivant", message: { t: "suivant" }, principal: true }];
     case "competences": {
       const dernier = Number.isFinite(vue.nbProblemes) && vue.problemeIndex >= vue.nbProblemes - 1;
       return [{ id: "suivant", libelle: dernier ? "Voir la fin" : "Problème suivant", message: { t: "suivant" }, principal: true }];
@@ -404,7 +376,7 @@ export const BLOCS = {
   // Minuteur à 0 : la partie attend (pas d'enchaînement automatique).
   temps(vue) {
     if (!vue.tempsEcoule) return "";
-    const attente = vue.phase === "reponse" || vue.phase === "choix"
+    const attente = vue.phase === "reponse"
       ? "On attend ceux qui n'ont pas fini, ou l'animateur passe à la suite."
       : "L'animateur lance la suite quand vous êtes prêts.";
     return `<p class="temps-ecoule" role="status">⏰ Temps écoulé · ${attente}</p>`;
@@ -413,10 +385,8 @@ export const BLOCS = {
 
 function verbeCompte(phase) {
   switch (phase) {
-    case "presentation":
-    case "indice": return "ont lu";
+    case "presentation": return "ont lu";
     case "creation": return "sont prêts";
-    case "choix": return "ont choisi";
     case "competences": return "ont fait leur choix";
     default: return "ont répondu";
   }
@@ -482,10 +452,9 @@ export const SCENES = {
     return `<div class="minuteur-grille apparition">
       ${blocMinuteur()}
       <div class="pile large">
-        <p class="surtitre">${vue.phase === "echange2" ? "Nouvelle discussion" : "À vous de jouer"}</p>
+        <p class="surtitre">À vous de jouer</p>
         <p class="consigne-geante">Discutez entre vous&nbsp;!</p>
         <p class="situation">Parlez à voix haute : toutes les idées comptent. Rien à écrire pour l'instant.</p>
-        ${vue.phase === "echange2" && vue.indice ? `<p class="carte riasec riasec-E"><strong>Indice :</strong> ${echapper(vue.indice)}</p>` : ""}
         ${bloc("temps", vue)}
         ${rappelProbleme(vue)}
       </div>
@@ -498,58 +467,11 @@ export const SCENES = {
       <div class="pile large">
         <p class="surtitre">Chacun pour soi</p>
         <p class="consigne-geante">Écrivez votre réponse sur votre téléphone</p>
-        <p class="situation">Chaque réponse est privée : seul le MJ la lit.</p>
+        <p class="situation">Toutes les idées comptent. Chaque réponse est privée : seul le MJ la lit.</p>
         ${bloc("temps", vue)}
         ${bloc("compte", vue)}
         ${rappelProbleme(vue)}
       </div>
-    </div>`;
-  },
-
-  evaluation() {
-    return `<div class="pile centre large mj-reflechit apparition">
-      <div class="bulle" aria-hidden="true">🤔</div>
-      <h1>Le MJ réfléchit ${pointsAttente()}</h1>
-      <p class="situation discret">Il lit toutes les réponses du groupe.</p>
-    </div>`;
-  },
-
-  indice(vue) {
-    return `<div class="pile large apparition message-plein" style="max-width:1300px">
-      <p class="surtitre">Le MJ vous donne un coup de pouce</p>
-      <h2>Indice 💡</h2>
-      <p class="indice-geant">${echapper(vue.indice)}</p>
-      <p class="situation discret">Vous allez en reparler ensemble, puis choisir parmi 4 propositions. Appuie sur « J'ai lu » sur ton téléphone.</p>
-      ${bloc("compte", vue)}
-    </div>`;
-  },
-
-  choix(vue) {
-    const choix = textesChoix(vue);
-    return `<div class="pile large apparition scene-choix">
-      <div class="minuteur-grille">
-        ${blocMinuteur()}
-        <div class="pile">
-          <p class="surtitre">4 propositions</p>
-          <p class="consigne-geante" style="font-size:clamp(40px,3.8vw,88px)">Choisissez la vôtre sur votre téléphone</p>
-          ${bloc("temps", vue)}
-          ${bloc("compte", vue)}
-        </div>
-      </div>
-      <ol class="choix-liste">
-        ${choix.map((c, i) => `<li><span class="numero" aria-hidden="true">${i + 1}</span><span>${echapper(c)}</span></li>`).join("")}
-      </ol>
-    </div>`;
-  },
-
-  solution(vue) {
-    const resolu = !!vue.evaluation?.resolu;
-    return `<div class="pile large apparition message-plein" style="max-width:1300px">
-      ${resolu
-        ? `<p class="confettis" aria-hidden="true">🎉 ✨ 🎉</p><h1 class="resolu-titre">Problème résolu&nbsp;!</h1>`
-        : `<p class="surtitre">Une bonne façon de s'en sortir</p><h1>Voici une solution</h1>`}
-      <p class="solution-texte">${echapper(texteSolution(vue))}</p>
-      ${vue.probleme ? `<p class="rappel-probleme">${echapper(vue.probleme.titre)}</p>` : ""}
     </div>`;
   },
 
@@ -581,7 +503,6 @@ export const SCENES = {
     </div>`;
   },
 };
-SCENES.echange2 = SCENES.echange;
 
 /** HTML complet de la scène pour une vue. */
 export function rendreScene(vue, ctx = { origine: "" }) {
@@ -622,10 +543,9 @@ const DEMO_JOUEURS = [
 
 /** Liste des vues factices (une par étape du défilement), dépend de l'heure `maintenant`. */
 export function vuesDemo(maintenant = Date.now(), code = "KDMZ") {
-  const base = { code, nbProblemes: 2, minuteurFin: null, evaluation: null, indice: null, choix: null, solution: null, fin: null };
+  const base = { code, nbProblemes: 2, minuteurFin: null, fin: null };
   const joueurs = (n, repondu = 0) => DEMO_JOUEURS.slice(0, n).map((j, i) => ({ ...j, aFini: i < repondu }));
   const pb = (i, phase, extra = {}) => ({ ...base, phase, problemeIndex: i, probleme: DEMO_PROBLEMES[i], joueurs: joueurs(4), compte: null, ...extra });
-  const indice2 = "Et si chacun apportait quelque chose, au lieu de tout acheter ?";
   return [
     { ...base, phase: "accueil", problemeIndex: 0, probleme: null, joueurs: [], compte: null },
     { ...base, phase: "accueil", problemeIndex: 0, probleme: null, joueurs: joueurs(1), compte: null },
@@ -636,34 +556,13 @@ export function vuesDemo(maintenant = Date.now(), code = "KDMZ") {
     pb(0, "echange", { minuteurFin: maintenant + 120_000 }),
     pb(0, "reponse", { minuteurFin: maintenant + 90_000, joueurs: joueurs(4, 1), compte: { repondu: 1, total: 4 } }),
     pb(0, "reponse", { minuteurFin: maintenant + 12_000, joueurs: joueurs(4, 3), compte: { repondu: 3, total: 4 } }),
-    pb(0, "evaluation", { attenteIA: true }),
-    pb(0, "solution", {
-      evaluation: { resolu: true, synthese: "Bonne idée de l'équipe : prêter un téléphone pour prévenir le coach tout de suite, puis chercher une réparation à un prix correct." },
-      solution: "Prévenir le coach avec un autre téléphone, puis comparer les devis de réparation.",
-    }),
     pb(0, "competences", { attenteIA: true }),
     pb(0, "competences", { compte: { repondu: 2, total: 4 } }),
     pb(1, "presentation"),
     pb(1, "echange", { minuteurFin: maintenant + 120_000 }),
     pb(1, "reponse", { minuteurFin: maintenant + 90_000, compte: { repondu: 2, total: 4 } }),
-    pb(1, "evaluation", { attenteIA: true }),
-    pb(1, "indice", { evaluation: { resolu: false, synthese: null }, indice: indice2 }),
-    pb(1, "echange2", { indice: indice2, minuteurFin: maintenant + 120_000 }),
-    pb(1, "choix", {
-      indice: indice2, minuteurFin: maintenant + 90_000, compte: { repondu: 2, total: 4 },
-      choix: [
-        "Prendre le gâteau le moins cher du supermarché et s'arrêter là",
-        "Faire une liste, répartir : chacun apporte un truc, les 20 € servent au gâteau",
-        "Demander à chacun de remettre 10 € de plus",
-        "Reporter la fête au mois prochain pour avoir plus d'argent",
-      ],
-    }),
-    pb(1, "solution", {
-      indice: indice2, evaluation: { resolu: false, synthese: null },
-      solution: "Faire la liste de ce qu'il faut, puis répartir : chacun apporte quelque chose, et les 20 € servent pour le gâteau.",
-    }),
-    pb(1, "competences", { indice: indice2, attenteIA: true }),
-    pb(1, "competences", { indice: indice2, compte: { repondu: 1, total: 4 } }),
+    pb(1, "competences", { attenteIA: true }),
+    pb(1, "competences", { compte: { repondu: 1, total: 4 } }),
     { ...base, phase: "fin", problemeIndex: 1, probleme: null, joueurs: joueurs(4), compte: null, fin: { nbCompetencesTotal: 15 } },
   ];
 }

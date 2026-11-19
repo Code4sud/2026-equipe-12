@@ -333,19 +333,15 @@ test("Partie : init unique, fiche, partie complète en mode mock sans fuite vers
   const SECRET_A = "Je demande de l'aide à un pote zorglubA";
   const SECRET_B = "On cherche une solution ensemble zorglubB";
   await envoyer(a, { t: "reponse", texte: SECRET_A });
+  // « Je ne sais pas » : refusé pour ce joueur seulement (il réécrit).
+  await envoyer(b, { t: "reponse", texte: "je sais pas" });
+  assert.equal(b.recus.at(-1).t, "erreur");
+  assert.match(b.recus.at(-1).message, /Toutes les idées comptent/);
+  assert.equal(partie.etat.phase, "reponse");
   await envoyer(b, { t: "reponse", texte: SECRET_B });
-  await attendreIA(ctx);
-  assert.ok(["solution", "indice"].includes(partie.etat.phase), partie.etat.phase);
-  if (partie.etat.phase === "indice") {
-    await envoyer(ecran, { t: "suivant" }); // echange2
-    await envoyer(ecran, { t: "fin_minuteur" }); // choix
-    await envoyer(a, { t: "choix", index: 0 });
-    await envoyer(b, { t: "choix", index: 1 });
-  }
-  assert.equal(partie.etat.phase, "solution");
-  await envoyer(ecran, { t: "suivant" }); // attribuer
-  await attendreIA(ctx);
+  // Pas de bonne réponse à chercher : directement les compétences.
   assert.equal(partie.etat.phase, "competences");
+  await attendreIA(ctx);
   assert.ok(a.derniereVue().moi.competenceDuProbleme);
   await envoyer(a, { t: "garder_competence", garder: true });
   await envoyer(b, { t: "garder_competence", garder: false });
@@ -470,15 +466,15 @@ async function partieEnReponse(code, env = { MJ_MODE: "mock" }) {
   return { ctx, partie, ecran, a, envoyer };
 }
 
-test("Partie : appel IA perdu (redémarrage du DO) → le chien de garde relance l'évaluation avec le mock", async () => {
+test("Partie : appel IA perdu (redémarrage du DO) → le chien de garde relance l'attribution avec le mock", async () => {
   const env = { MJ_MODE: "mock" };
   const { ctx, partie, a, envoyer } = await partieEnReponse("BCDH", env);
   partie.lancerIA = async () => {}; // l'appel est perdu : aucun résultat ne reviendra
   const avant = Date.now();
   await envoyer(a, { t: "reponse", texte: "On éteint le téléphone et on le fait sécher" });
-  assert.equal(partie.etat.phase, "evaluation");
+  assert.equal(partie.etat.phase, "competences");
   const gardes = ctx.stockage.get("gardesIA");
-  const cle = cleIA({ type: "evaluer", tourId: partie.etat.tourId });
+  const cle = cleIA({ type: "attribuer", problemeIndex: 0 });
   assert.deepEqual(Object.keys(gardes), [cle], "échéance persistée avant l'appel");
   assert.ok(gardes[cle] >= avant + DELAI_GARDE_IA_MS && gardes[cle] <= Date.now() + DELAI_GARDE_IA_MS);
   assert.ok(ctx.alarme <= gardes[cle], "l'alarme sonne au plus tard à l'échéance");
@@ -487,14 +483,14 @@ test("Partie : appel IA perdu (redémarrage du DO) → le chien de garde relance
   let relancee = new Partie(ctx, env);
   await ctx.pret;
   await relancee.alarm();
-  assert.equal(relancee.etat.phase, "evaluation");
+  assert.equal(relancee.etat.attribution, null);
 
   // Échéance passée : le MJ de secours prend le relais.
   ctx.stockage.set("gardesIA", { [cle]: Date.now() - 1 });
   relancee = new Partie(ctx, env);
   await ctx.pret;
   await relancee.alarm();
-  assert.ok(["solution", "indice"].includes(relancee.etat.phase), relancee.etat.phase);
+  assert.ok(relancee.etat.attribution, "attribution faite par le mock");
   assert.deepEqual(ctx.stockage.get("gardesIA"), {}, "échéance retirée");
   assert.ok(ctx.alarme > Date.now(), "alarme d'abandon reprogrammée");
 });
@@ -524,16 +520,8 @@ test("Partie : chien de garde en création (récit resté « en analyse ») et e
   await partie.traiter({ t: "valider_depart", garder: partie.etat.joueurs["joueur-aaaa-1111"].depart.propositions.map(() => true), role: "joueur", joueurId: "joueur-aaaa-1111" });
   await partie.traiter({ t: "suivant", role: "ecran" }); // echange
   await partie.traiter({ t: "fin_minuteur", role: "ecran" }); // reponse
-  await partie.traiter({ t: "reponse", texte: "Je le sèche", role: "joueur", joueurId: "joueur-aaaa-1111" });
-  await attendreIA(ctx);
-  if (partie.etat.phase === "indice") {
-    await partie.traiter({ t: "suivant", role: "ecran" });
-    await partie.traiter({ t: "fin_minuteur", role: "ecran" });
-    await partie.traiter({ t: "fin_minuteur", role: "ecran" });
-  }
-  assert.equal(partie.etat.phase, "solution");
   partie.lancerIA = async () => {};
-  await partie.traiter({ t: "suivant", role: "ecran" });
+  await partie.traiter({ t: "reponse", texte: "Je le sèche", role: "joueur", joueurId: "joueur-aaaa-1111" });
   assert.equal(partie.etat.phase, "competences");
   assert.equal(partie.etat.attribution, null);
   ctx.stockage.set("gardesIA", { [cleIA({ type: "attribuer", problemeIndex: 0 })]: Date.now() - 1 });
@@ -547,14 +535,14 @@ test("Partie : chien de garde en création (récit resté « en analyse ») et e
 test("Partie : « Suivant » pendant que le MJ réfléchit relance tout de suite avec le MJ de secours", async () => {
   const { ctx, partie, ecran, a, envoyer } = await partieEnReponse("BCDK");
   // MJ IA qui ne répond jamais.
-  partie.mj = { evaluer: () => new Promise(() => {}), attribuer: () => new Promise(() => {}) };
+  partie.mj = { attribuer: () => new Promise(() => {}) };
   await envoyer(a, { t: "reponse", texte: "On éteint le téléphone et on le fait sécher" });
-  assert.equal(partie.etat.phase, "evaluation");
+  assert.equal(partie.etat.phase, "competences");
   ctx.enAttente.length = 0; // l'appel bloqué n'est pas attendu
   await envoyer(ecran, { t: "suivant" });
   assert.equal(ecran.recus.at(-1).t, "etat", "accepté, pas d'erreur");
   await ctx.enAttente.shift();
-  assert.ok(["solution", "indice"].includes(partie.etat.phase), partie.etat.phase);
+  assert.ok(partie.etat.attribution, "attribution faite par le MJ de secours");
 });
 
 test("Partie : chaque message { t:'etat' } porte l'heure du serveur ; la vue porte le début et la durée du minuteur", async () => {
