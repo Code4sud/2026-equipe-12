@@ -520,9 +520,9 @@ export function rendreScene(vue, ctx = { origine: "" }) {
 const DEMO_PROBLEMES = [
   {
     id: "telephone-casse",
-    titre: "Téléphone cassé",
+    titre: "Le téléphone mystère",
     illustration: "illustrations/telephone-casse.svg",
-    situation: "Vous attendez le bus avec un pote. Son téléphone tombe : l'écran est fissuré et ne répond plus. Il doit prévenir son coach avant 18 h qu'il sera en retard à l'entraînement.",
+    situation: "Vous êtes avec votre pote Sami quand son téléphone tombe : depuis, l'écran reste noir, mais il vibre quand on l'appelle. Ce soir avant 20 h, Sami doit envoyer son CV pour un job d'été, et son CV est dans le téléphone. Il ne sait pas si c'est l'écran, la batterie ou autre chose.",
     question: "Que faites-vous ?",
   },
   {

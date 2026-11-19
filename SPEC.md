@@ -193,32 +193,27 @@ Un joueur qui rejoint après `accueil` est refusé (« La partie a déjà commen
 
 ### 4.1 `public/data/problemes.json` (owner A)
 
+Situations revues le 19/11/2026 d'après la doc du hackathon : **une situation par profil RIASEC** (les 6 profils du Centre des Possibles), chacune tirée des exemples de « compétences cachées » du sujet 4 (garder des enfants, réparer un scooter, animer une communauté en ligne, tenir la caisse d'une association, aider une voisine dans une démarche…). Plus de bonne réponse : ni critères, ni indices, ni 4 propositions.
+
 ```json
 {
   "version": 1,
   "problemes": [
     {
-      "id": "telephone-casse",
-      "titre": "Téléphone cassé",
-      "illustration": "illustrations/telephone-casse.svg",
+      "id": "caisse-buvette",
+      "titre": "La caisse de la buvette",
+      "illustration": "illustrations/caisse-buvette.svg",
       "situation": "2 à 4 phrases, au présent, à la 2e personne du pluriel (« Vous… »), situation de la vie de jeunes de 15-25 ans",
       "question": "Que faites-vous ?",
       "riasec": "C",
       "solution": {
-        "resume": "1 à 2 phrases : une bonne façon de s'en sortir",
-        "criteres": ["ce qu'une réponse doit contenir pour être considérée comme résolvant le problème (pour le MJ IA)", "…"],
-        "motsCles": ["mots/racines en minuscules sans accents pour le MJ mock", "…"]
+        "resume": "1 à 2 phrases : une façon de s'en sortir (repère pour l'équipe, jamais montré comme « la bonne réponse »)",
+        "motsCles": ["mots/racines en minuscules sans accents : vocabulaire du sujet, pour le MJ mock", "…"]
       },
-      "indices": ["indice 1 : léger", "indice 2 : plus précis"],
-      "choix": [
-        { "texte": "proposition plausible", "correct": false },
-        { "texte": "la bonne", "correct": true },
-        { "texte": "…", "correct": false },
-        { "texte": "…", "correct": false }
-      ],
       "competences": [
-        { "code": "<code macro ROME existant dans rome.json>", "pourquoi": "comportement observable dans une réponse qui justifie cette compétence", "motsCles": ["…"] }
+        { "code": "<code macro ROME existant dans rome.json>", "pourquoi": "comportement observable dans une réponse qui justifie cette compétence", "motsCles": ["…"], "mots": "Tu as …" }
       ],
+      "competenceParDefaut": "4A201",
       "competenceParticipation": "6D102",
       "questionVecu": "Ça t'est déjà arrivé de … ?"
     }
@@ -227,15 +222,12 @@ Un joueur qui rejoint après `accueil` est refusé (« La partie a déjà commen
 ```
 
 Contraintes :
-- **6 problèmes**, ids **fixés** : `telephone-casse` (C/R), `anniversaire-20-euros` (E/C), `conflit-discord` (S/E), `scooter-panne` (R/I), `voisine-formulaire` (S/C), `affiche-evenement` (A/E).
-- Les situations ne touchent **jamais** à la santé, à la famille (pas de « ta mère », etc. : utiliser voisin·e, pote, coach, club…), à la religion, à l'origine, à l'argent du foyer, à la police ou à la justice. Pas de permis de conduire (beaucoup ont moins de 18 ans).
-- Les **4 choix** contiennent exactement **1 correct**, et les 3 autres sont **plausibles et respectables** : aucun choix ridicule ou dangereux qui ferait honte. La bonne réponse ne doit pas être toujours à la même position.
-- `competences` : **4 à 6 codes macro ROME existants** dans `public/data/rome.json` (vérifiés par script), cohérents avec ce qu'un jeune peut montrer en répondant (un mix de savoir-faire et de savoir-être `6D1xx`). Ils doivent permettre de donner une compétence pertinente à **n'importe quelle** réponse sérieuse, même à côté : demander de l'aide, sécuriser, s'organiser, chercher une info, rester calme…
-- `competenceParticipation` : un code `6D1xx` (par défaut `6D102` « Avoir l'esprit d'équipe »), utilisé pour une réponse vide ou hors sujet, avec `typePreuve:"participation"`.
-- Champs **optionnels** lus par le MJ (`src/mj.js`) :
-  - `competenceParDefaut` : code pris dans `competences`, donné par le mock à une réponse sérieuse qui ne contient aucun mot-clé (voir §5) ;
-  - `choix[i].competence` : code pris dans `competences`, la compétence que **ce choix** montre vraiment (le mock la donne au joueur qui n'a que choisi ; elle est suggérée à l'IA). Sans ce champ, un choix non retenu ne reçoit jamais une compétence tirée de ses mots-clés (elle risquerait de le contredire) ;
-  - `competences[i].mots` : phrase « mots » au tutoiement, concrète et liée au problème (« Tu as pensé à comparer avant de payer. »), utilisée à la place de « Tu as montré que tu sais <libellé ROME> » par le mock et quand les « mots » de l'IA sont rejetés.
+- **8 situations** : `scooter-panne` (R, réparer un scooter), `telephone-casse` (I, « le téléphone mystère » : comprendre une panne), `affiche-evenement` (A), `enfants-voisine` (S, garder des enfants), `conflit-discord` (E, animer le serveur de l'équipe), `caisse-buvette` (C, tenir la caisse d'une association), `voisine-formulaire` (S, aider une voisine dans une démarche), `anniversaire-20-euros` (E). Les 6 profils RIASEC sont couverts ; le tirage d'une partie privilégie des profils différents.
+- Les situations ne touchent **jamais** à la santé, à la famille (pas de « ta mère », « ton petit frère »… : utiliser voisin·e, pote, coach, club…), à la religion, à l'origine, à l'argent du foyer, à la police ou à la justice. Pas de permis de conduire.
+- `competences` : **4 à 6 codes macro ROME existants** dans `public/data/rome.json` (vérifiés par script), cohérents avec ce qu'un jeune peut montrer en répondant (un mix de savoir-faire et de savoir-être `6D1xx`). Mots-clés en racines (pas d'infinitif).
+- `competenceParticipation` : un code `6D1xx` (par défaut `6D102` « Avoir l'esprit d'équipe »), pour un joueur qui n'a rien répondu (l'animateur est passé), avec `typePreuve:"participation"`.
+- `competenceParDefaut` : code pris dans `competences`, donné par le mock à une réponse sérieuse qui ne contient aucun mot-clé (voir §5).
+- `competences[i].mots` : phrase « mots » au tutoiement, concrète et liée à la situation (« Tu as pensé à compter le stock pour vérifier les ventes. »).
 
 ### 4.2 Compétence attribuée (format commun)
 

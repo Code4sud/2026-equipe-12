@@ -2,121 +2,6 @@
   "version": 1,
   "problemes": [
     {
-      "id": "telephone-casse",
-      "titre": "Téléphone cassé",
-      "illustration": "illustrations/telephone-casse.svg",
-      "situation": "Vous êtes au parc avec votre pote Sami quand son téléphone tombe : l'écran est fissuré et il reste noir. Ce soir avant 20 h, Sami doit envoyer son CV pour un job d'été. Son CV et le lien pour postuler sont dans son téléphone.",
-      "question": "Que faites-vous ?",
-      "riasec": "C",
-      "solution": {
-        "resume": "Garder son calme et s'occuper d'abord du plus urgent : Sami se connecte à son compte en ligne (mail, drive) depuis un autre appareil pour retrouver son CV et l'envoyer ce soir. Ensuite seulement, on compare plusieurs devis de réparation.",
-        "criteres": [
-          "La réponse prévoit un moyen concret d'envoyer le CV à temps sans le téléphone cassé : se connecter à son compte en ligne ou à sa messagerie depuis un autre appareil (ordi ou téléphone d'un pote, ordi de la médiathèque, point d'accès numérique), retrouver une copie sauvegardée, ou refaire le CV rapidement.",
-          "OU la réponse prévoit de prévenir l'employeur du problème (message ou appel depuis un autre téléphone) pour expliquer la situation et demander un court délai.",
-          "Bonus, non obligatoire : comparer plusieurs devis de réparation ou vérifier la garantie avant de payer une réparation.",
-          "Une réponse qui ne parle que de réparer ou remplacer le téléphone, sans s'occuper de l'envoi du CV ce soir, ne résout pas le problème."
-        ],
-        "motsCles": ["compte", "cloud", "drive", "google", "gmail", "sauvegard", "ordi", "pc", "mon tel", "autre tel", "pret", "emprunt", "mail", "connect", "mediatheque", "cyber", "imprim", "copie", "refai", "preven", "previen", "patron", "employeur", "appel", "retard", "delai"]
-      },
-      "indices": [
-        "Le plus urgent, ce n'est pas l'écran : c'est le CV à envoyer ce soir.",
-        "Où d'autre que dans le téléphone le CV pourrait-il se trouver ? Et depuis quel autre appareil peut-on l'envoyer ?"
-      ],
-      "choix": [
-        { "texte": "Vous mettez le téléphone dans du riz et vous attendez demain matin pour voir s'il se rallume.", "correct": false, "competence": "6D112" },
-        { "texte": "Vous foncez chez le premier réparateur ouvert et laissez le téléphone, sans demander le prix ni le délai.", "correct": false, "competence": "6B201" },
-        { "texte": "Depuis l'ordi d'un pote, Sami ouvre son mail, retrouve son CV et l'envoie. La réparation attendra.", "correct": true, "competence": "6B309" },
-        { "texte": "Sami laisse tomber le job d'été : sans téléphone, impossible d'envoyer le CV à temps.", "correct": false, "competence": "6D112" }
-      ],
-      "competences": [
-        { "code": "6B309", "pourquoi": "propose de passer par un autre appareil, un compte en ligne, une messagerie ou une sauvegarde pour retrouver et envoyer le CV", "motsCles": ["compte", "cloud", "drive", "sauvegard", "mail", "connect", "ordi", "en ligne", "appli"], "mots": "Tu as pensé au numérique, comme un compte en ligne ou un autre appareil, pour avancer malgré l'écran cassé." },
-        { "code": "6D107", "pourquoi": "traite d'abord l'urgence (le CV de ce soir) avant la réparation", "motsCles": ["abord", "urgent", "priorit", "ce soir", "avant", "ensuite", "plus important"], "mots": "Tu as réfléchi à l'ordre des choses : ce qui presse d'abord, le reste ensuite." },
-        { "code": "4B103", "pourquoi": "compare plusieurs réparateurs, devis ou prix, ou vérifie la garantie avant de choisir", "motsCles": ["devis", "compar", "prix", "reparateur", "garantie", "boutique", "magasin"], "mots": "Tu as pensé à bien choisir où faire réparer ou remplacer le téléphone." },
-        { "code": "6B201", "pourquoi": "pense à prévenir l'employeur ou à demander de l'aide à quelqu'un (pote, médiathèque)", "motsCles": ["preven", "previen", "demand", "aid", "appel", "pote", "delai", "expliqu"], "mots": "Tu as pensé à prévenir quelqu'un ou à demander un coup de main, au lieu de tout gérer dans ton coin." },
-        { "code": "3E202", "pourquoi": "cherche à comprendre ce qui ne marche pas sur le téléphone (écran, batterie, charge, redémarrage)", "motsCles": ["redemarr", "batterie", "charge", "ecran", "allume", "bouton", "test"], "mots": "Tu as regardé de près ce qui ne marche plus sur le téléphone." },
-        { "code": "6D112", "pourquoi": "garde son calme et propose une solution au lieu de paniquer", "motsCles": ["calme", "paniqu", "respir", "pas grave", "solution", "tranquille"], "mots": "Tu as gardé la tête froide face au téléphone cassé et tu as réfléchi à quoi faire." }
-      ],
-      "competenceParDefaut": "6D112",
-      "competenceParticipation": "6D102",
-      "questionVecu": "Ça t'est déjà arrivé de casser ou de perdre ton téléphone au mauvais moment ? Qu'est-ce que tu as fait ?"
-    },
-    {
-      "id": "anniversaire-20-euros",
-      "titre": "Anniversaire à 20 euros",
-      "illustration": "illustrations/anniversaire-20-euros.svg",
-      "situation": "Samedi, c'est l'anniversaire de votre pote Yanis. Vous êtes cinq et, en mettant tout en commun, vous avez 20 euros. Yanis adore le foot et la musique. Vous voulez lui faire une surprise qui lui fasse vraiment plaisir.",
-      "question": "Que faites-vous ?",
-      "riasec": "E",
-      "solution": {
-        "resume": "Faire une liste de ce qu'on veut, répartir les 20 euros et les tâches entre vous, et miser sur le fait maison et les idées perso : gâteau maison, playlist de ses sons préférés, vidéo de messages, petit cadeau autour du foot.",
-        "criteres": [
-          "La réponse propose un plan concret qui tient dans 20 euros : répartition du budget, choix de priorités, ou comparaison de prix.",
-          "OU la réponse compense le petit budget par des idées créatives et personnelles : fait maison (gâteau, carte, déco), playlist, vidéo de messages des potes, objet d'occasion, activité gratuite (match au parc, soirée musique).",
-          "Bonus, non obligatoire : répartir les tâches entre les cinq potes (qui achète, qui cuisine, qui prépare la surprise).",
-          "Dépenser tout dans un seul achat sans réfléchir, repousser la fête, ou faire chacun de son côté sans se mettre d'accord ne résout pas le problème."
-        ],
-        "motsCles": ["budget", "liste", "repart", "maison", "nous-meme", "gateau", "playlist", "video", "message", "maillot", "pas cher", "chacun", "compar", "prix", "occasion", "carte", "deco", "partag"]
-      },
-      "indices": [
-        "20 euros, c'est peu pour acheter, mais vous êtes cinq avec plein d'idées.",
-        "Qu'est-ce qui peut se faire maison ou gratuitement ? Et qui s'occupe de quoi ?"
-      ],
-      "choix": [
-        { "texte": "Vous misez sur le fait maison : gâteau, playlist de ses sons, et chacun prend une tâche.", "correct": true, "competence": "6D115" },
-        { "texte": "Vous dépensez les 20 euros dans un beau gâteau de pâtisserie, et c'est tout.", "correct": false, "competence": "4C101" },
-        { "texte": "Vous repoussez la fête d'un mois, le temps d'avoir plus de sous.", "correct": false, "competence": "2A304" },
-        { "texte": "Chacun lui offre un petit truc de son côté, sans vous mettre d'accord.", "correct": false, "competence": "6D115" }
-      ],
-      "competences": [
-        { "code": "4C101", "pourquoi": "répartit les 20 euros, fait des choix de dépenses ou compare les prix", "motsCles": ["budget", "euro", "prix", "compar", "repart", "depens", "cout", "pas cher"], "mots": "Tu as réfléchi à comment utiliser les 20 euros pour faire plaisir à Yanis." },
-        { "code": "2A304", "pourquoi": "imagine et prépare la fête ou la surprise (lieu, moment, déroulé)", "motsCles": ["fete", "surprise", "organis", "prepar", "invit", "lieu", "soiree", "parc"], "mots": "Tu as pensé à l'organisation de la fête de Yanis, comme le bon moment ou le bon endroit." },
-        { "code": "1B105", "pourquoi": "répartit les tâches entre les potes : qui achète, qui cuisine, qui prépare", "motsCles": ["chacun", "tache", "role", "occupe", "qui fait", "equipe", "ensemble"], "mots": "Tu as pensé à faire participer tout le groupe, pour que chacun mette la main à la pâte." },
-        { "code": "6D115", "pourquoi": "propose des idées faites maison ou originales pour compenser le petit budget", "motsCles": ["maison", "playlist", "video", "idee", "crea", "cree", "fabriqu", "dessin", "carte", "deco"], "mots": "Tu as cherché des idées pour faire vraiment plaisir à Yanis." },
-        { "code": "6D107", "pourquoi": "fait une liste et choisit ce qui compte le plus pour Yanis", "motsCles": ["liste", "priorit", "abord", "essentiel", "plan", "important"], "mots": "Tu as pensé à ce qui compte le plus pour Yanis avant de te lancer." }
-      ],
-      "competenceParDefaut": "6D115",
-      "competenceParticipation": "6D102",
-      "questionVecu": "Ça t'est déjà arrivé d'organiser une fête ou un cadeau avec peu de moyens ? Comment tu as fait ?"
-    },
-    {
-      "id": "conflit-discord",
-      "titre": "Embrouille sur Discord",
-      "illustration": "illustrations/conflit-discord.svg",
-      "situation": "Vous jouez en ligne dans la même équipe, avec un serveur Discord. Depuis hier soir, deux membres s'embrouillent et les messages deviennent blessants. Deux autres joueurs ont déjà quitté le serveur, et le tournoi a lieu samedi : il faut tout le monde.",
-      "question": "Que faites-vous ?",
-      "riasec": "S",
-      "solution": {
-        "resume": "Calmer le jeu sans prendre parti : écouter chacun en privé, rappeler les règles du serveur, puis proposer un appel vocal pour trouver un accord avant le tournoi.",
-        "criteres": [
-          "La réponse cherche à apaiser sans prendre parti : écouter les deux versions, parler à chacun en privé, ou proposer une discussion (vocal, appel) pour trouver un accord.",
-          "OU la réponse met en place un cadre : rappeler les règles du serveur, faire une pause dans le salon (mode lent, salon fermé un moment), demander à un modérateur ou au capitaine de l'équipe d'intervenir.",
-          "Prendre parti en public, répondre aux attaques, exclure quelqu'un sans l'avoir écouté, ou ne rien faire ne résout pas le problème."
-        ],
-        "motsCles": ["prive", "mp", "ecout", "version", "separe", "parl", "expliqu", "calm", "apais", "regle", "vocal", "appel", "ensemble", "accord", "compromis", "moderat", "mediat", "capitaine", "discut"]
-      },
-      "indices": [
-        "Répondre en public met souvent de l'huile sur le feu.",
-        "Et si chacun pouvait d'abord raconter sa version, au calme, à quelqu'un de neutre ?"
-      ],
-      "choix": [
-        { "texte": "Vous excluez les deux du serveur pour avoir la paix avant le tournoi.", "correct": false, "competence": "6B108" },
-        { "texte": "Vous ne dites rien : ils finiront bien par se calmer tout seuls.", "correct": false, "competence": "6D112" },
-        { "texte": "Vous donnez votre avis dans le salon public pour dire qui a raison.", "correct": false, "competence": "1B108" },
-        { "texte": "Vous écoutez chacun en privé, puis proposez un vocal à trois pour trouver un accord.", "correct": true, "competence": "1D302" }
-      ],
-      "competences": [
-        { "code": "1B108", "pourquoi": "cherche à faire baisser la tension et à trouver un accord entre les deux", "motsCles": ["conflit", "embrouill", "accord", "compromis", "apais", "reconcili", "arrang", "resou"], "mots": "Tu as cherché à mettre fin à l'embrouille plutôt que de la laisser grossir." },
-        { "code": "1D302", "pourquoi": "se place entre les deux sans prendre parti et les aide à se parler", "motsCles": ["mediat", "aux deux", "entre les deux", "les deux cote", "version", "neutre", "impartia", "a trois", "entre eux"], "mots": "Tu as pensé à aider les deux à se parler pour trouver un terrain d'entente." },
-        { "code": "6D101", "pourquoi": "propose d'écouter chacun et de comprendre ce qu'il ressent", "motsCles": ["ecout", "comprend", "ressent", "pourquoi", "prive", "mp", "demand"], "mots": "Tu as pensé à aller vers les autres pour comprendre ce qui se passe vraiment." },
-        { "code": "6D112", "pourquoi": "garde son calme, propose une pause plutôt que de répondre à chaud", "motsCles": ["calm", "pause", "respir", "recul", "enerv", "attend", "zen"], "mots": "Tu as pensé à ne pas répondre à chaud et à laisser retomber la pression." },
-        { "code": "6B108", "pourquoi": "rappelle les règles du serveur ou fait appel à un modérateur", "motsCles": ["regle", "charte", "respect", "moderat", "admin", "salon", "insulte", "bann", "exclu"], "mots": "Tu as pensé au respect et aux règles du serveur pour que les messages blessants s'arrêtent." },
-        { "code": "6A103", "pourquoi": "pense à l'équipe et au tournoi, cherche à ressouder le groupe", "motsCles": ["equipe", "ensemble", "ambiance", "tournoi", "groupe", "soud", "ressoud", "entente"], "mots": "Tu as pensé à l'équipe, pour que le groupe reste soudé jusqu'au tournoi." }
-      ],
-      "competenceParDefaut": "1B108",
-      "competenceParticipation": "6D102",
-      "questionVecu": "Ça t'est déjà arrivé de calmer une embrouille entre deux potes, en ligne ou en vrai ? Comment tu as fait ?"
-    },
-    {
       "id": "scooter-panne",
       "titre": "Scooter en panne",
       "illustration": "illustrations/scooter-panne.svg",
@@ -125,73 +10,258 @@
       "riasec": "R",
       "solution": {
         "resume": "Chercher la panne dans l'ordre, en commençant par les causes simples (essence, coupe-circuit, béquille, frein serré au démarrage, batterie). Si ça ne repart pas : garer le scooter en sécurité, prévenir le snack et prendre le tram ou le bus.",
-        "criteres": [
-          "La réponse propose une démarche de diagnostic : vérifier une ou plusieurs causes simples (niveau d'essence, coupe-circuit, béquille relevée, frein serré en appuyant sur le démarreur, batterie, kick) avant de conclure, ou chercher la solution (notice, tuto vidéo, demander à quelqu'un qui s'y connaît).",
-          "OU la réponse prévoit un plan B sûr pour arriver à l'heure ou prévenir : garer et attacher le scooter, prévenir le snack d'un retard, prendre le tram, le bus ou un vélo en libre-service.",
-          "Insister sur le démarreur sans réfléchir, démonter le moteur dans la rue, ou laisser tomber le job sans prévenir ne résout pas le problème."
-        ],
-        "motsCles": ["essence", "carbur", "coupe", "bequille", "frein", "batterie", "kick", "verifi", "regard", "tuto", "gare", "antivol", "preven", "previen", "patron", "appel", "pote", "tram", "bus", "velo", "trottinette", "uber", "retard"]
+        "motsCles": [
+          "essence",
+          "carbur",
+          "coupe",
+          "bequille",
+          "frein",
+          "batterie",
+          "kick",
+          "verifi",
+          "regard",
+          "tuto",
+          "gare",
+          "antivol",
+          "preven",
+          "previen",
+          "patron",
+          "appel",
+          "pote",
+          "tram",
+          "bus",
+          "velo",
+          "trottinette",
+          "uber",
+          "retard"
+        ]
       },
-      "indices": [
-        "Avant d'imaginer une grosse panne, pensez aux petites choses qu'on oublie souvent.",
-        "Essence, coupe-circuit, béquille, frein… Et si ça ne repart pas, comment Inès arrive au snack à l'heure ?"
-      ],
-      "choix": [
-        { "texte": "Vous appuyez sur le démarreur encore et encore, jusqu'à ce que le moteur reparte.", "correct": false, "competence": "3E205" },
-        { "texte": "Vous vérifiez essence, béquille et coupe-circuit. Sinon, Inès prévient le snack et prend le tram.", "correct": true, "competence": "3E202" },
-        { "texte": "Vous poussez le scooter à pied jusqu'au garage le plus proche, à 4 km, sans rien vérifier avant.", "correct": false, "competence": "6B201" },
-        { "texte": "Inès laisse le scooter sur place et rentre chez elle sans prévenir le snack.", "correct": false, "competence": "6D111" }
-      ],
       "competences": [
-        { "code": "3E202", "pourquoi": "vérifie les causes possibles de la panne (essence, batterie, béquille, frein, coupe-circuit)", "motsCles": ["verifi", "essence", "batterie", "bequille", "frein", "coupe", "panne", "voyant"], "mots": "Tu as pensé à chercher d'où vient la panne avant de baisser les bras." },
-        { "code": "3E205", "pourquoi": "propose un geste de réparation ou de remise en route (kick, bougie, réglage)", "motsCles": ["repar", "bougie", "kick", "outil", "regl", "chang", "fusible"], "mots": "Tu as pensé à un geste concret pour remettre le scooter en route." },
-        { "code": "2D313", "pourquoi": "procède par étapes pour comprendre la cause, ou cherche une notice ou un tuto", "motsCles": ["abord", "ensuite", "etape", "ordre", "cause", "compren", "compri", "tuto", "notice"], "mots": "Tu as réfléchi par étapes, dans l'ordre, pour comprendre et régler la situation." },
-        { "code": "6B201", "pourquoi": "pense à prévenir le snack ou à demander de l'aide à quelqu'un qui s'y connaît", "motsCles": ["preven", "previen", "appel", "demand", "aid", "garage", "depann", "patron", "message"], "mots": "Tu as pensé à prévenir le snack ou à demander l'aide de quelqu'un qui s'y connaît." },
-        { "code": "3F203", "pourquoi": "met le scooter et les personnes en sécurité (garer, attacher, ne pas bricoler sur la route)", "motsCles": ["securite", "gare", "trottoir", "antivol", "attach", "casque", "danger"], "mots": "Tu as pensé à la sécurité avant tout, sans prendre de risque inutile." },
-        { "code": "6D111", "pourquoi": "trouve vite un plan B pour arriver à l'heure", "motsCles": ["vite", "tram", "bus", "plan b", "retard", "heure", "velo"], "mots": "Tu as cherché un plan B pour qu'Inès ne reste pas coincée avec son scooter." }
+        {
+          "code": "3E202",
+          "pourquoi": "vérifie les causes possibles de la panne (essence, batterie, béquille, frein, coupe-circuit)",
+          "motsCles": [
+            "verifi",
+            "essence",
+            "batterie",
+            "bequille",
+            "frein",
+            "coupe",
+            "panne",
+            "voyant"
+          ],
+          "mots": "Tu as pensé à chercher d'où vient la panne avant de baisser les bras."
+        },
+        {
+          "code": "3E205",
+          "pourquoi": "propose un geste de réparation ou de remise en route (kick, bougie, réglage)",
+          "motsCles": [
+            "repar",
+            "bougie",
+            "kick",
+            "outil",
+            "regl",
+            "chang",
+            "fusible"
+          ],
+          "mots": "Tu as pensé à un geste concret pour remettre le scooter en route."
+        },
+        {
+          "code": "2D313",
+          "pourquoi": "procède par étapes pour comprendre la cause, ou cherche une notice ou un tuto",
+          "motsCles": [
+            "abord",
+            "ensuite",
+            "etape",
+            "ordre",
+            "cause",
+            "compren",
+            "compri",
+            "tuto",
+            "notice"
+          ],
+          "mots": "Tu as réfléchi par étapes, dans l'ordre, pour comprendre et régler la situation."
+        },
+        {
+          "code": "6B201",
+          "pourquoi": "pense à prévenir le snack ou à demander de l'aide à quelqu'un qui s'y connaît",
+          "motsCles": [
+            "preven",
+            "previen",
+            "appel",
+            "demand",
+            "aid",
+            "garage",
+            "depann",
+            "patron",
+            "message"
+          ],
+          "mots": "Tu as pensé à prévenir le snack ou à demander l'aide de quelqu'un qui s'y connaît."
+        },
+        {
+          "code": "3F203",
+          "pourquoi": "met le scooter et les personnes en sécurité (garer, attacher, ne pas bricoler sur la route)",
+          "motsCles": [
+            "securite",
+            "gare",
+            "trottoir",
+            "antivol",
+            "attach",
+            "casque",
+            "danger"
+          ],
+          "mots": "Tu as pensé à la sécurité avant tout, sans prendre de risque inutile."
+        },
+        {
+          "code": "6D111",
+          "pourquoi": "trouve vite un plan B pour arriver à l'heure",
+          "motsCles": [
+            "vite",
+            "tram",
+            "bus",
+            "plan b",
+            "retard",
+            "heure",
+            "velo"
+          ],
+          "mots": "Tu as cherché un plan B pour qu'Inès ne reste pas coincée avec son scooter."
+        }
       ],
       "competenceParDefaut": "6D111",
       "competenceParticipation": "6D102",
       "questionVecu": "Ça t'est déjà arrivé de chercher pourquoi un objet ne marchait plus, ou de réparer quelque chose ? Comment tu as fait ?"
     },
     {
-      "id": "voisine-formulaire",
-      "titre": "Le formulaire de la voisine",
-      "illustration": "illustrations/voisine-formulaire.svg",
-      "situation": "Votre voisine du troisième, 78 ans, doit refaire sa carte de bus sur un site internet avant vendredi. Elle n'a pas d'ordinateur, les mots du formulaire la perdent et elle a peur de se tromper. Elle vous demande un coup de main dans le hall de l'immeuble.",
+      "id": "telephone-casse",
+      "titre": "Le téléphone mystère",
+      "illustration": "illustrations/telephone-casse.svg",
+      "situation": "Vous êtes avec votre pote Sami quand son téléphone tombe : depuis, l'écran reste noir, mais il vibre quand on l'appelle. Ce soir avant 20 h, Sami doit envoyer son CV pour un job d'été, et son CV est dans le téléphone. Il ne sait pas si c'est l'écran, la batterie ou autre chose.",
       "question": "Que faites-vous ?",
-      "riasec": "S",
+      "riasec": "I",
       "solution": {
-        "resume": "S'asseoir avec elle, préparer ensemble les papiers demandés, remplir le formulaire étape par étape en lui expliquant chaque mot, puis vérifier avant d'envoyer. Ses codes et ses informations restent à elle.",
-        "criteres": [
-          "La réponse propose d'aider la voisine à faire la démarche avec elle (pas seulement lui donner l'adresse du site) : expliquer les étapes ou les mots difficiles, préparer les documents demandés, utiliser un téléphone, une tablette ou un ordi.",
-          "OU la réponse l'oriente vers une aide concrète et l'y accompagne : point d'aide numérique, médiathèque, agence de bus, guichet d'accueil, ou appel au service avec elle.",
-          "Bonus, non obligatoire : vérifier avant d'envoyer, garder une trace (capture, mail de confirmation), respecter ses informations personnelles (ne pas garder ses codes ni ses mots de passe).",
-          "Une réponse qui la laisse se débrouiller seule, ou qui remet à plus tard sans solution, ne résout pas le problème."
-        ],
-        "motsCles": ["avec elle", "a cote", "aid", "expliqu", "etape", "ensemble", "tablette", "papier", "document", "justificatif", "verifi", "confirmation", "mediatheque", "mairie", "accompagn", "guichet", "agence", "point numerique"]
+        "resume": "Chercher d'où vient la panne (il vibre : le téléphone marche, c'est sans doute l'écran), puis récupérer le CV autrement, par exemple depuis son compte en ligne sur un autre appareil.",
+        "motsCles": [
+          "vibr",
+          "ecran",
+          "batterie",
+          "panne",
+          "test",
+          "essai",
+          "redemarr",
+          "branch",
+          "charg",
+          "cv",
+          "compte",
+          "cloud",
+          "drive",
+          "mail",
+          "gmail",
+          "autre telephone",
+          "ordi",
+          "pc",
+          "tuto",
+          "cherch",
+          "compren"
+        ]
       },
-      "indices": [
-        "Elle n'a pas besoin que quelqu'un fasse tout à sa place : elle a besoin de comprendre.",
-        "Quels papiers le site risque-t-il de demander ? Et comment avancer avec elle, étape par étape ?"
-      ],
-      "choix": [
-        { "texte": "Vous prenez ses papiers et vous remplissez tout vite sur votre téléphone, sans lui montrer.", "correct": false, "competence": "6B309" },
-        { "texte": "Vous lui conseillez d'attendre la visite de quelqu'un qui s'y connaît mieux.", "correct": false, "competence": "6D116" },
-        { "texte": "Vous vous asseyez avec elle et remplissez le formulaire étape par étape, en lui expliquant chaque mot.", "correct": true, "competence": "1D101" },
-        { "texte": "Vous lui notez l'adresse du site sur un papier pour qu'elle le fasse seule, tranquillement.", "correct": false, "competence": "1D101" }
-      ],
       "competences": [
-        { "code": "1D101", "pourquoi": "accompagne la voisine dans sa démarche en lui expliquant, sans faire à sa place", "motsCles": ["accompagn", "aid", "avec elle", "guid", "expliqu", "montr"], "mots": "Tu as pensé à guider la voisine pour qu'elle s'y retrouve dans sa démarche." },
-        { "code": "6B309", "pourquoi": "sait utiliser un site, un formulaire en ligne, un téléphone ou une tablette pour faire la démarche", "motsCles": ["site", "formulaire", "ordi", "tablette", "telephone", "en ligne", "internet", "mail"], "mots": "Tu as pensé aux outils numériques, comme le site ou un téléphone, pour faire avancer la démarche." },
-        { "code": "6B104", "pourquoi": "fait attention aux informations personnelles de la voisine (codes, mots de passe, papiers)", "motsCles": ["mot de passe", "code", "perso", "confidenti", "donnees", "prive", "secret"], "mots": "Tu as fait attention aux informations personnelles de la voisine, comme ses codes et ses papiers." },
-        { "code": "6D101", "pourquoi": "rassure la voisine, prend le temps et l'écoute", "motsCles": ["ecout", "rassur", "patien", "peur", "calme", "comprend", "temps"], "mots": "Tu as pensé à prendre ton temps avec la voisine et à la mettre à l'aise." },
-        { "code": "6D110", "pourquoi": "prépare les bons papiers, vérifie avant d'envoyer, garde une trace", "motsCles": ["verifi", "reli", "document", "papier", "justificatif", "confirmation", "capture"], "mots": "Tu as pensé à vérifier les papiers et les informations pour que la démarche soit bien faite." },
-        { "code": "6D116", "pourquoi": "accepte de rendre service et propose son aide spontanément", "motsCles": ["service", "coup de main", "voisine", "disponible", "propos", "chez elle"], "mots": "Tu as répondu à la demande de la voisine au lieu de passer ton chemin." }
+        {
+          "code": "2D313",
+          "pourquoi": "analyse les indices (il vibre, l'écran est noir) pour trouver la cause",
+          "motsCles": [
+            "vibr",
+            "indice",
+            "cause",
+            "vient",
+            "sans doute",
+            "donc",
+            "deduis",
+            "hypothes"
+          ],
+          "mots": "Tu as utilisé les indices pour comprendre d'où venait la panne."
+        },
+        {
+          "code": "3E202",
+          "pourquoi": "teste pas à pas : recharger, redémarrer, brancher sur un écran",
+          "motsCles": [
+            "test",
+            "essai",
+            "redemarr",
+            "branch",
+            "recharg",
+            "charg",
+            "verifi",
+            "regard"
+          ],
+          "mots": "Tu as pensé à tester les causes une par une, comme un vrai technicien."
+        },
+        {
+          "code": "2C305",
+          "pourquoi": "cherche une solution au problème du CV, même si le téléphone reste en panne",
+          "motsCles": [
+            "solution",
+            "resou",
+            "regl",
+            "autre moyen",
+            "plan b",
+            "contourn",
+            "autrement"
+          ],
+          "mots": "Tu as trouvé un autre chemin pour que le CV parte quand même ce soir."
+        },
+        {
+          "code": "6B309",
+          "pourquoi": "propose de récupérer le CV depuis un compte en ligne sur un autre appareil",
+          "motsCles": [
+            "compte",
+            "cloud",
+            "drive",
+            "mail",
+            "gmail",
+            "en ligne",
+            "ordi",
+            "pc",
+            "autre telephone",
+            "connect",
+            "telecharg"
+          ],
+          "mots": "Tu sais te servir des outils numériques pour récupérer ce qui compte."
+        },
+        {
+          "code": "6D114",
+          "pourquoi": "veut comprendre comment ça marche, cherche des explications ou un tuto",
+          "motsCles": [
+            "tuto",
+            "youtube",
+            "internet",
+            "google",
+            "cherch",
+            "compren",
+            "comment ca marche",
+            "renseign"
+          ],
+          "mots": "Tu as eu la curiosité de chercher à comprendre au lieu d'abandonner."
+        },
+        {
+          "code": "6B201",
+          "pourquoi": "pense à demander de l'aide à quelqu'un qui s'y connaît, ou à prévenir l'employeur",
+          "motsCles": [
+            "demand",
+            "aide",
+            "appel",
+            "preven",
+            "previen",
+            "pote",
+            "quelqu un",
+            "conseil",
+            "explique"
+          ],
+          "mots": "Tu as pensé à demander de l'aide au bon moment."
+        }
       ],
-      "competenceParDefaut": "6D116",
+      "competenceParDefaut": "2C305",
       "competenceParticipation": "6D102",
-      "questionVecu": "Ça t'est déjà arrivé d'aider quelqu'un à faire une démarche sur internet ou sur un téléphone ? Comment tu as fait ?"
+      "questionVecu": "Ça t'est déjà arrivé de trouver d'où venait une panne, sur un téléphone, une console ou un ordi ? Comment tu as fait ?"
     },
     {
       "id": "affiche-evenement",
@@ -202,34 +272,722 @@
       "riasec": "A",
       "solution": {
         "resume": "Faire une affiche simple et visible (quoi, où, quand, gratuit, un visuel fort qui se lit de loin), puis la diffuser à plusieurs endroits : réseaux sociaux, stories, groupes de messagerie, et lieux fréquentés du quartier avec leur accord.",
-        "criteres": [
-          "La réponse prévoit de faire connaître l'événement par au moins un moyen concret de diffusion : réseaux sociaux, stories, groupes de messagerie, affichage dans les lieux du quartier (commerces, médiathèque, lycée, salle de sport) avec accord, flyers distribués, bouche-à-oreille, petite vidéo de démo.",
-          "OU la réponse décrit une affiche efficace (infos essentielles : quoi, où, quand, gratuit ; visuel ou titre accrocheur, lisible de loin) ET au moins un endroit où la montrer.",
-          "Faire une belle affiche sans la montrer nulle part, ou poster un seul message puis attendre, ne résout pas le problème."
-        ],
-        "motsCles": ["reseaux", "insta", "story", "stori", "tiktok", "snap", "whatsapp", "groupe", "post", "partag", "video", "flyer", "distribu", "coll", "quartier", "commer", "boulangerie", "lycee", "mediatheque", "bouche", "pote"]
+        "motsCles": [
+          "reseaux",
+          "insta",
+          "story",
+          "stori",
+          "tiktok",
+          "snap",
+          "whatsapp",
+          "groupe",
+          "post",
+          "partag",
+          "video",
+          "flyer",
+          "distribu",
+          "coll",
+          "quartier",
+          "commer",
+          "boulangerie",
+          "lycee",
+          "mediatheque",
+          "bouche",
+          "pote"
+        ]
       },
-      "indices": [
-        "Une affiche que personne ne voit ne sert à rien.",
-        "Que doit-on comprendre en 3 secondes, de loin ? Et où passent les jeunes du quartier, en vrai et en ligne ?"
-      ],
-      "choix": [
-        { "texte": "Vous faites une très belle affiche artistique et vous la collez seulement dans le local du club.", "correct": false, "competence": "2A402" },
-        { "texte": "Vous faites une affiche simple (date, lieu, gratuit), la postez en story et la collez chez les commerçants.", "correct": true, "competence": "2A401" },
-        { "texte": "Vous écrivez un message sur le groupe du club et vous attendez que ça tourne.", "correct": false, "competence": "6A107" },
-        { "texte": "Vous imprimez 500 flyers avec tout le programme en petit, et les laissez à l'entrée du parc.", "correct": false, "competence": "2A302" }
-      ],
       "competences": [
-        { "code": "2A402", "pourquoi": "imagine le visuel : dessin, photo, couleurs, logo, mise en page", "motsCles": ["dessin", "couleur", "visuel", "photo", "logo", "canva", "design", "image"], "mots": "Tu as pensé au visuel pour que l'affiche attire l'œil." },
-        { "code": "2A401", "pourquoi": "pense au contenu de l'affiche ou du flyer : infos essentielles, titre, lisibilité", "motsCles": ["affiche", "flyer", "titre", "slogan", "lisible", "info", "date", "lieu"], "mots": "Tu as pensé au contenu de l'affiche pour que les gens comprennent vite de quoi il s'agit." },
-        { "code": "6A107", "pourquoi": "utilise les réseaux sociaux pour faire connaître l'événement", "motsCles": ["insta", "tiktok", "story", "reseaux", "snap", "post", "whatsapp", "partag"], "mots": "Tu as pensé aux réseaux et aux messageries pour faire connaître l'initiation." },
-        { "code": "2A302", "pourquoi": "prévoit où et comment diffuser l'info dans le quartier", "motsCles": ["diffus", "commer", "bouche", "distribu", "coll", "lycee", "quartier", "annonce"], "mots": "Tu as réfléchi aux endroits où faire circuler l'info pour toucher du monde." },
-        { "code": "6D115", "pourquoi": "propose une idée originale pour attirer du monde (vidéo, défi, démo)", "motsCles": ["idee", "original", "video", "defi", "creat", "invent", "concours", "demo"], "mots": "Tu as cherché une idée originale pour donner envie aux gens de venir." },
-        { "code": "6D103", "pourquoi": "fait des propositions concrètes au club", "motsCles": ["propos", "on pourrait", "et si", "sugger", "plan"], "mots": "Tu as fait des propositions concrètes pour faire venir du monde." }
+        {
+          "code": "2A402",
+          "pourquoi": "imagine le visuel : dessin, photo, couleurs, logo, mise en page",
+          "motsCles": [
+            "dessin",
+            "couleur",
+            "visuel",
+            "photo",
+            "logo",
+            "canva",
+            "design",
+            "image"
+          ],
+          "mots": "Tu as pensé au visuel pour que l'affiche attire l'œil."
+        },
+        {
+          "code": "2A401",
+          "pourquoi": "pense au contenu de l'affiche ou du flyer : infos essentielles, titre, lisibilité",
+          "motsCles": [
+            "affiche",
+            "flyer",
+            "titre",
+            "slogan",
+            "lisible",
+            "info",
+            "date",
+            "lieu"
+          ],
+          "mots": "Tu as pensé au contenu de l'affiche pour que les gens comprennent vite de quoi il s'agit."
+        },
+        {
+          "code": "6A107",
+          "pourquoi": "utilise les réseaux sociaux pour faire connaître l'événement",
+          "motsCles": [
+            "insta",
+            "tiktok",
+            "story",
+            "reseaux",
+            "snap",
+            "post",
+            "whatsapp",
+            "partag"
+          ],
+          "mots": "Tu as pensé aux réseaux et aux messageries pour faire connaître l'initiation."
+        },
+        {
+          "code": "2A302",
+          "pourquoi": "prévoit où et comment diffuser l'info dans le quartier",
+          "motsCles": [
+            "diffus",
+            "commer",
+            "bouche",
+            "distribu",
+            "coll",
+            "lycee",
+            "quartier",
+            "annonce"
+          ],
+          "mots": "Tu as réfléchi aux endroits où faire circuler l'info pour toucher du monde."
+        },
+        {
+          "code": "6D115",
+          "pourquoi": "propose une idée originale pour attirer du monde (vidéo, défi, démo)",
+          "motsCles": [
+            "idee",
+            "original",
+            "video",
+            "defi",
+            "creat",
+            "invent",
+            "concours",
+            "demo"
+          ],
+          "mots": "Tu as cherché une idée originale pour donner envie aux gens de venir."
+        },
+        {
+          "code": "6D103",
+          "pourquoi": "fait des propositions concrètes au club",
+          "motsCles": [
+            "propos",
+            "on pourrait",
+            "et si",
+            "sugger",
+            "plan"
+          ],
+          "mots": "Tu as fait des propositions concrètes pour faire venir du monde."
+        }
       ],
       "competenceParDefaut": "6D103",
       "competenceParticipation": "6D102",
       "questionVecu": "Ça t'est déjà arrivé de créer un visuel, une vidéo ou un post pour faire connaître quelque chose ? Comment tu as fait ?"
+    },
+    {
+      "id": "enfants-voisine",
+      "titre": "Un mercredi avec Lou et Malik",
+      "illustration": "illustrations/enfants-voisine.svg",
+      "situation": "Votre voisine vous demande de garder ses deux enfants, Lou (6 ans) et Malik (9 ans), mercredi de 14 h à 17 h. Il pleut, ils se disputent la console depuis dix minutes, et Malik doit finir un exercice de maths pour jeudi.",
+      "question": "Que faites-vous ?",
+      "riasec": "S",
+      "solution": {
+        "resume": "Calmer la dispute en proposant un tour de rôle ou une autre activité, faire l'exercice de maths d'abord avec Malik, et occuper Lou avec un jeu ou un dessin.",
+        "motsCles": [
+          "tour",
+          "chacun",
+          "minuteur",
+          "dispute",
+          "console",
+          "jeu",
+          "dessin",
+          "activite",
+          "devoi",
+          "exercice",
+          "maths",
+          "explique",
+          "aide",
+          "goute",
+          "calm",
+          "regle",
+          "ensemble",
+          "lou",
+          "malik"
+        ]
+      },
+      "competences": [
+        {
+          "code": "1A102",
+          "pourquoi": "s'occupe des deux enfants et garde le cadre (horaires, règles, sécurité)",
+          "motsCles": [
+            "regle",
+            "cadre",
+            "surveill",
+            "occup",
+            "gard",
+            "horai",
+            "goute",
+            "securite",
+            "heure"
+          ],
+          "mots": "Tu as su t'occuper de deux enfants et garder un cadre rassurant."
+        },
+        {
+          "code": "1D302",
+          "pourquoi": "règle la dispute sans prendre parti : tour de rôle, partage du temps",
+          "motsCles": [
+            "tour",
+            "chacun",
+            "partag",
+            "minuteur",
+            "equitable",
+            "a tour de role",
+            "dispute"
+          ],
+          "mots": "Tu as trouvé une façon juste de régler la dispute entre les deux."
+        },
+        {
+          "code": "1A101",
+          "pourquoi": "propose une autre activité adaptée à leur âge quand il pleut",
+          "motsCles": [
+            "jeu",
+            "dessin",
+            "activite",
+            "cabane",
+            "puzzle",
+            "histoi",
+            "cuisin",
+            "pate",
+            "carte",
+            "lego"
+          ],
+          "mots": "Tu as imaginé une activité qui occupe les enfants sans écran."
+        },
+        {
+          "code": "1D301",
+          "pourquoi": "aide Malik à faire son exercice lui-même, sans le faire à sa place",
+          "motsCles": [
+            "exercice",
+            "devoi",
+            "maths",
+            "explique",
+            "montr",
+            "lui-meme",
+            "seul",
+            "aide",
+            "astuce"
+          ],
+          "mots": "Tu as aidé Malik à réussir son exercice par lui-même."
+        },
+        {
+          "code": "6D107",
+          "pourquoi": "décide de l'ordre : devoirs d'abord, console ensuite",
+          "motsCles": [
+            "d abord",
+            "ensuite",
+            "apres",
+            "avant",
+            "priorit",
+            "ordre",
+            "planning",
+            "programme"
+          ],
+          "mots": "Tu as su mettre les choses dans le bon ordre pour l'après-midi."
+        },
+        {
+          "code": "6D101",
+          "pourquoi": "écoute ce que chacun ressent avant de décider",
+          "motsCles": [
+            "ecout",
+            "ressent",
+            "demand",
+            "pourquoi",
+            "rassur",
+            "parl",
+            "calm"
+          ],
+          "mots": "Tu as pris le temps d'écouter chacun des enfants."
+        }
+      ],
+      "competenceParDefaut": "1A102",
+      "competenceParticipation": "6D102",
+      "questionVecu": "Ça t'est déjà arrivé de t'occuper d'enfants plus jeunes que toi ? Qu'est-ce que tu faisais avec eux ?"
+    },
+    {
+      "id": "conflit-discord",
+      "titre": "Le serveur de l'équipe",
+      "illustration": "illustrations/conflit-discord.svg",
+      "situation": "Vous êtes admin du serveur Discord de votre équipe de jeu en ligne. Le tournoi est samedi, mais depuis une embrouille hier soir, deux joueurs ne répondent plus et l'ambiance est au plus bas. Sans cinq joueurs prêts, l'équipe ne peut pas s'inscrire.",
+      "question": "Que faites-vous ?",
+      "riasec": "E",
+      "solution": {
+        "resume": "Remotiver l'équipe : parler en privé aux deux joueurs pour régler l'embrouille, puis organiser un vocal avec tout le monde, répartir les rôles et fixer un entraînement avant samedi.",
+        "motsCles": [
+          "prive",
+          "mp",
+          "vocal",
+          "appel",
+          "reunion",
+          "entrain",
+          "motiv",
+          "remotiv",
+          "roles",
+          "organis",
+          "inscri",
+          "tournoi",
+          "regle",
+          "accord",
+          "remplac",
+          "recrut",
+          "message",
+          "annonce",
+          "ambiance",
+          "ensemble"
+        ]
+      },
+      "competences": [
+        {
+          "code": "1B109",
+          "pourquoi": "fait vivre le serveur : messages, annonces, rassemble la communauté",
+          "motsCles": [
+            "annonce",
+            "message",
+            "serveur",
+            "salon",
+            "communaute",
+            "poste",
+            "sondage",
+            "ping",
+            "rassembl"
+          ],
+          "mots": "Tu as su faire vivre le serveur et rassembler la communauté."
+        },
+        {
+          "code": "1B105",
+          "pourquoi": "organise l'équipe pour samedi : rôles, entraînement, inscription",
+          "motsCles": [
+            "organis",
+            "role",
+            "entrain",
+            "planning",
+            "horai",
+            "inscri",
+            "repart",
+            "remplac",
+            "recrut"
+          ],
+          "mots": "Tu as organisé l'équipe pour qu'elle soit prête samedi."
+        },
+        {
+          "code": "1D302",
+          "pourquoi": "règle l'embrouille entre les deux joueurs sans prendre parti",
+          "motsCles": [
+            "prive",
+            "mp",
+            "embrouill",
+            "accord",
+            "expliqu",
+            "version",
+            "entre eux",
+            "neutre",
+            "a trois"
+          ],
+          "mots": "Tu as aidé les deux joueurs à se reparler sans prendre parti."
+        },
+        {
+          "code": "6D106",
+          "pourquoi": "prend les choses en main et remotive l'équipe",
+          "motsCles": [
+            "motiv",
+            "remotiv",
+            "encourag",
+            "en main",
+            "lance",
+            "objectif",
+            "gagn",
+            "confian"
+          ],
+          "mots": "Tu as pris les choses en main et redonné envie à l'équipe."
+        },
+        {
+          "code": "6A103",
+          "pourquoi": "pense à l'ambiance et à ressouder le groupe",
+          "motsCles": [
+            "ambiance",
+            "ensemble",
+            "soud",
+            "ressoud",
+            "entente",
+            "groupe",
+            "equipe",
+            "vocal"
+          ],
+          "mots": "Tu as pensé à l'ambiance pour que le groupe reste soudé."
+        }
+      ],
+      "competenceParDefaut": "1B109",
+      "competenceParticipation": "6D102",
+      "questionVecu": "Ça t'est déjà arrivé d'animer un groupe, un serveur ou une équipe, et de motiver les autres ? Comment tu t'y prenais ?"
+    },
+    {
+      "id": "caisse-buvette",
+      "titre": "La caisse de la buvette",
+      "illustration": "illustrations/caisse-buvette.svg",
+      "situation": "Vous tenez la buvette du club de foot pendant le tournoi des jeunes. À la fin de la journée, la caisse ne tombe pas juste : il manque 12 euros par rapport aux tickets vendus. La trésorière de l'association passe récupérer la caisse dans une heure.",
+      "question": "Que faites-vous ?",
+      "riasec": "C",
+      "solution": {
+        "resume": "Recompter calmement la caisse et les tickets, vérifier les boissons restantes et la monnaie rendue, noter ce qu'on a trouvé, puis tout expliquer honnêtement à la trésorière.",
+        "motsCles": [
+          "recompt",
+          "compt",
+          "ticket",
+          "monnaie",
+          "rendu",
+          "stock",
+          "boisson",
+          "canette",
+          "verifi",
+          "calcul",
+          "note",
+          "cahier",
+          "feuille",
+          "tresori",
+          "explique",
+          "honnet",
+          "erreur",
+          "ecart",
+          "caisse",
+          "euro"
+        ]
+      },
+      "competences": [
+        {
+          "code": "4A201",
+          "pourquoi": "recompte la caisse et la monnaie rendue pour comprendre l'écart",
+          "motsCles": [
+            "recompt",
+            "compt",
+            "caisse",
+            "monnaie",
+            "rendu",
+            "billet",
+            "piece",
+            "fond de caisse"
+          ],
+          "mots": "Tu as su tenir une caisse et retrouver d'où venait l'écart."
+        },
+        {
+          "code": "3H101",
+          "pourquoi": "compte les boissons qui restent pour vérifier les ventes",
+          "motsCles": [
+            "stock",
+            "boisson",
+            "canette",
+            "reste",
+            "invent",
+            "bouteille",
+            "sandwich",
+            "carton"
+          ],
+          "mots": "Tu as pensé à compter le stock pour vérifier les ventes."
+        },
+        {
+          "code": "6B318",
+          "pourquoi": "rassemble les infos (tickets, ventes, rendus) et les compare",
+          "motsCles": [
+            "ticket",
+            "compar",
+            "liste",
+            "calcul",
+            "total",
+            "addition",
+            "info",
+            "vente"
+          ],
+          "mots": "Tu as rassemblé et comparé les chiffres pour y voir clair."
+        },
+        {
+          "code": "6D110",
+          "pourquoi": "vérifie avec précision et note tout pour ne rien oublier",
+          "motsCles": [
+            "verifi",
+            "note",
+            "cahier",
+            "feuille",
+            "precis",
+            "rigueur",
+            "deux fois",
+            "doucement"
+          ],
+          "mots": "Tu as vérifié avec rigueur et précision, sans te précipiter."
+        },
+        {
+          "code": "6B201",
+          "pourquoi": "prévient la trésorière et explique honnêtement ce qui s'est passé",
+          "motsCles": [
+            "tresori",
+            "preven",
+            "explique",
+            "dis",
+            "honnet",
+            "previen",
+            "responsable",
+            "club"
+          ],
+          "mots": "Tu as pensé à prévenir la trésorière et à tout expliquer honnêtement."
+        },
+        {
+          "code": "6D104",
+          "pourquoi": "assume la caisse dont il a la charge, sans chercher de coupable",
+          "motsCles": [
+            "assum",
+            "responsab",
+            "ma faute",
+            "pas grave",
+            "solution",
+            "rembours"
+          ],
+          "mots": "Tu as assumé la caisse dont tu avais la charge."
+        }
+      ],
+      "competenceParDefaut": "4A201",
+      "competenceParticipation": "6D102",
+      "questionVecu": "Ça t'est déjà arrivé de tenir une caisse, de gérer l'argent d'un groupe ou de faire des comptes ? Comment tu t'organisais ?"
+    },
+    {
+      "id": "voisine-formulaire",
+      "titre": "Le formulaire de la voisine",
+      "illustration": "illustrations/voisine-formulaire.svg",
+      "situation": "Votre voisine du troisième, 78 ans, doit refaire sa carte de bus sur un site internet avant vendredi. Elle n'a pas d'ordinateur, les mots du formulaire la perdent et elle a peur de se tromper. Elle vous demande un coup de main dans le hall de l'immeuble.",
+      "question": "Que faites-vous ?",
+      "riasec": "S",
+      "solution": {
+        "resume": "S'asseoir avec elle, préparer ensemble les papiers demandés, remplir le formulaire étape par étape en lui expliquant chaque mot, puis vérifier avant d'envoyer. Ses codes et ses informations restent à elle.",
+        "motsCles": [
+          "avec elle",
+          "a cote",
+          "aid",
+          "expliqu",
+          "etape",
+          "ensemble",
+          "tablette",
+          "papier",
+          "document",
+          "justificatif",
+          "verifi",
+          "confirmation",
+          "mediatheque",
+          "mairie",
+          "accompagn",
+          "guichet",
+          "agence",
+          "point numerique"
+        ]
+      },
+      "competences": [
+        {
+          "code": "1D101",
+          "pourquoi": "accompagne la voisine dans sa démarche en lui expliquant, sans faire à sa place",
+          "motsCles": [
+            "accompagn",
+            "aid",
+            "avec elle",
+            "guid",
+            "expliqu",
+            "montr"
+          ],
+          "mots": "Tu as pensé à guider la voisine pour qu'elle s'y retrouve dans sa démarche."
+        },
+        {
+          "code": "6B309",
+          "pourquoi": "sait utiliser un site, un formulaire en ligne, un téléphone ou une tablette pour faire la démarche",
+          "motsCles": [
+            "site",
+            "formulaire",
+            "ordi",
+            "tablette",
+            "telephone",
+            "en ligne",
+            "internet",
+            "mail"
+          ],
+          "mots": "Tu as pensé aux outils numériques, comme le site ou un téléphone, pour faire avancer la démarche."
+        },
+        {
+          "code": "6B104",
+          "pourquoi": "fait attention aux informations personnelles de la voisine (codes, mots de passe, papiers)",
+          "motsCles": [
+            "mot de passe",
+            "code",
+            "perso",
+            "confidenti",
+            "donnees",
+            "prive",
+            "secret"
+          ],
+          "mots": "Tu as fait attention aux informations personnelles de la voisine, comme ses codes et ses papiers."
+        },
+        {
+          "code": "6D101",
+          "pourquoi": "rassure la voisine, prend le temps et l'écoute",
+          "motsCles": [
+            "ecout",
+            "rassur",
+            "patien",
+            "peur",
+            "calme",
+            "comprend",
+            "temps"
+          ],
+          "mots": "Tu as pensé à prendre ton temps avec la voisine et à la mettre à l'aise."
+        },
+        {
+          "code": "6D110",
+          "pourquoi": "prépare les bons papiers, vérifie avant d'envoyer, garde une trace",
+          "motsCles": [
+            "verifi",
+            "reli",
+            "document",
+            "papier",
+            "justificatif",
+            "confirmation",
+            "capture"
+          ],
+          "mots": "Tu as pensé à vérifier les papiers et les informations pour que la démarche soit bien faite."
+        },
+        {
+          "code": "6D116",
+          "pourquoi": "accepte de rendre service et propose son aide spontanément",
+          "motsCles": [
+            "service",
+            "coup de main",
+            "voisine",
+            "disponible",
+            "propos",
+            "chez elle"
+          ],
+          "mots": "Tu as répondu à la demande de la voisine au lieu de passer ton chemin."
+        }
+      ],
+      "competenceParDefaut": "6D116",
+      "competenceParticipation": "6D102",
+      "questionVecu": "Ça t'est déjà arrivé d'aider quelqu'un à faire une démarche sur internet ou sur un téléphone ? Comment tu as fait ?"
+    },
+    {
+      "id": "anniversaire-20-euros",
+      "titre": "Anniversaire à 20 euros",
+      "illustration": "illustrations/anniversaire-20-euros.svg",
+      "situation": "Samedi, c'est l'anniversaire de votre pote Yanis. Vous êtes cinq et, en mettant tout en commun, vous avez 20 euros. Yanis adore le foot et la musique. Vous voulez lui faire une surprise qui lui fasse vraiment plaisir.",
+      "question": "Que faites-vous ?",
+      "riasec": "E",
+      "solution": {
+        "resume": "Faire une liste de ce qu'on veut, répartir les 20 euros et les tâches entre vous, et miser sur le fait maison et les idées perso : gâteau maison, playlist de ses sons préférés, vidéo de messages, petit cadeau autour du foot.",
+        "motsCles": [
+          "budget",
+          "liste",
+          "repart",
+          "maison",
+          "nous-meme",
+          "gateau",
+          "playlist",
+          "video",
+          "message",
+          "maillot",
+          "pas cher",
+          "chacun",
+          "compar",
+          "prix",
+          "occasion",
+          "carte",
+          "deco",
+          "partag"
+        ]
+      },
+      "competences": [
+        {
+          "code": "4C101",
+          "pourquoi": "répartit les 20 euros, fait des choix de dépenses ou compare les prix",
+          "motsCles": [
+            "budget",
+            "euro",
+            "prix",
+            "compar",
+            "repart",
+            "depens",
+            "cout",
+            "pas cher"
+          ],
+          "mots": "Tu as réfléchi à comment utiliser les 20 euros pour faire plaisir à Yanis."
+        },
+        {
+          "code": "2A304",
+          "pourquoi": "imagine et prépare la fête ou la surprise (lieu, moment, déroulé)",
+          "motsCles": [
+            "fete",
+            "surprise",
+            "organis",
+            "prepar",
+            "invit",
+            "lieu",
+            "soiree",
+            "parc"
+          ],
+          "mots": "Tu as pensé à l'organisation de la fête de Yanis, comme le bon moment ou le bon endroit."
+        },
+        {
+          "code": "1B105",
+          "pourquoi": "répartit les tâches entre les potes : qui achète, qui cuisine, qui prépare",
+          "motsCles": [
+            "chacun",
+            "tache",
+            "role",
+            "occupe",
+            "qui fait",
+            "equipe",
+            "ensemble"
+          ],
+          "mots": "Tu as pensé à faire participer tout le groupe, pour que chacun mette la main à la pâte."
+        },
+        {
+          "code": "6D115",
+          "pourquoi": "propose des idées faites maison ou originales pour compenser le petit budget",
+          "motsCles": [
+            "maison",
+            "playlist",
+            "video",
+            "idee",
+            "crea",
+            "cree",
+            "fabriqu",
+            "dessin",
+            "carte",
+            "deco"
+          ],
+          "mots": "Tu as cherché des idées pour faire vraiment plaisir à Yanis."
+        },
+        {
+          "code": "6D107",
+          "pourquoi": "fait une liste et choisit ce qui compte le plus pour Yanis",
+          "motsCles": [
+            "liste",
+            "priorit",
+            "abord",
+            "essentiel",
+            "plan",
+            "important"
+          ],
+          "mots": "Tu as pensé à ce qui compte le plus pour Yanis avant de te lancer."
+        }
+      ],
+      "competenceParDefaut": "6D115",
+      "competenceParticipation": "6D102",
+      "questionVecu": "Ça t'est déjà arrivé d'organiser une fête ou un cadeau avec peu de moyens ? Comment tu as fait ?"
     }
   ]
 }

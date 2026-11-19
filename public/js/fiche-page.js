@@ -12,7 +12,7 @@ export const FICHE_DEMO = {
   code: "DEMO",
   pseudo: "Lina",
   avatar: "🦊",
-  problemes: [{ titre: "Téléphone cassé" }, { titre: "Conflit sur Discord" }, { titre: "Le scooter en panne" }],
+  problemes: [{ titre: "Le téléphone mystère" }, { titre: "Le serveur de l'équipe" }, { titre: "Scooter en panne" }],
   competences: [
     { code: "3E205", libelle: "Réparer un équipement, une machine, une installation", mots: "Tu sais réparer des objets en suivant des explications.", preuve: "j'ai réparé le vélo d'un pote avec des tutos", typePreuve: "vecu", riasec: ["R"], problemeIndex: null, gardee: true },
     { code: "1D101", libelle: "Conseiller, accompagner une personne", mots: "Tu aides les autres quand ils sont bloqués.", preuve: "je l'ai aidé à remplir son dossier pour le club", typePreuve: "vecu", riasec: ["S"], problemeIndex: null, gardee: true },

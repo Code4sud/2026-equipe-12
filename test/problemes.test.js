@@ -1,5 +1,5 @@
-// Vérifie public/data/problemes.json : schéma, codes ROME, choix, illustrations,
-// et absence de sujets sensibles (SPEC §4.1).
+// Vérifie public/data/problemes.json : schéma, codes ROME, illustrations, une situation
+// par profil RIASEC, et absence de sujets sensibles (SPEC §4.1).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
@@ -12,13 +12,18 @@ import { mjMock, motsValides } from "../src/mj.js";
 
 const PUBLIC = new URL("../public/", import.meta.url);
 const MACROS = new Map(rome.macros.map((m) => [m.code, m]));
+// Une situation par profil RIASEC, tirée des exemples du sujet 4 (garder des enfants,
+// réparer un scooter, animer une communauté en ligne, tenir la caisse d'une
+// association…), plus le formulaire de la voisine et l'anniversaire.
 const IDS_ATTENDUS = [
-  "telephone-casse",
-  "anniversaire-20-euros",
-  "conflit-discord",
   "scooter-panne",
-  "voisine-formulaire",
+  "telephone-casse",
   "affiche-evenement",
+  "enfants-voisine",
+  "conflit-discord",
+  "caisse-buvette",
+  "voisine-formulaire",
+  "anniversaire-20-euros",
 ];
 const MOTS_INTERDITS = [
   "mère", "père", "parent", "maman", "papa", "frère", "sœur", "soeur", "famille",
@@ -42,10 +47,7 @@ function textesSensibles(p) {
     p.question,
     p.questionVecu,
     p.solution.resume,
-    ...p.solution.criteres,
     ...p.solution.motsCles,
-    ...p.indices,
-    ...p.choix.map((c) => c.texte),
     ...p.competences.map((c) => c.mots ?? ""),
   ];
 }
@@ -55,8 +57,19 @@ test("structure générale", () => {
   assert.ok(Array.isArray(problemes));
 });
 
-test("les 6 ids attendus, sans doublon", () => {
+test("les ids attendus, sans doublon", () => {
   assert.deepEqual([...problemes.map((p) => p.id)].sort(), [...IDS_ATTENDUS].sort());
+});
+
+test("les 6 profils RIASEC du Centre sont couverts", () => {
+  assert.deepEqual([...new Set(problemes.map((p) => p.riasec))].sort(), ["A", "C", "E", "I", "R", "S"]);
+});
+
+test("plus de champs de l'ancien jeu (critères, indices, 4 propositions)", () => {
+  for (const p of problemes) {
+    assert.ok(!("indices" in p) && !("choix" in p), p.id);
+    assert.ok(!("criteres" in p.solution), p.id);
+  }
 });
 
 for (const p of problemes) {
@@ -72,29 +85,14 @@ for (const p of problemes) {
 
     assert.ok(p.solution && typeof p.solution === "object");
     assert.ok(estTexte(p.solution.resume));
-    assert.ok(Array.isArray(p.solution.criteres) && p.solution.criteres.length >= 2);
-    assert.ok(p.solution.criteres.every(estTexte));
     const mc = p.solution.motsCles;
     // Jusqu'à 30 : le MJ mock doit reconnaître le vocabulaire courant (mon tel, gmail, pote…).
     assert.ok(Array.isArray(mc) && mc.length >= 8 && mc.length <= 30, `8 à 30 motsCles (${mc?.length})`);
     for (const m of mc) assert.match(m, MOT_CLE, `motCle « ${m} » : minuscules sans accents`);
     assert.equal(new Set(mc).size, mc.length, "motsCles en double");
 
-    assert.ok(Array.isArray(p.indices) && p.indices.length >= 2);
-    assert.ok(p.indices.every(estTexte));
-
-    assert.ok(Array.isArray(p.choix) && p.choix.length === 4, "exactement 4 choix");
-    for (const c of p.choix) {
-      assert.ok(estTexte(c.texte));
-      assert.equal(typeof c.correct, "boolean");
-    }
-
     assert.match(p.questionVecu, /\b(tu|t'|t’|ton|ta|tes)/i, "questionVecu au tutoiement");
     assert.ok(p.questionVecu.includes("?"));
-  });
-
-  test(`${p.id} : exactement 1 choix correct`, () => {
-    assert.equal(p.choix.filter((c) => c.correct === true).length, 1);
   });
 
   test(`${p.id} : 4 à 6 compétences ROME existantes (savoir-faire + savoir-être)`, () => {
@@ -134,11 +132,6 @@ for (const p of problemes) {
   );
 }
 
-test("la bonne réponse n'est pas toujours à la même position", () => {
-  const positions = new Set(problemes.map((p) => p.choix.findIndex((c) => c.correct)));
-  assert.ok(positions.size >= 3, `positions utilisées : ${[...positions].join(", ")}`);
-});
-
 test("le détecteur de mots interdits fonctionne (témoin)", () => {
   const trouve = (t) => mots(t).some((m) => INTERDITS.has(m));
   assert.ok(trouve("Ta mère t'appelle."));
@@ -155,6 +148,7 @@ test("le détecteur de mots interdits fonctionne (témoin)", () => {
 const PAS_INFINITIF = new Set([
   "autre", "cher", "cyber", "uber", "soir", "heure", "entre", "ordre", "neutre", "titre", "capture",
   "papier", "formulaire", "trottoir", "danger", "flyer", "quartier", "gare", "commer", "respir", "sugger", "separe",
+  "cadre", "cahier",
 ]);
 const ressembleInfinitif = (motCle) =>
   motCle.split(/[ -]/).filter((t) => /(er|ir|re)$/.test(t) && !PAS_INFINITIF.has(t));
@@ -184,8 +178,12 @@ test("les formes conjuguées sont reconnues par les mots-clés", () => {
     ["telephone-casse", "6B201", "On prévient le patron"],
     ["telephone-casse", "6B201", "Je demande à un pote"],
     ["telephone-casse", "6B201", "Il lui explique la situation"],
-    ["conflit-discord", "6D101", "Je leur demande ce qui se passe"],
-    ["conflit-discord", "6D112", "On attend qu'ils se calment"],
+    ["conflit-discord", "1B105", "On organise un entraînement avant samedi"],
+    ["conflit-discord", "6D106", "Je les remotive pour le tournoi"],
+    ["enfants-voisine", "1D302", "Chacun son tour à la console"],
+    ["enfants-voisine", "1D301", "Je lui explique sans faire l'exercice à sa place"],
+    ["caisse-buvette", "4A201", "Je recompte la caisse"],
+    ["caisse-buvette", "6B201", "On prévient la trésorière"],
     ["voisine-formulaire", "1D101", "Je l'aide et je lui montre"],
     ["voisine-formulaire", "6D116", "Je lui propose de passer"],
     ["scooter-panne", "2D313", "On comprend d'où vient la panne"],
@@ -196,83 +194,25 @@ test("les formes conjuguées sont reconnues par les mots-clés", () => {
   for (const [id, code, phrase] of cas) assert.ok(compterMots(phrase, comp(id, code)) > 0, `${id} ${code} : « ${phrase} »`);
 });
 
-// ───────────── MJ mock : résolu / pas résolu sur des réponses réalistes ─────────────
+// ───────────── MJ mock : la compétence attendue sur des réponses réalistes ─────────────
 const mj = mjMock({ rome });
-const P_PAR_ID = Object.fromEntries(problemes.map((p) => [p.id, p]));
-const evaluer = async (id, texte) =>
-  (await mj.evaluer({ probleme: P_PAR_ID[id], reponses: [{ joueurId: "j1", texte }] })).resolu;
 const attribuer = async (id, texte) =>
-  (await mj.attribuer({ probleme: P_PAR_ID[id], historique: { j1: { reponses: [texte], choix: null } } })).j1.code;
-
-const RESOLUES = {
-  "telephone-casse": [
-    "je lui prête mon portable, il récupère son CV sur Google Drive",
-    "Sami emprunte mon téléphone pour envoyer son CV par mail",
-    "il appelle le patron pour dire qu'il aura du retard",
-  ],
-  "anniversaire-20-euros": [
-    "On fait une petite vidéo avec des messages de tout le monde",
-    "On fait un gâteau nous-mêmes et on lui achète un maillot pas cher",
-  ],
-  "conflit-discord": ["On fait un vocal tous ensemble pour s'expliquer"],
-  "scooter-panne": ["On regarde s'il reste de l'essence", "On appelle un pote qui s'y connaît en mécanique"],
-  "voisine-formulaire": ["Je l'aide à remplir sur mon téléphone en lui expliquant"],
-  "affiche-evenement": ["je colle des affiches dans le quartier et à la boulangerie"],
-};
-const NON_RESOLUES = {
-  "telephone-casse": [
-    "On l'emmène chez le réparateur et on compare les devis",
-    "Je fais réparer son téléphone portable",
-    "Il achète un nouveau téléphone",
-  ],
-  "anniversaire-20-euros": ["On lui achète un maillot de foot avec les 20 euros"],
-  // Critère 3 : une belle affiche montrée nulle part ne résout pas le problème.
-  "affiche-evenement": [
-    "Je fais une belle affiche avec plein de couleurs et un gros titre",
-    "Je dessine l'affiche avec la date et le lieu",
-  ],
-};
-
-for (const p of problemes) {
-  test(`${p.id} : MJ mock, réponses qui remplissent les critères → résolu`, async () => {
-    for (const t of RESOLUES[p.id] ?? []) assert.equal(await evaluer(p.id, t), true, `« ${t} »`);
-  });
-
-  test(`${p.id} : MJ mock, réponses à côté → pas résolu`, async () => {
-    for (const t of [...(NON_RESOLUES[p.id] ?? []), "Je sais pas trop, on verra bien", "Peut-être attendre un peu"]) {
-      assert.equal(await evaluer(p.id, t), false, `« ${t} »`);
-    }
-  });
-
-  test(`${p.id} : MJ mock, la bonne proposition résout, les 3 autres non`, async () => {
-    for (const c of p.choix) assert.equal(await evaluer(p.id, c.texte), c.correct, `« ${c.texte} »`);
-  });
-}
+  (await mj.attribuer({ probleme: problemes.find((p) => p.id === id), historique: { j1: { reponses: [texte], choix: null } } })).j1.code;
 
 test("MJ mock : demander de l'aide au présent donne la compétence d'aide, pas la participation", async () => {
   assert.equal(await attribuer("scooter-panne", "On appelle un pote qui s'y connaît en mécanique"), "6B201");
   assert.equal(await attribuer("telephone-casse", "Je demande conseil à quelqu'un de confiance"), "6B201");
 });
 
-// ───────────── Choix : la bonne réponse ne se repère pas à sa taille ─────────────
-const nbMots = (s) => s.split(/\s+/).filter((t) => /[\p{L}\p{N}]/u.test(t)).length;
-
-for (const p of problemes) {
-  test(`${p.id} : 4 choix de 12 à 18 mots, la bonne pas plus longue que 1,3 × la moyenne des autres`, () => {
-    for (const c of p.choix) {
-      const n = nbMots(c.texte);
-      assert.ok(n >= 12 && n <= 18, `${n} mots : « ${c.texte} »`);
-    }
-    const bonne = p.choix.find((c) => c.correct).texte;
-    const autres = p.choix.filter((c) => !c.correct).map((c) => c.texte);
-    const moyenne = (f) => autres.reduce((a, t) => a + f(t), 0) / autres.length;
-    assert.ok(bonne.length <= 1.3 * moyenne((t) => t.length), `caractères : ${bonne.length} vs moyenne ${moyenne((t) => t.length).toFixed(0)}`);
-    assert.ok(nbMots(bonne) <= 1.3 * moyenne(nbMots), `mots : ${nbMots(bonne)} vs moyenne ${moyenne(nbMots).toFixed(1)}`);
-  });
-}
+test("MJ mock : les nouvelles situations donnent la compétence attendue", async () => {
+  assert.equal(await attribuer("telephone-casse", "Il vibre donc la cause vient sans doute de l'écran"), "2D313");
+  assert.equal(await attribuer("enfants-voisine", "Chacun son tour à la console, avec un minuteur"), "1D302");
+  assert.equal(await attribuer("conflit-discord", "Je poste une annonce sur le serveur pour rassembler tout le monde"), "1B109");
+  assert.equal(await attribuer("caisse-buvette", "Je recompte la caisse et la monnaie rendue"), "4A201");
+});
 
 // ───────────── Champs optionnels lus par le MJ (SPEC §4.1) ─────────────
-// competenceParDefaut, choix[i].competence, competences[i].mots : src/mj.js les
+// competenceParDefaut, competences[i].mots : src/mj.js les
 // lit tels quels (le mock les donne au joueur, l'IA les reçoit en suggestion).
 const MOTS_LONGUEUR_MAX = 140;
 
@@ -283,9 +223,6 @@ function ecartsChampsMJ(p) {
   if (typeof p.competenceParDefaut !== "string" || !codes.has(p.competenceParDefaut)) {
     ecarts.push(`competenceParDefaut « ${p.competenceParDefaut} » absente de competences`);
   }
-  (p.choix ?? []).forEach((c, i) => {
-    if (typeof c.competence !== "string" || !codes.has(c.competence)) ecarts.push(`choix ${i} : competence « ${c.competence} » absente de competences`);
-  });
   for (const c of p.competences ?? []) {
     const m = c.mots;
     if (!estTexte(m)) {
@@ -305,7 +242,7 @@ function ecartsChampsMJ(p) {
 }
 
 for (const p of problemes) {
-  test(`${p.id} : champs du MJ (competenceParDefaut, choix[i].competence, competences[i].mots)`, () => {
+  test(`${p.id} : champs du MJ (competenceParDefaut, competences[i].mots)`, () => {
     assert.deepEqual(ecartsChampsMJ(p), []);
   });
 }
@@ -315,7 +252,6 @@ test("le contrôle des champs du MJ détecte les écarts (témoin)", () => {
   const fautif = {
     ...base,
     competenceParDefaut: "9Z999",
-    choix: base.choix.map((c, i) => (i === 0 ? { ...c, competence: "9Z999" } : i === 1 ? { texte: c.texte, correct: c.correct } : c)),
     competences: base.competences.map((c, i) => [
       { ...c, mots: "" },
       { ...c, mots: "Bravo, tu as bien réagi." },
@@ -328,8 +264,6 @@ test("le contrôle des champs du MJ détecte les écarts (témoin)", () => {
   const ecarts = ecartsChampsMJ(fautif).join("\n");
   for (const attendu of [
     "competenceParDefaut « 9Z999 »",
-    "choix 0 : competence « 9Z999 »",
-    "choix 1 : competence « undefined »",
     "« mots » vide",
     "ne commence pas par « Tu »",
     `> ${MOTS_LONGUEUR_MAX}`,
@@ -339,20 +273,8 @@ test("le contrôle des champs du MJ détecte les écarts (témoin)", () => {
   ]) assert.ok(ecarts.includes(attendu), `écart non détecté : ${attendu}\n${ecarts}`);
 });
 
-test("MJ mock : un joueur qui n'a que choisi reçoit la compétence et la phrase prévues pour son choix", async () => {
-  for (const p of problemes) {
-    for (const [i, c] of p.choix.entries()) {
-      const { j } = await mj.attribuer({ probleme: p, historique: { j: { reponses: [], choix: i } } });
-      assert.equal(j.code, c.competence, `${p.id} choix ${i}`);
-      assert.equal(j.mots, p.competences.find((x) => x.code === c.competence).mots, `${p.id} choix ${i}`);
-      assert.equal(j.preuve, c.texte);
-      assert.equal(j.typePreuve, "jeu");
-    }
-  }
-});
-
 test("MJ mock : une réponse sérieuse sans mot-clé reçoit competenceParDefaut et sa phrase", async () => {
-  // Aucun mot-clé de compétence ni de solution dans aucun des 6 problèmes.
+  // Aucun mot-clé de compétence ni de solution dans aucune des situations.
   const texte = "Je prends un moment pour réfléchir puis je décide";
   for (const p of problemes) {
     assert.equal(p.competences.some((c) => compterMots(texte, c.motsCles) > 0) || compterMots(texte, p.solution.motsCles) > 0, false, `${p.id} : la phrase témoin contient un mot-clé`);

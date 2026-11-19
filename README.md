@@ -6,7 +6,7 @@ Projet réalisé à Nice les 18, 19 et 20 novembre 2026, sur le thème **« L'or
 
 ## Le projet
 
-Sujet 4 : le détecteur du potentiel caché. **Déclic est un jeu de rôle des compétences** : chaque jeune joue son propre rôle face à des problèmes du quotidien (un téléphone cassé, un anniversaire avec 20 €, un conflit sur Discord, un scooter en panne…). Un maître du jeu (MJ) IA révèle les compétences qu'il montre, et chacun repart avec sa fiche pour l'entretien avec le psychologue du travail ou le conseiller.
+Sujet 4 : le détecteur du potentiel caché. **Déclic est un jeu de rôle des compétences** : chaque jeune joue son propre rôle face à des problèmes du quotidien (un scooter en panne, deux enfants à garder un mercredi de pluie, le serveur Discord de l'équipe à remotiver, la caisse de la buvette du club qui ne tombe pas juste… : une situation par profil RIASEC, d'après les exemples du sujet). Un maître du jeu (MJ) IA révèle les compétences qu'il montre, et chacun repart avec sa fiche pour l'entretien avec le psychologue du travail ou le conseiller.
 
 Une partie se joue à 1 à 6 joueurs autour d'un **écran commun**, chacun avec **son téléphone** (QR code, rien à installer) et une **fiche personnage papier** :
 
