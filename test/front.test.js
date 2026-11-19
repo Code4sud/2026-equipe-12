@@ -34,7 +34,8 @@ test("RIASEC : les 6 couleurs de la SPEC §6", () => {
   const attendu = { R: "#c8743a", I: "#3a7bc8", A: "#a24fc0", S: "#2e9b6a", E: "#d8a019", C: "#5f6b85" };
   for (const [k, c] of Object.entries(attendu)) {
     assert.equal(RIASEC[k].couleur, c);
-    assert.ok(RIASEC[k].nom && RIASEC[k].verbe && RIASEC[k].question && RIASEC[k].gommette);
+    assert.ok(RIASEC[k].nom && RIASEC[k].verbe && RIASEC[k].question);
+    assert.ok(!("gommette" in RIASEC[k]), "plus de gommettes");
   }
 });
 
@@ -53,14 +54,13 @@ test("riasecDe : champ riasec de la compétence, sinon rome.json, sinon rien", (
   assert.deepEqual(riasecDe({ code: "X", riasec: ["Q", "<b>"] }, ROME), [], "lettres inconnues ignorées");
 });
 
-test("typeDe : couleur et gommette du code majeur, savoir-être sinon", () => {
+test("typeDe : couleur du code majeur, savoir-être sinon", () => {
   const t = typeDe({ code: "3E205" }, ROME);
   assert.equal(t.lettre, "R");
   assert.equal(t.couleur, RIASEC.R.couleur);
-  assert.equal(t.gommette, "orange");
   const s = typeDe({ code: "6D102", riasec: [] }, ROME);
   assert.equal(s.lettre, null);
-  assert.equal(s.gommette, SANS_TYPE.gommette);
+  assert.equal(s.couleur, SANS_TYPE.couleur);
 });
 
 test("reperesRiasec : majeur/mineur, dominants, poids (jamais affichés)", () => {
@@ -147,7 +147,8 @@ test("rendreFiche : pseudo, avatar et preuves échappés (aucune balise injecté
   assert.ok(html.includes("&lt;script&gt;"));
   assert.ok(html.includes("Pour le psy"));
   assert.ok(html.includes("Métiers à découvrir"));
-  assert.ok(html.includes("gommette blanche"), "savoir-être sans RIASEC → gommette blanche");
+  assert.ok(html.includes("pastille-blanche"), "savoir-être sans RIASEC → pastille blanche");
+  assert.ok(!/gommette/i.test(html), "plus de gommettes sur la fiche");
   assert.ok(!/\bfaux\b|mauvaise réponse/i.test(html));
 });
 

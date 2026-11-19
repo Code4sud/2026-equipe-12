@@ -8,23 +8,23 @@
 export const ORDRE_RIASEC = ["R", "I", "A", "S", "E", "C"];
 
 export const RIASEC = {
-  R: { nom: "Réaliste", verbe: "Faire, réparer, construire", couleur: "#c8743a", gommette: "orange",
+  R: { nom: "Réaliste", verbe: "Faire, réparer, construire", couleur: "#c8743a",
        question: "Qu'est-ce qui te plaît quand tu fais quelque chose de tes mains ? Tu te verrais plutôt en atelier, dehors, sur un chantier ?" },
-  I: { nom: "Investigateur", verbe: "Chercher, comprendre", couleur: "#3a7bc8", gommette: "bleue",
+  I: { nom: "Investigateur", verbe: "Chercher, comprendre", couleur: "#3a7bc8",
        question: "Quand tu ne sais pas faire un truc, comment tu t'y prends pour trouver ? Qu'est-ce que tu aimes comprendre ?" },
-  A: { nom: "Artistique", verbe: "Créer, imaginer, s'exprimer", couleur: "#a24fc0", gommette: "violette",
+  A: { nom: "Artistique", verbe: "Créer, imaginer, s'exprimer", couleur: "#a24fc0",
        question: "Qu'est-ce que tu as déjà créé dont tu es fier·e ? Tu aimerais que ton travail laisse de la place à ton style ?" },
-  S: { nom: "Social", verbe: "Aider, accompagner, transmettre", couleur: "#2e9b6a", gommette: "verte",
+  S: { nom: "Social", verbe: "Aider, accompagner, transmettre", couleur: "#2e9b6a",
        question: "Qu'est-ce que tu ressens quand tu aides quelqu'un ? Tu préfères aider des enfants, des jeunes, des adultes, des personnes âgées ?" },
-  E: { nom: "Entreprenant", verbe: "Convaincre, organiser, mener", couleur: "#d8a019", gommette: "jaune",
+  E: { nom: "Entreprenant", verbe: "Convaincre, organiser, mener", couleur: "#d8a019",
        question: "Quand tu organises un truc ou que tu convaincs quelqu'un, qu'est-ce qui te motive ? Tu aimes prendre des décisions ?" },
-  C: { nom: "Conventionnel", verbe: "Gérer, classer, être précis", couleur: "#5f6b85", gommette: "grise",
+  C: { nom: "Conventionnel", verbe: "Gérer, classer, être précis", couleur: "#5f6b85",
        question: "Ça te plaît quand les choses sont bien rangées, comptées, sans erreur ? Dans quelles situations tu es le plus carré·e ?" },
 };
 
 // Savoir-être du ROME sans code RIASEC (ex. 6D102 « Avoir l'esprit d'équipe ») :
-// ils servent dans tous les métiers. Sur la fiche papier : gommette blanche.
-export const SANS_TYPE = { nom: "Savoir-être", verbe: "Utile dans tous les métiers", couleur: "#8a8f99", gommette: "blanche" };
+// ils servent dans tous les métiers.
+export const SANS_TYPE = { nom: "Savoir-être", verbe: "Utile dans tous les métiers", couleur: "#8a8f99" };
 
 export function echapper(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -49,7 +49,7 @@ export function riasecDe(c, rome) {
   return (m?.riasec ?? []).filter((k) => RIASEC[k]);
 }
 
-/** Type affiché pour une compétence (couleur de carte, gommette) : le majeur, ou SANS_TYPE. */
+/** Type affiché pour une compétence (couleur de carte) : le majeur, ou SANS_TYPE. */
 export function typeDe(c, rome) {
   const k = riasecDe(c, rome)[0];
   return k ? { lettre: k, ...RIASEC[k] } : { lettre: null, ...SANS_TYPE };
@@ -170,10 +170,10 @@ export function blocRiasec(competences, rome, o = {}) {
 export function legendeRiasec({ avecSansType = true } = {}) {
   const items = ORDRE_RIASEC.map((k) => {
     const t = RIASEC[k];
-    return `<li><span class="gommette" style="--type:${t.couleur}" aria-hidden="true"></span><strong>${k} · ${t.nom}</strong> <span class="discret">${t.verbe} — gommette ${t.gommette}</span></li>`;
+    return `<li><span class="pastille" style="--type:${t.couleur}" aria-hidden="true"></span><strong>${k} · ${t.nom}</strong> <span class="discret">${t.verbe}</span></li>`;
   });
   if (avecSansType) {
-    items.push(`<li><span class="gommette gommette-blanche" style="--type:${SANS_TYPE.couleur}" aria-hidden="true"></span><strong>${SANS_TYPE.nom}</strong> <span class="discret">${SANS_TYPE.verbe} — gommette ${SANS_TYPE.gommette}</span></li>`);
+    items.push(`<li><span class="pastille pastille-blanche" style="--type:${SANS_TYPE.couleur}" aria-hidden="true"></span><strong>${SANS_TYPE.nom}</strong> <span class="discret">${SANS_TYPE.verbe}</span></li>`);
   }
   return `<ul class="legende-riasec">${items.join("")}</ul>`;
 }

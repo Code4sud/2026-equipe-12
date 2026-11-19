@@ -125,17 +125,17 @@ function titreProbleme(c, fiche) {
   return Number.isInteger(c.problemeIndex) ? `Problème ${c.problemeIndex + 1}` : "";
 }
 
-/** Une compétence en ligne : gommette de couleur, libellé, mots, preuve. */
+/** Une compétence en ligne : pastille de couleur, libellé, mots, preuve. */
 export function ligneCompetence(c, rome, contexte = "") {
   const t = typeDe(c, rome);
   const libelle = c.libelle ?? c.libelle_rome ?? indexMacros(rome).get(codeDe(c))?.libelle ?? codeDe(c) ?? "";
   const preuve = c.preuve ?? c.citation ?? "";
   const typePreuve = TYPES_PREUVE[c.typePreuve] ?? "";
   return `<li class="competence" style="--type:${t.couleur}">
-      <span class="gommette${t.lettre ? "" : " gommette-blanche"}" title="Gommette ${t.gommette}" aria-hidden="true"></span>
+      <span class="pastille${t.lettre ? "" : " pastille-blanche"}" title="${echapper(t.nom)}" aria-hidden="true"></span>
       <div>
         <p class="competence-libelle"><strong>${echapper(libelle)}</strong>
-          <span class="discret">${echapper(codeDe(c) ?? "")}${t.lettre ? ` · ${t.lettre} ${t.nom}` : ` · ${t.nom}`} · gommette ${t.gommette}</span></p>
+          <span class="discret">${echapper(codeDe(c) ?? "")}${t.lettre ? ` · ${t.lettre} ${t.nom}` : ` · ${t.nom}`}</span></p>
         ${c.mots ?? c.mots_du_jeune ? `<p class="competence-mots">${echapper(c.mots ?? c.mots_du_jeune)}</p>` : ""}
         ${preuve ? `<blockquote class="preuve">« ${echapper(preuve)} »</blockquote>` : ""}
         ${typePreuve || contexte ? `<p class="discret competence-contexte">${echapper([typePreuve, contexte].filter(Boolean).join(" · "))}</p>` : ""}

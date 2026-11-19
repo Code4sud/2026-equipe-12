@@ -45,15 +45,12 @@
     .deja li { display: flex; align-items: flex-end; gap: 3mm; }
     .deja .ligne { flex: 1; border-bottom: 1.2px solid var(--trait); height: 8mm; }
 
-    .rond { width: 11mm; height: 11mm; flex: none; border-radius: 50%; border: 1.5px dashed var(--trait); }
-    .rond.petit { width: 8mm; height: 8mm; }
 
     .gagnees { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
     .case {
       border: 1.5px solid var(--bord); border-radius: 4mm; padding: 3.5mm 4mm 4mm;
-      display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto; gap: 1.5mm 3.5mm; break-inside: avoid;
+      display: flex; flex-direction: column; gap: 1.5mm; break-inside: avoid;
     }
-    .case .rond { grid-row: 1 / span 3; align-self: center; width: 16mm; height: 16mm; }
     .case .numero { font-weight: 800; font-size: 9.5pt; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); }
     .case .ligne-etiquette { display: flex; align-items: flex-end; gap: 2mm; font-size: 9pt; color: var(--discret); }
     .case .ligne-etiquette span:last-child { flex: 1; border-bottom: 1.2px solid var(--trait); height: 10mm; }
@@ -89,7 +86,7 @@
     <header class="entete">
       <div class="titres">
         <h1>Déclic <span>· ma fiche personnage</span></h1>
-        <p class="discret">Recopie tes compétences pendant la partie et colle une gommette de la bonne couleur. C'est toi qui décides de ce que tu gardes.</p>
+        <p class="discret">Recopie tes compétences pendant la partie. C'est toi qui décides de ce que tu gardes.</p>
         <div class="champ"><span>Mon pseudo :</span><span class="ligne"></span></div>
         <div class="champ"><span>Date :</span><span class="ligne"></span></div>
       </div>
@@ -99,34 +96,34 @@
     <section class="deja">
       <h2>Ce que je sais déjà faire</h2>
       <ul>
-        <li><span class="rond petit" aria-hidden="true"></span><span class="ligne"></span></li>
-        <li><span class="rond petit" aria-hidden="true"></span><span class="ligne"></span></li>
-        <li><span class="rond petit" aria-hidden="true"></span><span class="ligne"></span></li>
+        <li><span class="ligne"></span></li>
+        <li><span class="ligne"></span></li>
+        <li><span class="ligne"></span></li>
       </ul>
     </section>
 
     <section>
       <h2>Compétences gagnées pendant le jeu</h2>
       <div class="gagnees">
-        <div class="case"><span class="rond" aria-hidden="true"></span><p class="numero">Compétence gagnée n° 1</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p><p class="ligne-etiquette"><span>Preuve :</span><span></span></p></div>
-        <div class="case"><span class="rond" aria-hidden="true"></span><p class="numero">Compétence gagnée n° 2</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p><p class="ligne-etiquette"><span>Preuve :</span><span></span></p></div>
-        <div class="case"><span class="rond" aria-hidden="true"></span><p class="numero">Compétence gagnée n° 3</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p><p class="ligne-etiquette"><span>Preuve :</span><span></span></p></div>
-        <div class="case"><span class="rond" aria-hidden="true"></span><p class="numero">Compétence gagnée n° 4</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p><p class="ligne-etiquette"><span>Preuve :</span><span></span></p></div>
-        <div class="case"><span class="rond" aria-hidden="true"></span><p class="numero">Compétence gagnée n° 5</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p><p class="ligne-etiquette"><span>Preuve :</span><span></span></p></div>
-        <div class="case"><span class="rond" aria-hidden="true"></span><p class="numero">Compétence gagnée n° 6</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p><p class="ligne-etiquette"><span>Preuve :</span><span></span></p></div>
+        <div class="case"><p class="numero">Compétence gagnée n° 1</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p><p class="ligne-etiquette"><span>Preuve :</span><span></span></p></div>
+        <div class="case"><p class="numero">Compétence gagnée n° 2</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p><p class="ligne-etiquette"><span>Preuve :</span><span></span></p></div>
+        <div class="case"><p class="numero">Compétence gagnée n° 3</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p><p class="ligne-etiquette"><span>Preuve :</span><span></span></p></div>
+        <div class="case"><p class="numero">Compétence gagnée n° 4</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p><p class="ligne-etiquette"><span>Preuve :</span><span></span></p></div>
+        <div class="case"><p class="numero">Compétence gagnée n° 5</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p><p class="ligne-etiquette"><span>Preuve :</span><span></span></p></div>
+        <div class="case"><p class="numero">Compétence gagnée n° 6</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p><p class="ligne-etiquette"><span>Preuve :</span><span></span></p></div>
       </div>
     </section>
 
     <section class="legende">
-      <h2>Les couleurs des gommettes</h2>
+      <h2>Les types d'intérêts (RIASEC)</h2>
       <ul>
-        <li><span class="pastille" style="--c: var(--R)"></span><span><strong>R · Réaliste</strong>Faire, réparer, construire — orange</span></li>
-        <li><span class="pastille" style="--c: var(--I)"></span><span><strong>I · Investigateur</strong>Chercher, comprendre — bleue</span></li>
-        <li><span class="pastille" style="--c: var(--A)"></span><span><strong>A · Artistique</strong>Créer, imaginer, s'exprimer — violette</span></li>
-        <li><span class="pastille" style="--c: var(--S)"></span><span><strong>S · Social</strong>Aider, accompagner, transmettre — verte</span></li>
-        <li><span class="pastille" style="--c: var(--E)"></span><span><strong>E · Entreprenant</strong>Convaincre, organiser, mener — jaune</span></li>
-        <li><span class="pastille" style="--c: var(--C)"></span><span><strong>C · Conventionnel</strong>Gérer, classer, être précis — grise</span></li>
-        <li><span class="pastille blanche"></span><span><strong>Savoir-être</strong>Utile dans tous les métiers — blanche</span></li>
+        <li><span class="pastille" style="--c: var(--R)"></span><span><strong>R · Réaliste</strong>Faire, réparer, construire</span></li>
+        <li><span class="pastille" style="--c: var(--I)"></span><span><strong>I · Investigateur</strong>Chercher, comprendre</span></li>
+        <li><span class="pastille" style="--c: var(--A)"></span><span><strong>A · Artistique</strong>Créer, imaginer, s'exprimer</span></li>
+        <li><span class="pastille" style="--c: var(--S)"></span><span><strong>S · Social</strong>Aider, accompagner, transmettre</span></li>
+        <li><span class="pastille" style="--c: var(--E)"></span><span><strong>E · Entreprenant</strong>Convaincre, organiser, mener</span></li>
+        <li><span class="pastille" style="--c: var(--C)"></span><span><strong>C · Conventionnel</strong>Gérer, classer, être précis</span></li>
+        <li><span class="pastille blanche"></span><span><strong>Savoir-être</strong>Utile dans tous les métiers</span></li>
       </ul>
     </section>
 
