@@ -58,6 +58,17 @@ Workflow `.github/workflows/ci-cd.yml` (GitHub Actions) :
 - **CD**, sur chaque push sur `main` quand la CI passe : `wrangler deploy` sur https://potentiel-cache.planbhunalp.workers.dev, puis vérification que la production répond.
 - Le déploiement s'active quand le dépôt a les secrets `CLOUDFLARE_API_TOKEN` (token Cloudflare limité à « Workers Scripts : Edit » sur ce compte) et `CLOUDFLARE_ACCOUNT_ID` (réglages du dépôt, droits administrateur). Sans eux, il est sauté. La clé OpenAI reste un secret du Worker, jamais dans GitHub.
 
+## Données personnelles (RGPD)
+
+Le détail est sur la page [`confidentialite.html`](public/confidentialite.html), liée depuis l'accueil, l'écran de connexion des joueurs, la fiche et la version solo. En résumé :
+
+- **Minimisation** : un pseudo et un avatar, pas de compte, pas de nom, pas d'e-mail, pas de téléphone, aucun cookie de suivi ni mesure d'audience.
+- **Finalité unique** : faire tourner la partie et produire la fiche de compétences du jeune.
+- **IA** : le récit et les réponses partent vers l'API OpenAI **sans les pseudos** (joueurs « J1, J2… ») ; la sortie est contrôlée côté serveur.
+- **Pas de décision automatique** (art. 22) : ni score ni verdict, le jeune garde ou refuse chaque compétence.
+- **Conservation** : partie effacée une heure après la fin (`deleteAll` du Durable Object), ou après 6 heures sans activité ; pas de base de données. La fiche papier (nom, prénom) reste sur papier.
+- **Déploiement réel** : à intégrer au traitement du Centre des Possibles (Métropole Nice Côte d'Azur) : mise à jour de l'AIPD, information du jeune et de ses représentants légaux s'il est mineur, contrat de sous-traitance avec l'hébergeur et le fournisseur d'IA, transfert hors UE encadré ou modèle hébergé en Europe.
+
 ## Données
 
 - **ROME 4.0** (France Travail, open data) : 506 macro-compétences, codes RIASEC.

@@ -303,7 +303,7 @@ function ecranRejoindre(v) {
     titre: "Choisis ton pseudo et ton avatar",
     html: `<form class="pile large" data-form="rejoindre" novalidate>
         <h1>Bienvenue !</h1>
-        <p class="aide">Choisis un pseudo (pas ton vrai nom) et un avatar.</p>
+        <p class="aide">Choisis un pseudo (pas ton vrai nom) et un avatar. Rien n'est gardé après la partie : <a href="confidentialite.html" target="_blank" rel="noopener">tes données</a>.</p>
         <div class="champ">
           <label for="pseudo">Ton pseudo</label>
           <input type="text" id="pseudo" name="pseudo" maxlength="${LIMITES.pseudo}" autocomplete="off" data-brouillon="pseudo" required>
