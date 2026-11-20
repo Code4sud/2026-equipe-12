@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Données personnelles — Déclic</title>
+  <meta name="description" content="Ce que Déclic collecte, pourquoi, combien de temps, et ce que l'IA reçoit : la politique de données personnelles (RGPD) du prototype.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700;1,800;1,900&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .rgpd h2 { margin-top: 2em; }
+    .rgpd li { margin: 0.35em 0; }
+    .rgpd .encadre { border-left: 4px solid var(--accent); padding: 0.6em 1em; margin: 1.2em 0; }
+  </style>
+</head>
+<body>
+  <header class="entete">
+    <p class="surtitre">Déclic · RGPD</p>
+    <h1>Données personnelles</h1>
+  </header>
+  <main class="rgpd">
+    <p>Déclic est un <strong>prototype</strong> réalisé par l'équipe 12 pendant le Hackathon Azuréen #3. Il est conçu pour collecter <strong>le moins de données possible</strong> (principe de minimisation, article 5 du RGPD) : on joue avec un pseudo, et tout est effacé après la partie.</p>
+
+    <p class="encadre"><strong>En bref :</strong> pas de compte, pas d'e-mail, pas de numéro de téléphone, pas de nom. Un pseudo suffit. La partie est effacée une heure après la fin. L'IA ne reçoit jamais les pseudos et ne décide de rien.</p>
+
+    <h2>Ce que Déclic enregistre pendant une partie</h2>
+    <ul>
+      <li>un <strong>pseudo</strong> (20 caractères au maximum) et un <strong>avatar</strong> : on demande de ne pas mettre son vrai nom ;</li>
+      <li>le <strong>récit de départ</strong> (« une ou deux choses que tu as déjà faites ») et les <strong>réponses écrites</strong> aux épisodes de l'histoire ;</li>
+      <li>les <strong>compétences proposées</strong> et le choix du joueur (« Je la garde » ou « Pas moi »).</li>
+    </ul>
+    <p>Déclic ne demande ni nom, ni âge, ni adresse, ni téléphone. Il n'utilise <strong>aucun cookie de suivi</strong> et aucune mesure d'audience. Le téléphone garde seulement, dans son navigateur, un identifiant aléatoire qui permet de revenir dans la partie après une coupure ; l'écran commun garde sa clé d'animateur le temps de la session.</p>
+    <p><strong>Conseil aux joueurs :</strong> n'écris pas d'informations personnelles (nom de famille, adresse, numéro, santé…) dans tes réponses. Raconte ce que tu as fait, pas qui tu es.</p>
+
+    <h2>À quoi ça sert</h2>
+    <p>Uniquement à faire tourner la partie et à produire la <strong>fiche de compétences</strong> que le jeune emporte pour son entretien avec le psychologue du travail ou le conseiller. Aucune autre utilisation, aucune revente, aucun profilage publicitaire.</p>
+
+    <h2>Ce que reçoit l'IA</h2>
+    <ul>
+      <li>Le récit et les réponses sont envoyés à l'API d'<strong>OpenAI</strong> (modèle <code>gpt-5-nano</code>) pour proposer des compétences du référentiel ROME 4.0.</li>
+      <li><strong>Les pseudos ne sont jamais envoyés</strong> : dans la demande, les joueurs s'appellent J1, J2, J3…</li>
+      <li>Le serveur contrôle chaque réponse de l'IA : compétence prise dans une liste fermée, preuve citée mot pour mot, aucun pseudo. Sinon, un maître du jeu de secours, sans IA, prend le relais.</li>
+      <li>OpenAI est un sous-traitant établi aux États-Unis. Pour un déploiement réel, ce transfert devrait être encadré (clauses contractuelles types ou Data Privacy Framework), ou remplacé par un modèle hébergé en Europe ou un modèle open weight.</li>
+    </ul>
+
+    <h2>Pas de décision automatique</h2>
+    <p>L'IA ne note pas, ne classe pas et ne décide de rien sur le jeune (article 22 du RGPD). Il n'y a ni score ni verdict : le jeune <strong>garde ou refuse</strong> chaque compétence, et c'est le psychologue ou le conseiller qui mène l'entretien.</p>
+
+    <h2>Combien de temps</h2>
+    <ul>
+      <li>La partie est <strong>effacée une heure après la fin</strong>, avec tout ce qu'elle contient.</li>
+      <li>Une partie abandonnée est effacée après <strong>6 heures sans activité</strong>.</li>
+      <li>Il n'y a pas de base de données ni de sauvegarde : chaque partie vit dans un espace isolé, supprimé à l'échéance.</li>
+      <li>La fiche finale n'existe que tant que la partie existe. Pour la garder, on l'<strong>imprime</strong> ou on l'enregistre en PDF.</li>
+      <li>La <strong>fiche papier</strong> (avec le nom et le prénom) reste sur papier, avec le jeune. Elle n'est jamais saisie dans Déclic.</li>
+      <li>La version solo (<a href="outil.html">outil.html</a>) n'enregistre aucun récit : l'analyse est faite puis oubliée.</li>
+    </ul>
+
+    <h2>Qui voit quoi</h2>
+    <ul>
+      <li><strong>L'écran commun</strong> montre qui a répondu, jamais ce qu'il a répondu. Seule l'idée retenue à chaque épisode est affichée, avec le pseudo de son auteur.</li>
+      <li><strong>Chaque joueur</strong> voit ses propres réponses et ses compétences.</li>
+      <li><strong>La fiche</strong> d'un joueur s'ouvre avec un lien qui contient un identifiant aléatoire propre à ce joueur.</li>
+      <li><strong>Hébergement</strong> : Cloudflare (Workers et Durable Objects).</li>
+    </ul>
+
+    <h2>Pour un déploiement au Centre des Possibles</h2>
+    <p>Le prototype ne remplace pas le cadre du Centre. En usage réel, Déclic s'intégrerait au traitement déjà mis en œuvre par la Métropole Nice Côte d'Azur pour le parcours, qui dispose de son analyse d'impact (AIPD) et de sa déléguée à la protection des données. Il faudrait :</p>
+    <ul>
+      <li>mettre à jour l'AIPD pour couvrir le jeu et l'appel à l'IA ;</li>
+      <li>informer le jeune, et ses représentants légaux s'il est mineur, avant la partie, dans des mots simples ;</li>
+      <li>permettre l'exercice des droits (accès, rectification, effacement, opposition) auprès de la déléguée à la protection des données du Centre ;</li>
+      <li>signer un contrat de sous-traitance avec l'hébergeur et le fournisseur d'IA.</li>
+    </ul>
+
+    <h2>Contact</h2>
+    <p>Pour le prototype : l'équipe 12, via le <a href="https://github.com/Code4sud/2026-equipe-12" target="_blank" rel="noopener">dépôt GitHub du projet</a>.</p>
+
+    <p><a href="index.html">← Retour à l'accueil</a></p>
+  </main>
+  <footer class="pied">
+    <p>Déclic · Équipe 12 · Hackathon Azuréen #3</p>
+  </footer>
+</body>
+</html>
