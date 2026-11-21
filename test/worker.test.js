@@ -211,7 +211,7 @@ test("analyse : mode mock forcé même avec une clé, et rome obligatoire", asyn
 test("analyse : norm et conversion au format commun §4.2", () => {
   assert.equal(norm("  L’été,  «chez»   moi."), "l'été, \"chez\" moi");
   const c = versCompetenceDepart({ code_rome: "1A102", libelle_rome: "X", mots_du_jeune: "Tu…", citation: "je garde", riasec: ["S", "E"] });
-  assert.deepEqual(c, { code: "1A102", libelle: "X", mots: "Tu…", preuve: "je garde", typePreuve: "vecu", riasec: ["S", "E"], problemeIndex: null, gardee: null });
+  assert.deepEqual(c, { code: "1A102", libelle: "X", mots: "Tu…", preuve: "je garde", typePreuve: "vecu", riasec: [], problemeIndex: null, gardee: null }, "pas de type RIASEC du ROME pour le récit");
 });
 
 // ─────────────────────────── Durable Object Partie (contexte simulé) ───────────────────────────
@@ -291,7 +291,7 @@ test("Partie : init unique, fiche, partie complète en mode mock sans fuite vers
   const ctx = fauxContexte();
   const partie = new Partie(ctx, { MJ_MODE: "mock" });
   await ctx.pret;
-  const creee = await partie.init({ code: "BCDF", nbProblemes: 1, dureeEchange: 10, dureeReponse: 10, dureeReflexion: 0 });
+  const creee = await partie.init({ code: "BCDF", nbProblemes: 1, dureeEchange: 10, dureeReponse: 10, dureeReflexion: 0, debrief: false });
   assert.match(creee?.cleEcran ?? "", /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/, "cleEcran = crypto.randomUUID()");
   const CLE = creee.cleEcran;
   assert.equal(await partie.init({ code: "BCDF" }), false, "un code déjà initialisé est refusé");
@@ -541,7 +541,7 @@ test("Partie : chien de garde en création (récit resté « en analyse ») et e
   await partie.traiter({ t: "suivant", role: "ecran" }); // echange
   await partie.traiter({ t: "fin_minuteur", role: "ecran" }); // reponse
   partie.lancerIA = async () => {};
-  await partie.traiter({ t: "reponse", texte: "Je le sèche", role: "joueur", joueurId: "joueur-aaaa-1111" });
+  await partie.traiter({ t: "reponse", texte: "Je compare les prix des ballons", role: "joueur", joueurId: "joueur-aaaa-1111" });
   assert.equal(partie.etat.phase, "competences");
   assert.equal(partie.etat.attribution, null);
   ctx.stockage.set("gardesIA", { [cleIA({ type: "choisir", problemeIndex: 0 })]: Date.now() - 1 });

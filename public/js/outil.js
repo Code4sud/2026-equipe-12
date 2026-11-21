@@ -5,7 +5,7 @@ import { EXEMPLES } from "./exemples.js";
 import { RIASEC, echapper, blocRiasec, INTRO_RIASEC_ROME } from "./riasec.js";
 import { blocMetiers } from "./fiche.js";
 import { analyserRecit } from "./analyse-client.js";
-import { dicteeDisponible, cartesVisibles, RELAIS_ADULTE } from "./joueur-outils.js";
+import { dicteeDisponible, cartesVisibles, RELAIS_ADULTE_PSY } from "./joueur-outils.js";
 
 const RELANCES = [
   "Qu'est-ce que tu fais pour aider à la maison ?",
@@ -273,7 +273,7 @@ function afficherFiche() {
 
     <footer class="fiche-pied">
       <p><strong>Ces compétences ont été repérées à partir des mots du jeune. Elles ne sont pas un diplôme : c'est un matériau d'entretien.</strong></p>
-      <p>${echapper(RELAIS_ADULTE)}</p>
+      <p>${echapper(RELAIS_ADULTE_PSY)}</p>
       <p>Généré à partir du récit du jeune, non conservé. Compétences : ${echapper(etat.analyse.referentiel)}.
       ${etat.analyse.ecartees?.length ? `${etat.analyse.ecartees.length} proposition(s) de l'IA écartée(s) automatiquement faute de citation exacte.` : ""}</p>
     </footer>`;

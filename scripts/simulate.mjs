@@ -259,7 +259,7 @@ async function main() {
 
   // L'idée du tour : l'écran montre d'abord ses mots SANS pseudo ; l'auteur, prévenu sur
   // son téléphone (« C'est ton idée ! On affiche ton pseudo ? »), accepte ou refuse.
-  // Chacun des autres reçoit en privé ce que sa réponse montre (compétence si action
+  // Chacun des autres reçoit en privé son retour (compétence si action
   // citable, sinon son idée). `autreIdee` : l'animateur demande d'abord une autre idée.
   const ideeDuTour = async (pi, ecrits, { accord = true, autreIdee = false } = {}) => {
     let ve = (await ecran.attendreVue((v) => v.phase === "competences" && v.problemeIndex === pi && v.idee?.texte, `l'idée du tour, épisode ${pi + 1}`)).vue;

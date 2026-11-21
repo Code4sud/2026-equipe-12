@@ -110,8 +110,8 @@ const E = (msg) => ({ ...msg, role: "ecran" });
 
 function nouvellePartie(opts = {}) {
   // Réglages fixés pour les tests du déroulé classique ; les valeurs par défaut
-  // (réflexion silencieuse, durée et nombre d'épisodes automatiques) ont leurs propres tests.
-  return creerEtat({ code: "BCDF", problemes: PROBLEMES, nbProblemes: 2, dureeEchange: 120, dureeReflexion: 0, graine: 42, ...opts });
+  // (réflexion silencieuse, durée et nombre d'épisodes automatiques, débrief) ont leurs propres tests.
+  return creerEtat({ code: "BCDF", problemes: PROBLEMES, nbProblemes: 2, dureeEchange: 120, dureeReflexion: 0, debrief: false, graine: 42, ...opts });
 }
 
 // Partie avec 2 joueurs (a, b), démarrée, personnages validés → presentation du problème 0.
@@ -420,7 +420,7 @@ test("épisode : presentation → echange → reponse → l'idée du tour (sans 
   // L'idée du tour est montrée à tout le monde, d'abord SANS pseudo (décision §2).
   const ideeSansNom = {
     pseudo: null, avatar: null, accordPseudo: null, texte: "Je l'éteins tout de suite",
-    competence: { code: "6D111", libelle: "6D111", riasec: ["E"], mots: "Tu as eu une bonne idée." }, notee: false,
+    competence: { code: "6D111", libelle: "6D111", riasec: ["E"], mots: "Tu as eu une bonne idée." },
   };
   for (const v of [vue(e, "ecran"), vue(e, "joueur", "b"), vue(e, "joueur", "a")]) assert.deepEqual(v.idee, ideeSansNom);
   assert.equal(vue(e, "ecran").autreIdeePossible, true);
@@ -452,7 +452,7 @@ test("épisode : presentation → echange → reponse → l'idée du tour (sans 
   assert.equal(vue(e, "joueur", "b").moi.retourPrive, "competence");
   assert.ok(!JSON.stringify(vue(e, "ecran")).includes("6D101"), "l'écran ne voit pas la compétence privée");
   assert.ok(!JSON.stringify(vue(e, "joueur", "a")).includes("6D101"), "les autres non plus");
-  assert.deepEqual(vue(e, "ecran").compte, { repondu: 1, total: 2 }, "a a fini ; b doit encore dire s'il garde la sienne");
+  assert.equal(vue(e, "ecran").compte, null, "aucun compte en phase compétences : il dirait qui a une compétence privée");
 
   // b dit s'il la garde : l'épisode est bouclé, l'histoire continue.
   r = ok(e, J("b", { t: "garder_competence", garder: true }), T0 + 3);
@@ -580,7 +580,7 @@ function jouerProbleme(e, t = T0, retenu = "a") {
   e = ok(e, J("a", { t: "reponse", texte: "Je l'éteins" }), t).etat;
   e = ok(e, J("b", { t: "reponse", texte: "Je demande de l'aide" }), t).etat;
   assert.equal(e.phase, "competences");
-  const c = { code: "6D102", libelle: "Avoir l'esprit d'équipe", mots: "Tu as cherché de l'aide.", preuve: retenu === "a" ? "Je l'éteins" : "Je demande", typePreuve: "jeu", riasec: [] };
+  const c = { code: "6D102", libelle: "Avoir l'esprit d'équipe", mots: "Tu as cherché de l'aide.", preuve: retenu === "a" ? "Je l'éteins" : "Je demande de l'aide", typePreuve: "jeu", riasec: [] };
   e = ok(e, { t: "attribution_faite", problemeIndex: e.problemeIndex, joueurId: retenu, competence: c }, t).etat;
   return ok(e, { t: "competences_privees", problemeIndex: e.problemeIndex, competences: {} }, t).etat;
 }
@@ -626,6 +626,18 @@ test("erreur_ia pendant le choix : pas d'idée retenue, l'écran peut passer", (
   assert.equal(vue(e, "joueur", "a").moi.competenceDuProbleme, null);
   const r = ok(e, E({ t: "suivant" }));
   assert.equal(r.etat.phase, "presentation");
+});
+
+test("erreur_ia pendant le choix : les compétences privées sont demandées, aucun téléphone n'attend sans fin", () => {
+  let e = jusquaReponse(partieEnPresentation());
+  e = ok(e, J("a", { t: "reponse", texte: "Je l'éteins tout de suite" })).etat;
+  e = ok(e, J("b", { t: "passer" })).etat;
+  const r = ok(e, { t: "erreur_ia" });
+  assert.deepEqual(r.effets.map((x) => [x.type, x.reponses.map((y) => y.joueurId)]), [["attribuer", ["a"]]]);
+  assert.equal(r.etat.privees[0], "attente");
+  // Si l'IA échoue encore : il retrouve son idée.
+  const f = ok(r.etat, { t: "erreur_ia", tache: "attribuer", problemeIndex: 0 }).etat;
+  assert.equal(vue(f, "joueur", "a").moi.retourPrive, "idee");
 });
 
 // ───────────────────────── Messages invalides ─────────────────────────
@@ -879,29 +891,30 @@ test("défauts : épisodes = nombre de joueurs (3 à 6), types RIASEC éloignés
   ko(f, E({ t: "reglages", nbProblemes: 0 }));
 });
 
-test("défauts : discussion de max(90, 30 × joueurs) s, réponse 90 s, réflexion 30 s, pas de débrief", () => {
+test("défauts : discussion de max(90, 30 × joueurs) s, réponse 90 s, réflexion 30 s, débrief activé", () => {
   assert.deepEqual([1, 3, 4, 5, 6].map(dureeEchangeParDefaut), [90, 90, 120, 150, 180]);
   const e4 = partieParDefaut(4);
   assert.deepEqual(e4.reglages, {
     nbProblemes: 4, nbProblemesAuto: true, dureeEchange: 120, dureeEchangeAuto: true,
-    dureeReponse: 90, dureeReflexion: 30, debrief: false,
+    dureeReponse: 90, dureeReflexion: 30, debrief: true,
   });
   assert.equal(partieParDefaut(6).reglages.dureeEchange, 180);
   // L'animateur peut la modifier : elle n'est plus recalculée.
-  let e = ok(partieParDefaut(2), E({ t: "reglages", dureeEchange: 60, dureeReflexion: 0, debrief: true })).etat;
+  let e = ok(partieParDefaut(2), E({ t: "reglages", dureeEchange: 60, dureeReflexion: 0, debrief: false })).etat;
   e = ok(e, J("j2", { t: "rejoindre", pseudo: "P2", avatar: AVATARS[2] })).etat;
   e = ok(e, J("j3", { t: "rejoindre", pseudo: "P3", avatar: AVATARS[3] })).etat;
   assert.equal(e.reglages.dureeEchange, 60);
   assert.equal(e.reglages.dureeReflexion, 0);
-  assert.equal(e.reglages.debrief, true);
+  assert.equal(e.reglages.debrief, false, "l'animateur peut retirer le débrief");
   for (const d of [20, 30, 45, 0]) assert.equal(ok(e, E({ t: "reglages", dureeReflexion: d })).etat.reglages.dureeReflexion, d);
   ko(e, E({ t: "reglages", dureeReflexion: 5 }));
   ko(e, E({ t: "reglages", dureeReflexion: 121 }));
   ko(e, E({ t: "reglages", debrief: "oui" }));
   // Options passées à la création (POST /api/parties).
-  const c = creerEtat({ code: "BCDF", problemes: HISTOIRE, dureeReflexion: 45, debrief: true });
+  const c = creerEtat({ code: "BCDF", problemes: HISTOIRE, dureeReflexion: 45, debrief: false });
   assert.equal(c.reglages.dureeReflexion, 45);
-  assert.equal(c.reglages.debrief, true);
+  assert.equal(c.reglages.debrief, false);
+  assert.equal(creerEtat({ code: "BCDF", problemes: HISTOIRE }).reglages.debrief, true, "débrief par défaut");
   assert.equal(creerEtat({ code: "BCDF", problemes: HISTOIRE, dureeReflexion: 7 }).reglages.dureeReflexion, 30, "valeur invalide → défaut");
 });
 
@@ -1055,9 +1068,20 @@ test("compétence privée : seulement si la réponse contient une action citable
   assert.equal(e.joueurs.a.competences.find((x) => x.problemeIndex === 0).code, "6D111", "l'idée du tour n'est pas remplacée");
   assert.equal(vue(e, "joueur", "d").moi.retourPrive, null);
   assert.deepEqual(effetsIAEnAttente(e), []);
-  // Compte de l'écran : seuls ceux qui ont quelque chose à trancher (a et b).
-  assert.deepEqual(vue(e, "ecran").compte, { repondu: 0, total: 2 });
-  assert.deepEqual(vue(e, "ecran").joueurs.map((j) => j.aFini), [false, false, null, null]);
+  // L'écran ne distingue personne en phase compétences (décisions §1 à §3) : ni
+  // l'auteur de l'idée (a), ni qui a une compétence privée (b), ni qui n'en a pas
+  // (c), ni qui a passé (d). Aucun compte non plus, ni à l'écran ni sur les téléphones.
+  const statuts = (x) => vue(x, "ecran").joueurs.map(({ aFini }) => aFini);
+  const comptes = (x) => [vue(x, "ecran"), ...["a", "b", "c", "d"].map((id) => vue(x, "joueur", id))].map((v) => v.compte);
+  assert.deepEqual(statuts(e), [null, null, null, null]);
+  assert.deepEqual(comptes(e), [null, null, null, null, null]);
+  for (const etape of [J("a", { t: "afficher_pseudo", accord: false }), J("b", { t: "garder_competence", garder: true })]) {
+    e = ok(e, etape).etat;
+    assert.deepEqual(statuts(e), [null, null, null, null], etape.t);
+    assert.deepEqual(comptes(e), [null, null, null, null, null], etape.t);
+    assert.equal(vue(e, "ecran").idee.pseudo, null);
+    assert.equal(Object.hasOwn(vue(e, "ecran").idee, "notee"), false, "rien ne dit si l'auteur a fait son choix");
+  }
 
   // Citations refusées : absente de la réponse, trop courte, sans code.
   let f = jusquaReponse(partieEnPresentation());
@@ -1130,6 +1154,47 @@ test("« Choisir une autre idée » : l'animateur écarte l'idée proposée, le 
   const r2 = ok(e, E({ t: "autre_idee" }));
   assert.deepEqual(r2.effets, []);
   assert.deepEqual(vue(r2.etat, "ecran").idee, { aucune: true });
+});
+
+test("« Choisir une autre idée » avant les compétences privées : l'auteur écarté garde sa compétence et l'épisode se boucle", () => {
+  let e = jusquaReponse(partieEnPresentation());
+  e = ok(e, J("a", { t: "reponse", texte: "Je l'éteins tout de suite" })).etat;
+  e = ok(e, J("b", { t: "reponse", texte: "Je rassure mon pote ensuite" })).etat;
+  const r = ok(e, { t: "attribution_faite", problemeIndex: 0, joueurId: "a", competence: compJeu("6D111", "Je l'éteins tout de suite") });
+  assert.deepEqual(r.effets.find((x) => x.type === "attribuer").reponses.map((x) => x.joueurId), ["b"]);
+  e = ok(r.etat, E({ t: "autre_idee" })).etat; // l'animateur clique tout de suite
+  assert.equal(vue(e, "joueur", "a").moi.monIdeeEcartee, false, "pas encore d'idée affichée");
+  e = ok(e, { t: "attribution_faite", problemeIndex: 0, joueurId: "b", competence: compJeu("6D101", "Je rassure mon pote"), essai: 1 }).etat;
+  // Les compétences privées arrivent ensuite, sans a (il était l'auteur au moment de l'appel).
+  e = ok(e, { t: "competences_privees", problemeIndex: 0, competences: { b: compJeu("6D101", "Je rassure mon pote") } }).etat;
+  const va = vue(e, "joueur", "a").moi;
+  assert.equal(va.retourPrive, "competence", "le retour de a n'est pas écrasé");
+  assert.equal(va.competenceDuProbleme.code, "6D111");
+  assert.equal(va.monIdeeEcartee, true, "son téléphone explique, sans reproche");
+  assert.equal(vue(e, "joueur", "b").moi.monIdeeEcartee, false);
+  assert.equal(e.joueurs.b.competences.find((c) => c.problemeIndex === 0).idee, true, "l'idée de b n'est pas remplacée");
+  e = ok(e, J("b", { t: "afficher_pseudo", accord: false })).etat;
+  e = ok(e, J("b", { t: "garder_competence", garder: true })).etat;
+  assert.equal(e.phase, "competences", "a doit encore choisir");
+  e = ok(e, J("a", { t: "garder_competence", garder: true })).etat;
+  assert.equal(e.phase, "presentation", "l'épisode se boucle seul");
+});
+
+test("idée du tour sans action citable : pas d'idée retenue, chaque réponse peut recevoir une compétence privée", () => {
+  let e = jusquaReponse(partieEnPresentation());
+  e = ok(e, J("a", { t: "reponse", texte: "Je l'éteins tout de suite" })).etat;
+  e = ok(e, J("b", { t: "reponse", texte: "Je rassure mon pote ensuite" })).etat;
+  for (const c of [
+    compJeu("6D111", "Je l'éteins"), // trop courte
+    compJeu("6D111", "j'appelle les pompiers"), // absente de la réponse
+    { ...compJeu("6D102", "A participé à la discussion de groupe"), typePreuve: "participation" },
+  ]) {
+    const r = ok(e, { t: "attribution_faite", problemeIndex: 0, joueurId: "a", competence: c });
+    assert.deepEqual(vue(r.etat, "ecran").idee, { aucune: true }, c.preuve);
+    assert.deepEqual(r.etat.joueurs.a.competences, []);
+    assert.deepEqual(r.effets.map((x) => x.type), ["attribuer"]);
+    assert.deepEqual(r.effets[0].reponses.map((x) => x.joueurId).sort(), ["a", "b"]);
+  }
 });
 
 test("préférence par épisode : facultative, après sa réponse, sans score ; ne fait jamais avancer", () => {

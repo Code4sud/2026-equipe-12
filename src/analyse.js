@@ -368,7 +368,9 @@ export function versCompetenceDepart(c) {
     mots: c.mots_du_jeune,
     preuve: c.citation,
     typePreuve: "vecu",
-    riasec: c.riasec ?? [],
+    // Pas d'épisode, donc pas de type RIASEC : le jeu n'utilise pas les codes
+    // RIASEC du fichier ROME, dont l'origine n'est pas vérifiable (critique psy point 8).
+    riasec: [],
     problemeIndex: null,
     gardee: null,
   };

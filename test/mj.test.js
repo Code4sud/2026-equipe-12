@@ -127,7 +127,7 @@ test("mock attribuer : compétence par motsCles, preuve = sous-chaîne exacte, p
   assert.ok(longue.includes(res.a.preuve), "preuve = sous-chaîne exacte de la réponse");
   // Preuve = la proposition qui contient les mots-clés (budget, euros), pas les 20 premiers mots.
   assert.equal(res.a.preuve, "Moi je ferais un budget précis avec les 20 euros");
-  assert.deepEqual(res.a.riasec, ["C", "S"]);
+  assert.deepEqual(res.a.riasec, [PROBLEME.riasec.charAt(0)], "type de l'épisode, jamais les codes RIASEC du ROME (critique psy point 8)");
 
   assert.equal(res.b.code, "6D107");
   assert.equal(res.b.preuve, "Je fais une liste et un planning");
@@ -136,7 +136,7 @@ test("mock attribuer : compétence par motsCles, preuve = sous-chaîne exacte, p
     assert.equal(res[id].code, "6D102");
     assert.equal(res[id].typePreuve, "participation");
     assert.equal(res[id].preuve, PREUVE_PARTICIPATION);
-    assert.deepEqual(res[id].riasec, ["E", "C"], "6D1xx sans RIASEC → couleur du problème");
+    assert.deepEqual(res[id].riasec, ["E"], "type dominant de l'épisode");
   }
 
   assert.equal(res.e.typePreuve, "jeu");
@@ -829,6 +829,11 @@ test("phrase d'action de l'IA : « Tu as … », sans jugement sur la personne, 
     "Tu as su gérer ton anxiété et ta timidité",
     "Tu as aidé ta mère",
     "Tu sais compter",
+    // Sur-promesse (critique psy point 2) : une proposition, pas une compétence prouvée.
+    "Tu as montré que tu sais organiser",
+    "Tu as montré que tu sais gérer un budget",
+    "Tu as prouvé que tu sais négocier",
+    "Tu as su tenir une caisse",
   ]) assert.ok(!motsActionValides(m), m);
   // contientMotInterdit (filet secondaire) normalise le genre et le nombre.
   for (const t of ["Tu es timide", "elle est anxieuse", "ils sont anxieux", "très intelligente", "tu es émotif", "des idées géniales"]) assert.ok(contientMotInterdit(t), t);

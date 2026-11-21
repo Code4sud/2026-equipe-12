@@ -263,6 +263,8 @@ export const estViolente = (texte) => {
 export const AMORCES = ["Moi, je demanderais à…", "D'abord, je…", "J'irais voir…"];
 export const MESSAGE_SANS_REPONSE = "Toutes les idées comptent ! Pas facile ? Commence par un de ces débuts de phrase, ou passe ce tour.";
 export const MESSAGE_PASSE = "Pas de souci, l'histoire continue. Tu pourras proposer ton idée au prochain épisode.";
+// Au dernier épisode : plus de « prochain épisode » à promettre.
+export const MESSAGE_PASSE_DERNIER = "Pas de souci, l'histoire continue.";
 export const MESSAGE_VIOLENCE = "Ici, on cherche une solution sans violence. Qu'est-ce que tu pourrais faire d'autre ?";
 
 // Forme de comparaison : sans accents ni ponctuation (« Moi, je demanderais à… » = « moi je demanderais a »).

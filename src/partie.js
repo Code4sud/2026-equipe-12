@@ -170,7 +170,7 @@ export class Partie extends DurableObject {
       preferences: e.problemes
         .map((id, index) => ({ index, titre: titre(id), valeur: reponse(index)?.preference ?? null }))
         .filter((p) => p.valeur !== null),
-      // Débrief : « Raconte une fois, dans ta vraie vie, où tu l'as déjà utilisée » (privé).
+      // Débrief : « Raconte une fois, dans ta vraie vie, où tu as fait quelque chose comme ça » (privé).
       debrief: typeof j.debrief === "string" && j.debrief ? j.debrief : null,
     };
   }

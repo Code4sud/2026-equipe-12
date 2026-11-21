@@ -87,7 +87,7 @@ export function phraseCompetence({ action = null, libelle = null, citation = nul
   const a = typeof action === "string" && action.trim() ? action.trim().replace(/[\s.!?…;:,]+$/u, "") : null;
   const base = a ?? (typeof citation === "string" && citation.trim() ? `Tu as proposé « ${citationCourte(citation)} »` : null);
   if (!lib) return base ? `${base}.` : "Tu as proposé une idée pour l'histoire.";
-  if (!base) return `Ta réponse montre ce qu'on appelle « ${lib} ».`;
+  if (!base) return `Dans ta réponse, le MJ a repéré ce qu'on appelle « ${lib} ».`;
   return `${base} : c'est ce qu'on appelle « ${lib} ».`;
 }
 
@@ -114,7 +114,10 @@ const motsDuProbleme = (probleme, code) => {
  */
 function fabriquer(macros, probleme, code, { action = null, mots = null, preuve, typePreuve }) {
   const macro = macros.get(code);
-  const riasec = macro?.riasec?.length ? macro.riasec.slice(0, 2) : lettresRiasec(probleme?.riasec).slice(0, 2);
+  // Type RIASEC de l'ÉPISODE, jamais celui du fichier ROME (critique psy point 8 :
+  // l'origine des colonnes RIASEC du ROME n'est pas vérifiable). Carte, écran et
+  // fiches suivent ainsi la même règle.
+  const riasec = lettresRiasec(probleme?.riasec).slice(0, 1);
   const libelle = accentuerLibelle(macro?.libelle ?? code);
   const phrase = typePreuve === "participation"
     ? mots || MOTS_PARTICIPATION
@@ -409,12 +412,16 @@ export function motsValides(m, { pseudos = [] } = {}) {
  * « phrase-mots-valorisante », critique psy point 2) : forme de motsValides,
  * commence par « Tu as » + une action (« Tu as proposé de prévenir le coach »),
  * aucun jugement sur la personne (« tu es créatif », « doué », « intelligent »),
- * aucun superlatif (« génial », « incroyable », « parfait »), aucun sujet sensible.
+ * aucun superlatif (« génial », « incroyable », « parfait »), aucun sujet sensible,
+ * et jamais une compétence présentée comme acquise (« Tu as montré que tu sais »,
+ * « Tu as prouvé », « Tu as su ») : une réponse dans une fiction est une
+ * proposition, pas une preuve.
  */
+const SUR_PROMESSE = /\b(montr|d[ée]montr|prouv)|^Tu as su\b/i;
 export function motsActionValides(m, { pseudos = [] } = {}) {
   if (!motsValides(m, { pseudos })) return false;
   const t = m.trim();
-  return /^Tu as\s+\S/.test(t) && !contientJugement(t) && !contientSujetSensible(t);
+  return /^Tu as\s+\S/.test(t) && !SUR_PROMESSE.test(t) && !contientJugement(t) && !contientSujetSensible(t);
 }
 
 /**

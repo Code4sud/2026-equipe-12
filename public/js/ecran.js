@@ -276,8 +276,8 @@ export function cleScene(vue) {
     vue?.phase, vue?.problemeIndex ?? null, vue?.probleme?.id ?? null,
     vue?.fin ?? null,
     vue?.phase === "competences" ? !!vue.attenteIA : null,
-    // L'idée du tour : le pseudo apparaît (accord), la compétence est notée.
-    i ? [!!i.aucune, i.texte ?? "", i.pseudo ?? "", i.accordPseudo ?? "", !!i.notee] : null,
+    // L'idée du tour : le pseudo apparaît (accord).
+    i ? [!!i.aucune, i.texte ?? "", i.pseudo ?? "", i.accordPseudo ?? ""] : null,
     vue?.phase === "presentation" ? vue.liaison ?? "" : null,
     vue?.phase === "echange" ? (Array.isArray(vue.joueurs) && vue.joueurs.length === 1) : null,
   ]);
@@ -309,7 +309,7 @@ export function commandesPour(vue) {
       return [{ id: "fin_minuteur", libelle: "Passer aux réponses",
         message: { t: "fin_minuteur" }, principal: true,
         aide: vue.tempsEcoule ? "Le temps est écoulé : lance la suite quand le groupe est prêt."
-          : "Invite chacun à dire au moins une phrase. Ce bouton arrête la discussion maintenant." }];
+          : "Propose à chacun de dire une phrase, sans insister : on peut aussi passer. Ce bouton arrête la discussion maintenant." }];
     case "reponse":
       return [{ id: "fin_minuteur", libelle: "Continuer sans attendre", message: { t: "fin_minuteur" }, principal: true,
         aide: "La suite démarre seule quand tout le monde a répondu. Chaque réponse écrite peut montrer une compétence : ceux qui n'ont pas encore répondu peuvent le faire jusqu'à la fin du minuteur." }];
@@ -583,12 +583,12 @@ export const SCENES = {
     return `<div class="minuteur-grille apparition">
       ${blocMinuteur()}
       <div class="pile large">
-        <p class="surtitre">À vous de jouer</p>
+        <p class="surtitre">${seul ? "À toi de jouer" : "À vous de jouer"}</p>
         ${seul
           ? `<p class="consigne-geante">Réfléchis à voix haute avec l'animateur</p>
              <p class="situation">Dis ce que tu ferais, comme ça te vient. Rien à écrire pour l'instant.</p>`
           : `<p class="consigne-geante">Tour de table&nbsp;!</p>
-             <p class="situation">Chacun dit son idée en une phrase, sans être coupé. Ensuite, discussion libre. Rien à écrire pour l'instant.</p>`}
+             <p class="situation">Chacun peut dire son idée en une phrase, sans être coupé. On peut aussi passer. Ensuite, discussion libre. Rien à écrire pour l'instant.</p>`}
         ${bloc("temps", vue)}
         ${rappelProbleme(vue)}
       </div>
@@ -600,8 +600,8 @@ export const SCENES = {
       ${blocMinuteur()}
       <div class="pile large">
         <p class="surtitre">Chacun pour soi</p>
-        <p class="consigne-geante">Écrivez votre réponse sur votre téléphone</p>
-        <p class="situation">Toutes les idées comptent. Chaque réponse est privée : les autres joueurs ne la voient pas. Le maître du jeu est une IA : il propose, tu décides.</p>
+        <p class="consigne-geante">Écris ta réponse sur ton téléphone</p>
+        <p class="situation">Toutes les idées comptent. Les autres ne voient pas ta réponse. Si elle devient l'idée du tour, un bout de ta phrase s'affiche ici, sans ton nom sauf si tu dis oui. Le maître du jeu est une IA : il propose, tu décides.</p>
         ${bloc("temps", vue)}
         ${bloc("compte", vue)}
         ${rappelProbleme(vue)}
@@ -632,9 +632,6 @@ export const SCENES = {
     const auteur = i.pseudo
       ? `<p class="idee-auteur"><span class="avatar grand" aria-hidden="true">${echapper(i.avatar ?? "")}</span> L'idée de ${echapper(i.pseudo)}</p>`
       : "";
-    const statut = i.notee
-      ? "✓ Notée sur la fiche papier. L'histoire continue…"
-      : `${i.pseudo ? echapper(i.pseudo) : "Son auteur"} l'écrit sur sa fiche papier…`;
     return `<div class="pile centre large apparition message-plein idee-du-tour" style="max-width:1300px">
       <p class="surtitre">L'idée du tour</p>
       <h1>Cette idée fait avancer l'histoire&nbsp;:</h1>
@@ -644,9 +641,7 @@ export const SCENES = {
         <p class="discret">Compétence repérée</p>
         <p class="idee-libelle">${k ? `<span class="puce-riasec" aria-hidden="true">${k}</span> ` : ""}${echapper(i.competence?.libelle ?? "")}</p>
       </div>
-      <p class="situation discret">${statut}</p>
-      <p class="situation">Regardez vos téléphones : chacun retrouve ce que sa réponse montre.</p>
-      ${bloc("compte", vue)}
+      <p class="situation">Regardez vos téléphones : chacun y retrouve son retour, pour lui seul.</p>
     </div>`;
   },
 
@@ -669,7 +664,7 @@ export const SCENES = {
       <div class="palette-riasec" aria-hidden="true">${Object.keys(RIASEC).map((k) => `<span class="riasec-${k}"></span>`).join("")}</div>
       <h1 class="fin-titre">Bravo l'équipe&nbsp;!</h1>
       ${Number.isFinite(n) && n > 0 ? `<p class="fin-chiffre">Ensemble, vous avez fait apparaître <strong>${n}</strong> compétence${n > 1 ? "s" : ""}.</p>` : ""}
-      <p class="situation">Vos idées ont fait avancer l'histoire. Chaque compétence repérée garde la trace de vos propres mots. Ta fiche t'attend sur ton téléphone : tu peux l'imprimer et en parler avec le psy ou le conseiller.</p>
+      <p class="situation">Vos idées ont fait avancer l'histoire. Chaque compétence repérée garde la trace de vos propres mots. Chacun retrouve sa fiche sur son téléphone, pour l'imprimer et en parler avec le psy ou le conseiller.</p>
       <p class="discret">Merci d'avoir joué. Rien n'est gardé après la partie.</p>
     </div>`;
   },
@@ -725,7 +720,8 @@ export function vuesDemo(maintenant = Date.now(), code = "KDMZ") {
   const minuteur = (s) => ({ minuteurFin: maintenant + s * 1000, minuteurDebut: maintenant, minuteurDuree: s * 1000 });
   const ideeLina = { texte: "On fait la liste de ce qu'il faut et on compare les prix avant d'acheter", competence: { code: "4C101", libelle: "Élaborer, suivre et piloter un budget", riasec: ["C"] } };
   // En `competences`, le compte ne porte que sur ceux qui ont quelque chose à trancher.
-  const choix = (n) => DEMO_JOUEURS.map((j, i) => ({ ...j, aFini: i === 2 ? null : i < n }));
+  // Phase compétences : personne n'est distingué à l'écran (aFini null pour tous).
+  const choix = () => DEMO_JOUEURS.map((j) => ({ ...j, aFini: null }));
   const accueil = (n, reglages = DEMO_REGLAGES) => ({ ...base, phase: "accueil", problemeIndex: null, probleme: null, joueurs: joueurs(n), compte: null, reglages: { ...reglages } });
   return [
     accueil(0, { ...DEMO_REGLAGES, nbProblemes: 3, dureeEchange: 90 }),
@@ -741,14 +737,14 @@ export function vuesDemo(maintenant = Date.now(), code = "KDMZ") {
     pb(0, "reponse", { minuteurFin: maintenant + 12_000, minuteurDebut: maintenant - 78_000, minuteurDuree: 90_000, joueurs: joueurs(4, 3), compte: { repondu: 3, total: 4 } }),
     pb(0, "competences", { attenteIA: true }),
     // L'idée s'affiche d'abord sans nom ; son auteur décide sur son téléphone.
-    pb(0, "competences", { idee: { pseudo: null, avatar: null, accordPseudo: null, ...ideeLina, notee: false }, autreIdeePossible: true, joueurs: choix(1), compte: { repondu: 1, total: 3 } }),
-    pb(0, "competences", { idee: { pseudo: "Lina", avatar: "🦊", accordPseudo: true, ...ideeLina, notee: true }, autreIdeePossible: true, joueurs: choix(2), compte: { repondu: 2, total: 3 } }),
+    pb(0, "competences", { idee: { pseudo: null, avatar: null, accordPseudo: null, ...ideeLina }, autreIdeePossible: true, joueurs: choix() }),
+    pb(0, "competences", { idee: { pseudo: "Lina", avatar: "🦊", accordPseudo: true, ...ideeLina }, autreIdeePossible: true, joueurs: choix() }),
     pb(1, "presentation"),
     pb(1, "reflexion", minuteur(30)),
     pb(1, "echange", minuteur(120)),
     pb(1, "reponse", { ...minuteur(90), compte: { repondu: 2, total: 4 } }),
     pb(1, "competences", { attenteIA: true }),
-    pb(1, "competences", { idee: { pseudo: null, avatar: null, accordPseudo: false, texte: "on poste l'affiche en story et on la colle à la boulangerie et au lycée", competence: { code: "6A107", libelle: "Utiliser les réseaux sociaux", riasec: ["C", "S"] }, notee: true }, autreIdeePossible: true }),
+    pb(1, "competences", { idee: { pseudo: null, avatar: null, accordPseudo: false, texte: "on poste l'affiche en story et on la colle à la boulangerie et au lycée", competence: { code: "6A107", libelle: "Utiliser les réseaux sociaux", riasec: ["C"] } }, autreIdeePossible: true }),
     { ...base, phase: "debrief", problemeIndex: 1, probleme: null, joueurs: joueurs(4), compte: null },
     { ...base, phase: "fin", problemeIndex: 1, probleme: null, joueurs: joueurs(4), compte: null, fin: { nbCompetencesTotal: 15 } },
   ];

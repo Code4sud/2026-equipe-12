@@ -4,12 +4,12 @@
 // l'afficher et envoyer les actions du joueur. Aucune logique de jeu ici.
 // Mode démo : ?demo=1 fait défiler des vues factices de chaque phase.
 
-import { echapper, typeDe, couleursLisibles } from "./riasec.js";
+import { echapper, typeDe, couleursLisibles, SANS_TYPE } from "./riasec.js";
 import { rendreFiche } from "./fiche.js";
 import {
   totalMinuteur, dicteeDisponible, competencesEnAttente, estDepartEnAttente, messageGarder, libelleValiderDepart,
   fermetureDefinitive, decalageServeur, decouperPhrases, texteEpisode, texteAmorce, separerMots, retourEpisode,
-  texteMonIdee, ANNONCE_CADRE, MJ_EST_UNE_IA, QUESTIONS_DEBRIEF, MESSAGE_PASSE, PROMESSE_COMPETENCE, RELAIS_ADULTE,
+  texteMonIdee, ANNONCE_CADRE, MJ_EST_UNE_IA, QUESTIONS_DEBRIEF, messagePasse, PASSE_POUR_LE_PSY, PROMESSE_COMPETENCE, RELAIS_ADULTE,
 } from "./joueur-outils.js";
 
 // Copie de AVATARS (src/jeu.js, SPEC §3).
@@ -179,8 +179,15 @@ const libelleDe = (c) => c.libelle ?? c.libelle_rome ?? c.code ?? "";
 const motsDe = (c) => c.mots ?? c.mots_du_jeune ?? "";
 const preuveDe = (c) => c.preuve ?? c.citation ?? "";
 
+// Type d'une carte : le type RIASEC de l'épisode, porté par la compétence (src/mj.js),
+// jamais les codes RIASEC du fichier ROME (critique psy point 8) ; le récit de
+// départ n'a pas d'épisode, donc pas de type.
+const typeCarte = (c) => (c?.problemeIndex === null || c?.problemeIndex === undefined || c?.typePreuve === "vecu"
+  ? { lettre: null, nom: "Ton récit", couleur: SANS_TYPE.couleur }
+  : typeDe(c, null));
+
 function carteCompetence(c, { surtitre = "", corps = "" } = {}) {
-  const t = typeDe(c, etat.rome);
+  const t = typeCarte(c);
   // Bordure à la couleur SPEC ; bandeau assombri si besoin pour un texte lisible (AA).
   const { fond, texte } = couleursLisibles(t.couleur);
   // « Tu as proposé de … : c'est ce qu'on appelle « libellé ». » : le libellé n'est
@@ -273,7 +280,7 @@ function ecranPour(v) {
         html: `<div class="pile centre large">
             <p class="tel-emoji" aria-hidden="true">🤫</p>
             <h1>Réfléchis en silence</h1>
-            <p>Réfléchis seul·e à ce que tu ferais. On en parle juste après.</p>
+            <p>Réfléchis dans ta tête à ce que tu ferais. On en parle juste après.</p>
             ${htmlMinuteur(v)}
           </div>
           ${formNote(v, pi)}
@@ -287,7 +294,7 @@ function ecranPour(v) {
         html: `<div class="pile centre large">
             <p class="tel-emoji" aria-hidden="true">🗣️</p>
             <h1>Tour de table</h1>
-            <p>Chacun dit son idée en une phrase, sans être coupé. Ensuite, discussion libre. Rien à écrire pour l'instant.</p>
+            <p>Chacun peut dire son idée en une phrase, sans être coupé. Tu peux aussi passer. Ensuite, discussion libre. Rien à écrire pour l'instant.</p>
             ${htmlMinuteur(v)}
             ${v.tempsEcoule ? `<p class="tel-temps-ecoule" role="status">⏰ Temps écoulé. L'animateur lance la suite.</p>` : ""}
           </div>
@@ -469,7 +476,7 @@ function ecranCreation(v) {
 }
 
 function consigneMini(c) {
-  const t = typeDe(c, etat.rome);
+  const t = typeCarte(c);
   return `<span class="pastille${t.lettre ? "" : " pastille-blanche"}" style="--type:${t.couleur}" aria-hidden="true"></span>
     <span><strong>${echapper(libelleDe(c))}</strong> <span class="discret">— ${echapper(t.nom)}</span></span>`;
 }
@@ -485,6 +492,7 @@ function blocAide(v, pi) {
       <p>${echapper(a.message || "Pas facile ? Commence par un de ces débuts de phrase, ou passe ce tour.")}</p>
       ${amorces.length ? `<div class="relances">${amorces.map((x, i) => `<button type="button" class="relance" data-action="amorce" data-i="${i}">${echapper(x)}</button>`).join("")}</div>` : ""}
       <button type="button" class="bouton secondaire large" data-action="passer" data-envoi>Je passe ce tour</button>
+      <p class="discret">${echapper(PASSE_POUR_LE_PSY)}</p>
     </section>`;
 }
 
@@ -499,7 +507,8 @@ function ecranReponse(v, pi) {
           <div class="pile centre">
             <p class="tel-emoji" aria-hidden="true">🙂</p>
             <h1>Pas de souci</h1>
-            <p>${echapper(MESSAGE_PASSE)}</p>
+            <p>${echapper(messagePasse(v))}</p>
+            <p class="discret">${echapper(PASSE_POUR_LE_PSY)}</p>
             ${htmlMinuteur(v)}
             ${htmlCompte(v)}
           </div>
@@ -521,7 +530,7 @@ function ecranReponse(v, pi) {
             ${htmlCompte(v)}
           </div>
           <blockquote class="citation">${echapper(moi.maReponse)}</blockquote>
-          <p class="discret">Les autres joueurs ne la voient pas. Tu peux la changer tant que tout le monde n'a pas répondu.</p>
+          <p class="discret">Les autres ne la voient pas. Si elle devient l'idée du tour, un bout de ta phrase s'affiche sur l'écran, sans ton nom sauf si tu dis oui. Tu peux la changer tant que tout le monde n'a pas répondu.</p>
           <button type="button" class="bouton secondaire large" data-action="modifier">Modifier ma réponse</button>
           ${blocPreference(v)}
         </div>`,
@@ -546,7 +555,7 @@ function ecranReponse(v, pi) {
           label: "Ta réponse",
           max: LIMITES.reponse,
           placeholder: "Ce que tu ferais, avec tes mots…",
-          aide: "🔒 Les autres joueurs ne verront pas ta réponse. Le MJ (une IA) la lit.",
+          aide: "🔒 Les autres ne voient pas ta réponse. Si elle devient l'idée du tour, un bout de ta phrase s'affiche sur l'écran, sans ton nom sauf si tu dis oui. Le MJ (une IA) la lit.",
           infoDictee: true,
         })}
         <button type="submit" class="bouton principal large grand" data-envoi>Envoyer ma réponse</button>
@@ -603,7 +612,7 @@ function ecranCompetence(v, pi) {
   }
   if (c && !etat.rome) charger("rome");
   const pref = blocPreference(v);
-  const cle = `competences:${pi}:${sorte}:${idee.aucune ? "" : `${idee.texte}:${idee.pseudo ?? ""}`}:${c?.code ?? ""}:${c?.gardee}:${moi.monIdee?.accordPseudo ?? ""}:${moi.maPreference ?? ""}:${!!etat.rome}`;
+  const cle = `competences:${pi}:${sorte}:${idee.aucune ? "" : `${idee.texte}:${idee.pseudo ?? ""}`}:${c?.code ?? ""}:${c?.gardee}:${moi.monIdee?.accordPseudo ?? ""}:${moi.maPreference ?? ""}:${!!etat.rome}:${!!moi.monIdeeEcartee}`;
 
   // C'est son idée : d'abord l'accord pour afficher son pseudo (décision de Pierre §2).
   if (sorte === "mon-idee") {
@@ -634,8 +643,9 @@ function ecranCompetence(v, pi) {
   let titre;
   if (sorte === "competence") {
     // Compétence privée : seulement sur son téléphone (décision de Pierre §1), sans 🎉.
-    titre = "Ce que ta réponse montre";
-    corps = `<h1>Ce que ta réponse montre</h1>
+    titre = "Ce que le MJ a repéré";
+    corps = `<h1>Ce que le MJ a repéré dans ta réponse</h1>
+      ${moi.monIdeeEcartee ? `<p>L'animateur a choisi une autre idée pour la suite de l'histoire. Ta compétence reste à toi.</p>` : ""}
       ${carteCompetence(c)}
       ${basGarder(c, pi)}`;
   } else if (sorte === "idee") {
@@ -647,11 +657,11 @@ function ecranCompetence(v, pi) {
   } else if (sorte === "passe") {
     titre = "L'histoire continue";
     corps = `<h1>L'histoire continue</h1>
-      <p>${echapper(MESSAGE_PASSE)}</p>`;
+      <p>${echapper(messagePasse(v))}</p>`;
   } else {
     titre = "Le MJ regarde ta réponse";
     corps = `<h1>Ta réponse</h1>
-      <p>Le MJ regarde ce que ta réponse montre… ${points}</p>`;
+      <p>Le MJ lit ta réponse… ${points}</p>`;
   }
   return {
     cle,
@@ -685,7 +695,7 @@ function ecranDebrief(v) {
             label: echapper(QUESTIONS_DEBRIEF[2]),
             max: LIMITES.debrief,
             rows: 4,
-            placeholder: "Une fois où tu l'as déjà fait…",
+            placeholder: "Une fois où tu as fait quelque chose comme ça…",
             aide: "Facultatif. Personne d'autre ne la voit : elle ira sur ta fiche, pour en parler avec le psy.",
           })}
           <button type="submit" class="bouton principal large" data-envoi>${moi.monDebrief ? "✓ C'est noté · mettre à jour" : "Garder ma réponse"}</button>
@@ -699,7 +709,8 @@ function ecranFin(v) {
   if (!etat.onet) charger("onet");
   const moi = v.moi;
   const fiche = rendreFiche(
-    { code: v.code ?? CODE, pseudo: moi.pseudo, avatar: moi.avatar, competences: moi.competences ?? [] },
+    // Les épisodes et leur type RIASEC : même classement que la fiche imprimée.
+    { code: v.code ?? CODE, pseudo: moi.pseudo, avatar: moi.avatar, competences: moi.competences ?? [], problemes: v.fin?.problemes ?? [] },
     { rome: etat.rome, onet: etat.onet, psy: false, metiersOuverts: false },
   );
   return {
@@ -1248,8 +1259,8 @@ function scenesDemo() {
     ["Réponse envoyée + avis", () => base("reponse", { moi: apres(), minuteurFin: dans(42), compte: { repondu: 3, total: 4 } })],
     ["Le MJ lit vos idées", () => base("competences", { moi: apres(), attenteIA: true })],
     ["C'est ton idée : pseudo ?", () => base("competences", { moi: apres({ monIdee: { accordPseudo: null }, competenceDuProbleme: { ...DEMO_COMPETENCE } }), idee: { ...DEMO_IDEE_SANS_NOM } })],
-    ["Ton idée : pseudo affiché", () => base("competences", { moi: apres({ monIdee: { accordPseudo: true }, competenceDuProbleme: { ...DEMO_COMPETENCE, gardee: true }, maPreference: "oui" }), idee: { ...DEMO_IDEE_SANS_NOM, pseudo: "Lina", avatar: "🦊", accordPseudo: true, notee: true } })],
-    ["Ce que ta réponse montre", () => base("competences", { moi: apres({ retourPrive: "competence", competenceDuProbleme: { ...DEMO_PRIVEE } }), idee: { ...DEMO_IDEE_SANS_NOM, pseudo: "Sam", avatar: "🐼", accordPseudo: true } })],
+    ["Ton idée : pseudo affiché", () => base("competences", { moi: apres({ monIdee: { accordPseudo: true }, competenceDuProbleme: { ...DEMO_COMPETENCE, gardee: true }, maPreference: "oui" }), idee: { ...DEMO_IDEE_SANS_NOM, pseudo: "Lina", avatar: "🦊", accordPseudo: true } })],
+    ["Ce que le MJ a repéré", () => base("competences", { moi: apres({ retourPrive: "competence", competenceDuProbleme: { ...DEMO_PRIVEE } }), idee: { ...DEMO_IDEE_SANS_NOM, pseudo: "Sam", avatar: "🐼", accordPseudo: true } })],
     ["Ton idée (sans compétence)", () => base("competences", { moi: apres({ retourPrive: "idee", maReformulation: "Ton idée : chercher les prix sur internet et demander de l'aide aux commerçants" }), idee: { ...DEMO_IDEE_SANS_NOM } })],
     ["Le MJ regarde ta réponse", () => base("competences", { moi: apres(), idee: { ...DEMO_IDEE_SANS_NOM } })],
     ["Tu as passé ce tour", () => base("competences", { moi: moi({ maReponse: "", jaiPasse: true, peutDonnerPreference: true, retourPrive: "idee" }), idee: { ...DEMO_IDEE_SANS_NOM } })],

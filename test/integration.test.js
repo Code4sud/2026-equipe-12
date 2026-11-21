@@ -14,7 +14,7 @@ import { appliquer, creerEtat, vue } from "../src/jeu.js";
 import { mjMock } from "../src/mj.js";
 import { analyser, versCompetenceDepart } from "../src/analyse.js";
 import { rendreScene } from "../public/js/ecran.js";
-import { rendreFiche } from "../public/js/fiche.js";
+import { rendreFiche, normaliserFiche, competencesTypees } from "../public/js/fiche.js";
 
 const lire = (p) => JSON.parse(readFileSync(new URL(`../${p}`, import.meta.url), "utf8"));
 const ROME = lire("public/data/rome.json");
@@ -29,7 +29,7 @@ const INTERDITS = /\bfaux\b|mauvaise r[ée]ponse|\bscore\b|classement/i;
 
 async function jouerPartie() {
   const mj = mjMock({ rome: ROME });
-  let etat = creerEtat({ code: "BCDF", problemes: PROBLEMES, nbProblemes: 6, dureeEchange: 10, dureeReponse: 10, dureeReflexion: 10, graine: 7, maintenant: 0 });
+  let etat = creerEtat({ code: "BCDF", problemes: PROBLEMES, nbProblemes: 6, dureeEchange: 10, dureeReponse: 10, dureeReflexion: 10, debrief: false, graine: 7, maintenant: 0 });
   let t = 1000;
   const effets = [];
   const vuesEcran = [];
@@ -224,4 +224,33 @@ test("intégration : la fiche (format de Partie.fiche) se rend avec ses compéte
   const { retenus } = await partie;
   const retiree = etat.joueurs[retenus[1]].competences.find((c) => c.problemeIndex === 1);
   assert.equal(retiree.gardee, false);
+});
+
+test("intégration : la fiche du téléphone classe comme la fiche imprimée (type de l'épisode, jamais les codes ROME)", async () => {
+  const { etat } = await partie;
+  for (const id of IDS) {
+    const j = etat.joueurs[id];
+    const v = vue(etat, "joueur", id);
+    assert.equal(v.phase, "fin");
+    // Fiche du téléphone (public/js/joueur.js, ecranFin) et fiche imprimée (Partie.fiche).
+    const tel = { code: v.code, pseudo: v.moi.pseudo, avatar: v.moi.avatar, competences: v.moi.competences, problemes: v.fin.problemes };
+    const papier = {
+      code: etat.code,
+      joueur: { id, pseudo: j.pseudo, avatar: j.avatar },
+      competences: structuredClone(j.competences),
+      problemes: etat.problemes.map((pid, index) => ({ index, id: pid, titre: etat.catalogue[pid].titre, riasec: etat.catalogue[pid].riasec, questionVecu: etat.catalogue[pid].questionVecu })),
+    };
+    const typees = (b) => competencesTypees(normaliserFiche(b));
+    const a = typees(tel);
+    const b = typees(papier);
+    assert.equal(a.parEpisode, true, "le téléphone connaît le type de chaque épisode");
+    assert.deepEqual(a.joues, b.joues);
+    assert.deepEqual(a.liste.map((c) => [c.code, c.riasec]), b.liste.map((c) => [c.code, c.riasec]), PSEUDOS[IDS.indexOf(id)]);
+    // Les compétences elles-mêmes portent le type de leur épisode (src/mj.js, fabriquer).
+    for (const c of j.competences.filter((x) => x.problemeIndex !== null)) {
+      assert.deepEqual(c.riasec, [String(etat.catalogue[etat.problemes[c.problemeIndex]].riasec).charAt(0)], c.code);
+    }
+    for (const c of j.competences.filter((x) => x.problemeIndex === null)) assert.deepEqual(c.riasec, [], "récit : pas de type");
+  }
+  assert.match(readFileSync(new URL("../public/js/joueur.js", import.meta.url), "utf8"), /problemes: v\.fin\?\.problemes/, "ecranFin passe les épisodes à rendreFiche");
 });

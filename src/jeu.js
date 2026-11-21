@@ -165,7 +165,9 @@ export function creerEtat({
   dureeEchange,
   dureeReponse = DUREE_REPONSE_DEFAUT,
   dureeReflexion = DUREE_REFLEXION_DEFAUT,
-  debrief = false,
+  // Court débrief avant la fiche (adaptation « nouveau-debriefing ») : activé par
+  // défaut, l'animateur peut le retirer (debrief:false).
+  debrief = true,
   graine = 0,
   maintenant = null,
 } = {}) {
@@ -188,7 +190,7 @@ export function creerEtat({
       dureeEchangeAuto: echangeAuto,
       dureeReponse: entierBorne(dureeReponse, DUREE_MIN, DUREE_MAX, DUREE_REPONSE_DEFAUT),
       dureeReflexion: reflexionValide(reflexion) ? reflexion : DUREE_REFLEXION_DEFAUT,
-      debrief: debrief === true,
+      debrief: debrief !== false,
     },
     problemes: tires.map((p) => p.id),
     // Données complètes de TOUS les épisodes disponibles : la vue et les effets en
@@ -447,7 +449,9 @@ function competenceDepart(c, departIndex) {
     mots: c.mots ?? c.mots_du_jeune ?? "",
     preuve: c.preuve ?? c.citation ?? "",
     typePreuve: "vecu",
-    riasec: lettresRiasec(c.riasec),
+    // Pas d'épisode, donc pas de type RIASEC (critique psy point 8 : les codes
+    // RIASEC du fichier ROME ne sont pas vérifiables, on ne les utilise pas).
+    riasec: [],
     problemeIndex: null,
     // Identifiant stable d'une compétence de départ (sa position dans
     // depart.propositions) : à renvoyer dans { t:"garder_competence", garder, departIndex }.
@@ -734,8 +738,8 @@ H.afficher_pseudo = { role: "joueur", f(e, ev) {
   return [];
 } };
 
-// Débrief : réponse privée à « Raconte une fois, dans ta vraie vie, où tu l'as
-// déjà utilisée » (facultative, imprimée sur la fiche pour le psychologue).
+// Débrief : réponse privée à « Raconte une fois, dans ta vraie vie, où tu as fait
+// quelque chose comme ça » (facultative, imprimée sur la fiche pour le psychologue).
 H.debrief = { role: "joueur", f(e, ev) {
   if (e.phase !== "debrief") return "Ce n'est pas le moment du débrief.";
   if (typeof ev.texte !== "string") return "Réponse invalide.";
@@ -816,7 +820,12 @@ H.autre_idee = { role: "ecran", f(e) {
   const pi = e.problemeIndex;
   e.exclus[pi] = [...(e.exclus[pi] ?? []), id];
   for (const c of e.joueurs[id].competences) if (c.problemeIndex === pi) c.idee = false;
-  if (e.joueurs[id].reponses[pi]) e.joueurs[id].reponses[pi].retour = "competence";
+  const rEcarte = e.joueurs[id].reponses[pi];
+  if (rEcarte) {
+    rEcarte.retour = "competence";
+    // Son téléphone l'explique, sans reproche : « L'animateur a choisi une autre idée… ».
+    rEcarte.ecartee = true;
+  }
   e.essaisChoix[pi] = essaiCourant(e) + 1;
   if (e.liaisons) delete e.liaisons[pi + 1];
   e.attribution = null;
@@ -852,7 +861,11 @@ H.attribution_faite = { f(e, ev) {
   e.attribution = {};
   const effets = [];
   let lier = null;
-  if (!j || !texte || !c || !c.code) {
+  // Comme pour les compétences privées (critique psy point 3) : l'idée du tour
+  // n'est retenue que si sa citation est une action précise et citable de la
+  // réponse. Sinon, pas d'idée retenue cette fois, et chaque réponse écrite peut
+  // recevoir une compétence privée.
+  if (!j || !texte || !competenceCitable(c, texte)) {
     e.idee = { joueurId: null, accordPseudo: null };
   } else {
     const comp = competenceJeu(c, pi, { idee: true });
@@ -905,7 +918,9 @@ H.competences_privees = { f(e, ev) {
   for (const j of listeJoueurs(e)) {
     const texte = texteReponse(j, pi);
     if (!texte) continue;
-    if (j.competences.some((x) => x.problemeIndex === pi && x.idee === true)) continue;
+    // Déjà une compétence pour cet épisode : l'idée du tour, ou celle de l'auteur
+    // écarté par « Choisir une autre idée » (arrivée avant ce résultat).
+    if (j.competences.some((x) => x.problemeIndex === pi)) continue;
     const r = j.reponses[pi];
     const c = Object.hasOwn(liste, j.id) ? liste[j.id] : null;
     if (competenceCitable(c, texte)) {
@@ -958,10 +973,20 @@ H.erreur_ia = { f(e, ev) {
     return [];
   }
   // L'IA et le MJ de secours ont échoué : pas d'idée retenue cette fois, l'histoire continue.
+  // Comme attribution_faite sans idée : chaque réponse écrite peut recevoir une
+  // compétence privée (sinon les téléphones attendraient leur retour sans fin).
   if (e.phase === "competences" && !e.attribution) {
     e.attribution = {};
     e.idee = { joueurId: null, accordPseudo: null };
-    return [];
+    const pi = e.problemeIndex;
+    if (e.privees[pi] !== undefined) return [];
+    const attribuer = effetAttribuer(e);
+    if (!attribuer.reponses.length) {
+      e.privees[pi] = "fait";
+      return [];
+    }
+    e.privees[pi] = "attente";
+    return [attribuer];
   }
   return "Erreur IA hors contexte.";
 } };
@@ -1014,32 +1039,27 @@ function vueProbleme(p) {
   return { id: p.id, titre: p.titre, situation: p.situation, question: p.question, illustration: p.illustration };
 }
 
-// Ce joueur a-t-il fait ce qu'on attend de lui dans cette phase (lu, répondu,
-// gardé sa compétence…) ? null si la phase n'attend rien de lui.
+// Ce joueur a-t-il fait ce qu'on attend de lui dans cette phase (lu, répondu…) ?
+// null si la phase n'attend rien de lui, ou si le dire au groupe ne se fait pas.
 function aFini(e, j) {
   const r = e.problemeIndex !== null ? j.reponses[e.problemeIndex] : null;
   switch (e.phase) {
     case "creation": return j.depart.etat === "valide";
     case "presentation": return !!r?.lu;
     case "reponse": return r?.tour1 != null;
-    case "competences": {
-      if (!e.attribution) return null;
-      const c = j.competences.find((x) => x.problemeIndex === e.problemeIndex);
-      if (!c) return null; // rien à faire (pas de compétence cette fois)
-      const accord = e.idee?.joueurId === j.id ? e.idee.accordPseudo !== null && e.idee.accordPseudo !== undefined : true;
-      return c.gardee !== null && accord;
-    }
+    // Phase `competences` : rien (null, comme par défaut). Distinguer les joueurs
+    // dirait qui a une compétence privée, qui a passé et qui a écrit l'idée du tour.
     case "debrief": return typeof j.debrief === "string" && j.debrief.length > 0;
     default: return null;
   }
 }
 
 function compte(e) {
+  // Phase `competences` : aucun compte (aFini vaut null pour tous). Il dirait au
+  // groupe combien de joueurs ont une compétence privée : décisions de Pierre §1 et §3.
   const js = listeJoueurs(e);
   const etats = js.map((j) => aFini(e, j)).filter((x) => x !== null);
-  if (!js.length || !etats.length) return null;
-  // Compétences : seuls ceux qui ont quelque chose à faire comptent.
-  if (e.phase !== "competences" && etats.length !== js.length) return null;
+  if (!js.length || !etats.length || etats.length !== js.length) return null;
   return { repondu: etats.filter(Boolean).length, total: etats.length };
 }
 
@@ -1083,7 +1103,6 @@ function vueIdee(e) {
     accordPseudo: accord,
     texte: c.preuve,
     competence: { code: c.code, libelle: c.libelle, riasec: c.riasec, mots: c.mots },
-    notee: c.gardee !== null,
   };
 }
 
@@ -1094,8 +1113,10 @@ export function vue(etat, role, joueurId) {
     return {
       ...base,
       reglages: { ...etat.reglages },
-      // `aFini` : qui a lu / répondu / gardé sa compétence, pour que l'animateur sache qui
-      // attendre. JAMAIS le contenu d'une réponse ni d'un choix, jamais qui a passé son tour.
+      // `aFini` : qui a lu / répondu, pour que l'animateur sache qui attendre. JAMAIS
+      // le contenu d'une réponse ni d'un choix, jamais qui a passé son tour. En phase
+      // `competences`, null pour tous : sinon l'écran montrerait qui a reçu une
+      // compétence privée et qui a écrit l'idée du tour (décisions de Pierre §1 à §3).
       joueurs: js.map((j) => ({ pseudo: j.pseudo, avatar: j.avatar, connecte: j.connecte, aFini: aFini(etat, j) })),
       attenteIA: etat.phase === "competences" && !etat.attribution,
       // L'animateur peut demander une autre idée (le MJ propose, l'animateur valide).
@@ -1139,12 +1160,14 @@ export function vue(etat, role, joueurId) {
       maPreference: r?.preference ?? null,
       // « C'est ton idée ! On affiche ton pseudo ? » : null tant qu'il n'a pas répondu.
       monIdee: monIdee ? { accordPseudo: etat.idee.accordPseudo ?? null } : null,
-      // Retour privé de l'épisode : "competence" (ce que ta réponse montre) ou
+      // Retour privé de l'épisode : "competence" (ce que le MJ a repéré dans sa réponse) ou
       // "idee" (pas de compétence cette fois : on lui rappelle son idée) ; null = en attente.
       retourPrive: etat.attribution && !monIdee ? r?.retour ?? null : null,
       // Quand retourPrive vaut "idee" : « Ton idée : … » écrite par le MJ, ou null
       // (le téléphone montre alors maReponse).
       maReformulation: etat.attribution && !monIdee && r?.retour === "idee" ? r?.reformulation ?? null : null,
+      // Son idée était l'idée du tour, l'animateur en a choisi une autre (« Choisir une autre idée »).
+      monIdeeEcartee: etat.phase === "competences" && !!etat.attribution && !monIdee && r?.ecartee === true,
       peutDonnerPreference: apresReponse && etat.problemeIndex !== null,
       competenceDuProbleme: competenceDuProbleme ? { ...competenceDuProbleme } : null,
       // Compétences encore sans réponse (gardee: null), hors celle du problème en
@@ -1164,7 +1187,17 @@ export function vue(etat, role, joueurId) {
     },
     attenteIA: (etat.phase === "competences" && !etat.attribution) || j.depart.etat === "analyse",
     fin: etat.phase === "fin"
-      ? { lienFiche: `/fiche.html?code=${encodeURIComponent(etat.code)}&joueur=${encodeURIComponent(j.id)}` }
+      ? {
+        lienFiche: `/fiche.html?code=${encodeURIComponent(etat.code)}&joueur=${encodeURIComponent(j.id)}`,
+        // Type RIASEC de chaque épisode joué : la fiche du téléphone classe comme la
+        // fiche imprimée (Partie.fiche), avec le type de l'épisode et jamais les codes ROME.
+        problemes: etat.problemes.map((id, index) => ({
+          index,
+          titre: etat.catalogue?.[id]?.titre ?? id,
+          riasec: etat.catalogue?.[id]?.riasec ?? null,
+          questionVecu: etat.catalogue?.[id]?.questionVecu ?? null,
+        })),
+      }
       : null,
   };
 }

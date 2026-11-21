@@ -23,7 +23,7 @@ export const RIASEC = {
   A: { nom: "Artistique", verbe: "Créer, imaginer, s'exprimer", couleur: "#a24fc0",
        activites: "Des activités où l'on crée, imagine et s'exprime : dessin, musique, écriture, vidéo…",
        description: "Tu aimes créer, imaginer et t'exprimer avec de la liberté : dessin, musique, écriture, vidéo…",
-       question: "Qu'est-ce que tu as déjà créé dont tu es fier·e ? Tu aimerais que ton travail laisse de la place à ton style ?" },
+       question: "Qu'est-ce que tu as déjà créé dont tu es fier ou fière ? Tu aimerais que ton travail laisse de la place à ton style ?" },
   S: { nom: "Social", verbe: "Aider, accompagner, transmettre", couleur: "#2e9b6a",
        activites: "Des activités avec et pour les autres : aider, écouter, expliquer, prendre soin.",
        description: "Tu aimes être avec les autres et pour les autres : aider, écouter, expliquer, prendre soin.",
@@ -35,7 +35,7 @@ export const RIASEC = {
   C: { nom: "Conventionnel", verbe: "Gérer, classer, être précis", couleur: "#5f6b85",
        activites: "Des activités organisées et précises : ranger, compter, suivre une méthode, éviter les erreurs.",
        description: "Tu aimes quand c'est organisé et précis : ranger, compter, suivre une méthode, ne pas faire d'erreur.",
-       question: "Ça te plaît quand les choses sont bien rangées, comptées, sans erreur ? Dans quelles situations tu es le plus carré·e ?" },
+       question: "Ça te plaît quand les choses sont bien rangées, comptées, sans erreur ? Dans quelles situations tu aimes que tout soit carré ?" },
 };
 
 /** Texte d'origine des codes RIASEC du ROME (outil solo) : source réelle, méthode non vérifiée. */
@@ -214,11 +214,11 @@ export function blocInteretsOrdonnes(competences, rome, o = {}) {
     return `<li class="interet" style="--type:${t.couleur}">
         <p><span class="puce-type" aria-hidden="true">${k}</span> <strong>${t.nom}</strong> <span class="discret">· ${t.verbe}</span></p>
         <p>${echapper(t.activites)}</p>
-        <p class="discret">Compétences montrées : ${comps.join(" · ")}</p>
+        <p class="discret">Compétences repérées : ${comps.join(" · ")}</p>
       </li>`;
   }).join("");
   const intro = o.intro ??
-    "Les mêmes six types (RIASEC) que dans ton Rapport des Possibles. Cet ordre vient des compétences que tu as montrées pendant la partie, pas de tes goûts. Ce n'est pas ton profil d'intérêts : celui-là est dans ton Rapport des Possibles. Si les deux diffèrent, c'est une bonne question pour ton entretien.";
+    "Les mêmes six types (RIASEC) que dans ton Rapport des Possibles. Cet ordre vient des compétences repérées pendant la partie, pas de tes goûts. Ce n'est pas ton profil d'intérêts : celui-là est dans ton Rapport des Possibles. Si les deux diffèrent, c'est une bonne question pour ton entretien.";
   return `<section class="bloc bloc-interets">
     <h3>${echapper(o.titre ?? "Les types d'activités où tu as montré des compétences pendant le jeu")}</h3>
     <p class="discret">${echapper(intro)}</p>

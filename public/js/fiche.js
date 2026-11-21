@@ -311,7 +311,7 @@ export function relancesPsy(competences, rome, typees = competences) {
   const premier = competences.map((c) => libelleDe(c, rome)).find(Boolean);
   qs.push(premier
     ? `Tu as gardé « ${premier} » : raconte-moi une autre fois où tu as fait ça.`
-    : "Raconte-moi une fois où tu as fait quelque chose dont tu es fier·e.");
+    : "Raconte-moi une fois où tu as fait quelque chose qui te rend fier ou fière.");
   qs.push("Qu'est-ce qui compte le plus pour toi dans un futur métier ?");
   qs.push("Parmi les métiers de ton Rapport des Possibles, lesquels demandent ces compétences ?");
   const [dominant] = reperesRiasec(typees, rome).dominants;
@@ -326,7 +326,7 @@ export function noticePsy({ parEpisode = true } = {}) {
     : "Les types d'activités (partie 2) viennent des codes RIASEC du fichier ROME, dont la méthode n'est pas documentée.";
   return `<aside class="bloc notice-psy">
       <h3>Pour le psychologue — Comment lire cette fiche</h3>
-      <p>Ces compétences ont été proposées par une IA pendant un jeu de rôle en groupe, à partir des réponses écrites du jeune. Seules des compétences d'une liste fermée (ROME 4.0) sont possibles, chacune avec une citation exacte comme trace : elle montre ce que le jeune a écrit, pas qu'il possède la compétence. Une compétence n'est proposée que si la réponse contient une action précise et citable.</p>
+      <p>Ces compétences ont été proposées par une IA pendant un jeu de rôle en groupe, à partir des réponses écrites du jeune. Seules des compétences d'une liste fermée (ROME 4.0) sont possibles, chacune avec une citation exacte comme trace : elle montre ce que le jeune a écrit, pas qu'il possède la compétence. Une compétence n'est proposée que si la réponse contient une action précise et citable, y compris pour l'idée du tour.</p>
       <p>Ce n'est ni un test psychométrique ni une évaluation psychologique : c'est un matériau d'entretien. Vérifiez chaque trace avec le jeune ; il a gardé ou refusé chaque compétence, et il apporte cette fiche s'il le souhaite.</p>
       <p>${origine} Ce sont des repères qualitatifs, qui ne remplacent pas l'IPH du Rapport des Possibles : en cas d'écart, l'IPH fait référence, et l'écart est matière à discussion. Les métiers de la partie 3 sont indicatifs, sans seuil établi pour cet usage.</p>
     </aside>`;
@@ -348,7 +348,7 @@ export function encartPsy(f, competences, rome, typees = competences) {
       <p>Ce document <strong>complète le Rapport des Possibles</strong> : le rapport présente les intérêts, les aptitudes et la personnalité ; ici, ce sont des <strong>compétences repérées pendant un jeu</strong>. À utiliser quand vous reliez les résultats à la situation concrète, aux valeurs et aux ressources du jeune (guide du Centre, p. 11). En entretien motivationnel, cela s'inscrit dans la tâche d'évocation : faire parler le jeune de ses raisons et de ses ressources, avec ses mots.</p>
       ${passes ? `<p><strong>À explorer en entretien :</strong></p><ul class="passes">${passes}</ul>` : ""}
       ${avis ? `<p><strong>Avis donnés pendant la partie</strong> <span class="discret">(« Ce genre de situation, tu aimerais en vivre dans un travail ? »)</span> : ${avis}.</p>` : ""}
-      ${f.debrief ? `<p><strong>À reprendre avec le psychologue</strong> <span class="discret">(débrief : « Raconte une fois, dans ta vraie vie, où tu l'as déjà utilisée. »)</span></p><blockquote class="preuve">« ${echapper(f.debrief)} »</blockquote>` : ""}
+      ${f.debrief ? `<p><strong>À reprendre avec le psychologue</strong> <span class="discret">(débrief : « Raconte une fois, dans ta vraie vie, où tu as fait quelque chose comme ça. »)</span></p><blockquote class="preuve">« ${echapper(f.debrief)} »</blockquote>` : ""}
       ${reflets.length ? `<p><strong>Amorces de reflet</strong> <span class="discret">(à reformuler sur le moment)</span></p><ul class="reflets">${reflets.map((q) => `<li>${echapper(q)}</li>`).join("")}</ul>` : ""}
       <p><strong>Relances ouvertes</strong></p>
       <ol class="relances-psy">${relancesPsy(competences, rome, typees).map((q) => `<li>${echapper(q)}</li>`).join("")}</ol>
@@ -361,12 +361,12 @@ export function encartPsy(f, competences, rome, typees = competences) {
 export function blocPlanAction() {
   const ligne = (etiquette) => `<p class="ligne-a-ecrire"><span>${echapper(etiquette)}</span><span class="trait"></span></p>`;
   return `<section class="bloc plan-action">
-      <h3>4. Mes prochains pas <span class="discret">(à écrire à la main)</span></h3>
+      <h3>4. Tes prochains pas <span class="discret">(à écrire à la main)</span></h3>
       <p class="discret">En complément des recommandations de ton psychologue. Ce que tu écris ici reste sur ta feuille.</p>
-      <p><strong>Ce que je vais chercher à l'Agora</strong></p>
+      <p><strong>Ce que tu vas chercher à l'Agora</strong></p>
       ${ligne("Métier ou mot-clé :")}
       ${ligne("Métier ou mot-clé :")}
-      ${ligne("Avec qui j'en parle ensuite :")}
+      ${ligne("Avec qui tu en parles ensuite :")}
     </section>`;
 }
 
@@ -409,7 +409,7 @@ export function rendreFiche(brut, o = {}) {
     : `<p class="discret">Pas de compétence de départ retenue cette fois. Tu pourras en ajouter avec le psy.</p>`;
   const listeJeu = f.jeu.length
     ? `<ul class="competences">${f.jeu.map((c) => ligneCompetence(c, rome, titreProbleme(c, f), { type: typeLigne(c), questionVecu: questionVecu(c) })).join("")}</ul>`
-    : `<p class="discret">Tes réponses dans l'histoire sont à relire avec le psy.</p>`;
+    : `<p class="discret">Pas de compétence repérée pendant le jeu cette fois. Tu peux raconter tes idées au psy : il t'aidera à y voir plus clair.</p>`;
   const plu = f.preferences.filter((p) => p.valeur !== "non")
     .map((p) => `${titreEpisode(f.problemes, p.index, p.titre)}${p.valeur === "un_peu" ? " (un peu)" : ""}`);
   const interets = typees.length
@@ -419,7 +419,7 @@ export function rendreFiche(brut, o = {}) {
       <div>
         <p class="surtitre">Déclic · complément à ton Rapport des Possibles${date ? ` · ${echapper(date)}` : ""}${f.code ? ` · partie ${echapper(f.code)}` : ""}</p>
         <h2><span class="avatar" aria-hidden="true">${echapper(f.avatar)}</span> ${echapper(f.pseudo || "Mon personnage")}</h2>
-        <p class="discret">Ton Rapport des Possibles parle de tes intérêts, de tes aptitudes et de ta personnalité. Ici, ce sont des compétences repérées pendant le jeu, à partir de tes propres mots.</p>
+        <p class="discret">Ton Rapport des Possibles parle de tes intérêts, de tes aptitudes et de ta personnalité. Ici, ce sont des compétences repérées par le MJ (une IA) pendant le jeu, à partir de tes propres mots. À vérifier avec ton psy.</p>
       </div>
     </header>
     <section class="bloc">
@@ -439,6 +439,6 @@ export function rendreFiche(brut, o = {}) {
     <footer class="fiche-pied">
       <p><strong>Ces compétences ont été repérées pendant un jeu, à partir de tes mots. Elles ne sont pas un diplôme : parles-en avec ton psy.</strong></p>
       ${imprimable ? `<p class="relais">${echapper(RELAIS_ADULTE)}</p>` : ""}
-      <p>Ce sont des pistes de réflexion, pas un résultat de test, et elles peuvent être incomplètes. Tu restes l'expert·e de ton vécu. Compétences : ${echapper(rome?.source ?? "ROME 4.0 (France Travail)")}.</p>
+      <p>Ce sont des pistes de réflexion, pas un résultat de test, et elles peuvent être incomplètes. C'est toi qui connais le mieux ce que tu as vécu. Compétences : ${echapper(rome?.source ?? "ROME 4.0 (France Travail)")}.</p>
     </footer>`;
 }

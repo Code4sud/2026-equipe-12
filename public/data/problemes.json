@@ -7,6 +7,7 @@
       "titre": "Le budget du tournoi",
       "illustration": "illustrations/budget-tournoi.svg",
       "situation": "Le club de foot du quartier vous confie l'organisation de son premier tournoi des jeunes, dans un mois. Huit équipes sont attendues, et le club vous donne 150 euros pour tout : ballons, goûter, coupe et récompenses. À vous de décider comment utiliser cet argent.",
+      "transition": "L'histoire commence.",
       "question": "Que faites-vous ?",
       "riasec": "E",
       "solution": {
@@ -115,7 +116,8 @@
       "episode": 2,
       "titre": "L'affiche du tournoi",
       "illustration": "illustrations/affiche-tournoi.svg",
-      "situation": "Le budget est bouclé, bravo. Mais à trois semaines du tournoi, presque personne dans le quartier n'est au courant, et il manque encore des équipes. Le club vous demande de faire l'affiche et de faire venir des joueurs et du public.",
+      "situation": "Le budget est bouclé. Mais à trois semaines du tournoi, presque personne dans le quartier n'est au courant, et il manque encore des équipes. Le club vous demande de faire l'affiche et de faire venir des joueurs et du public.",
+      "transition": "Quelques jours plus tard, l'organisation du tournoi avance.",
       "question": "Que faites-vous ?",
       "riasec": "A",
       "solution": {
@@ -243,6 +245,7 @@
       "titre": "L'embrouille dans l'équipe",
       "illustration": "illustrations/embrouille-equipe.svg",
       "situation": "Grâce à l'affiche, les huit équipes sont inscrites. Mais sur le serveur Discord de l'organisation, deux d'entre vous s'embrouillent sur qui fait quoi le jour J, et les messages deviennent blessants. Un autre bénévole parle de tout lâcher.",
+      "transition": "Une semaine plus tard, l'organisation continue.",
       "question": "Que faites-vous ?",
       "riasec": "S",
       "solution": {
@@ -350,6 +353,7 @@
       "titre": "Le téléphone mystère",
       "illustration": "illustrations/telephone-mystere.svg",
       "situation": "La veille du tournoi, vous êtes avec Sami quand son téléphone tombe. Tous les numéros des capitaines sont dedans. Depuis, l'écran reste noir, mais il vibre quand on l'appelle. Il faut envoyer les horaires des matchs aux huit équipes avant ce soir.",
+      "transition": "Le tournoi approche.",
       "question": "Que faites-vous ?",
       "riasec": "I",
       "solution": {
@@ -482,6 +486,7 @@
       "titre": "Le jour J",
       "illustration": "illustrations/jour-j-scooter.svg",
       "situation": "C'est le jour J ! À 9 h, vous partez avec Inès chercher la sono et les chasubles au local du club, sur son scooter. Mais en sortant, il ne démarre plus : le moteur fait un petit bruit, puis plus rien. Le premier match commence à 10 h.",
+      "transition": "Le grand jour arrive.",
       "question": "Que faites-vous ?",
       "riasec": "R",
       "solution": {
@@ -613,6 +618,7 @@
       "titre": "La caisse de la buvette",
       "illustration": "illustrations/caisse-buvette.svg",
       "situation": "Le tournoi est un succès, tout le quartier est venu ! À la fin de la journée, vous faites les comptes de la buvette : il manque 12 euros par rapport aux tickets vendus. La trésorière du club passe récupérer la caisse dans une heure.",
+      "transition": "La journée touche à sa fin.",
       "question": "Que faites-vous ?",
       "riasec": "C",
       "solution": {

@@ -144,7 +144,7 @@ export function decalageServeur(message, maintenant, ancien = 0) {
 export const ANNONCE_CADRE = [
   "Ce n'est pas un test noté.",
   "Il n'y a pas de bonne réponse à trouver : on cherche ce que toi, tu ferais.",
-  "Les autres joueurs ne voient pas ta réponse. Si ton idée est choisie, elle sera reprise dans l'histoire.",
+  "Les autres joueurs ne voient pas ta réponse. Si elle devient l'idée du tour, un bout de ta phrase s'affiche sur l'écran, sans ton nom sauf si tu dis oui.",
   "Ce que tu écris est lu par une IA et sert à préparer ton entretien avec le psy.",
 ];
 
@@ -154,18 +154,30 @@ export const MJ_EST_UNE_IA = "Le maître du jeu (MJ) est une intelligence artifi
 /** Les 3 questions du débrief (adaptation « nouveau-debriefing ») ; la 3e est écrite en privé. */
 export const QUESTIONS_DEBRIEF = [
   "Quel moment de l'histoire t'a surpris ?",
-  "Quelle compétence de ta fiche te ressemble le plus ?",
-  "Raconte une fois, dans ta vraie vie, où tu l'as déjà utilisée.",
+  "Quelle idée ou quelle compétence de la partie te ressemble le plus ?",
+  "Raconte une fois, dans ta vraie vie, où tu as fait quelque chose comme ça.",
 ];
 
 /** Message après « Je passe ce tour » (copie de MESSAGE_PASSE, src/texte.js). */
 export const MESSAGE_PASSE = "Pas de souci, l'histoire continue. Tu pourras proposer ton idée au prochain épisode.";
+/** Au dernier épisode, il n'y a plus de « prochain épisode » (copie de MESSAGE_PASSE_DERNIER). */
+export const MESSAGE_PASSE_DERNIER = "Pas de souci, l'histoire continue.";
+/** Ce que devient « Je passe ce tour » : jamais dit au groupe, noté pour le psy (décision de Pierre §3). */
+export const PASSE_POUR_LE_PSY = "Le groupe ne le saura pas. Ton psy le verra sur ta fiche, pour en parler avec toi s'il le faut.";
+
+/** Message après « Je passe ce tour », selon qu'il reste un épisode ou non. */
+export function messagePasse(vue) {
+  const dernier = Number.isInteger(vue?.problemeIndex) && Number.isInteger(vue?.nbProblemes) && vue.problemeIndex >= vue.nbProblemes - 1;
+  return dernier ? MESSAGE_PASSE_DERNIER : MESSAGE_PASSE;
+}
 
 /** Promesse sur les compétences privées (critique psy point 3) : jamais « au moins une ». */
 export const PROMESSE_COMPETENCE = "À chaque épisode, chacun a la même chance d'en recevoir une.";
 
 /** Ligne fixe vers un adulte, en fin de partie (adaptation « nouveau-relais-psychologue-fin-de-partie »). */
 export const RELAIS_ADULTE = "Si quelque chose te pèse, parles-en au psychologue ou au conseiller du Centre : il est là pour ça.";
+/** La même ligne, à la 3e personne, pour une page écrite pour le psychologue (outil solo). */
+export const RELAIS_ADULTE_PSY = "Si quelque chose pèse au jeune, il peut en parler au psychologue ou au conseiller du Centre.";
 
 /**
  * Découpe un texte en morceaux courts pour la synthèse vocale : une phrase par
@@ -228,7 +240,7 @@ export function separerMots(mots, libelle) {
  *  - "passe"           : il a passé son tour (ou l'animateur est passé sans sa réponse) ;
  *  - "competence"      : une compétence privée repérée dans sa réponse ;
  *  - "idee"            : pas de compétence cette fois, on lui rappelle son idée ;
- *  - "attente-retour"  : le MJ regarde encore ce que sa réponse montre.
+ *  - "attente-retour"  : le MJ lit encore sa réponse.
  */
 export function retourEpisode(vue) {
   const moi = vue?.moi;
