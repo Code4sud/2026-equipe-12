@@ -2,10 +2,10 @@
 // Toutes les données de test sont inventées.
 
 import { EXEMPLES } from "./exemples.js";
-import { RIASEC, echapper, blocRiasec } from "./riasec.js";
+import { RIASEC, echapper, blocRiasec, INTRO_RIASEC_ROME } from "./riasec.js";
 import { blocMetiers } from "./fiche.js";
 import { analyserRecit } from "./analyse-client.js";
-import { dicteeDisponible } from "./joueur-outils.js";
+import { dicteeDisponible, cartesVisibles, RELAIS_ADULTE_PSY } from "./joueur-outils.js";
 
 const RELANCES = [
   "Qu'est-ce que tu fais pour aider à la maison ?",
@@ -120,7 +120,7 @@ function afficherCartes() {
   conteneur.replaceChildren();
   const { competences, a_approfondir } = etat.analyse;
   if (!competences.length) {
-    conteneur.innerHTML = `<p class="vide">On n'a rien pu prouver à partir de ce récit. Ajoute une ou deux situations concrètes : ce que tu as fait, comment, avec qui.</p>`;
+    conteneur.innerHTML = `<p class="vide">On n'a rien trouvé à citer dans ce récit. Ajoute une ou deux situations concrètes : ce que tu as fait, comment, avec qui.</p>`;
   }
   competences.forEach((c, i) => {
     const carte = $("#tpl-carte").content.firstElementChild.cloneNode(true);
@@ -144,6 +144,7 @@ function afficherCartes() {
         etat.choix.set(i, v);
         carte.dataset.choix = v ?? "";
         carte.querySelectorAll("[data-choix]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.choix === v)));
+        majCartesVisibles();
         majBoutonFiche();
       }),
     );
@@ -154,7 +155,21 @@ function afficherCartes() {
   appro.innerHTML = a_approfondir.length
     ? `<h3>Tu peux en dire plus ?</h3><ul>${a_approfondir.map((q) => `<li>${echapper(q)}</li>`).join("")}</ul>`
     : "";
+  majCartesVisibles();
   majBoutonFiche();
+}
+
+// 4 propositions au plus à la fois, les suivantes après décision (adaptation
+// `max-3-competences-depart` : que le jeune puisse juger chacune avec sa trace).
+function majCartesVisibles() {
+  const choix = etat.analyse.competences.map((_, i) => etat.choix.get(i) ?? null);
+  const visibles = cartesVisibles(choix);
+  const cartes = [...$("#cartes").querySelectorAll(".carte")];
+  cartes.forEach((carte, i) => (carte.hidden = !visibles.has(i)));
+  const reste = cartes.length - visibles.size;
+  const suite = $("#suite");
+  suite.hidden = reste <= 0;
+  suite.textContent = reste > 0 ? `Encore ${reste} proposition${reste > 1 ? "s" : ""} après celles-ci : choisis d'abord pour les voir.` : "";
 }
 
 function majBoutonFiche() {
@@ -208,12 +223,12 @@ function afficherFiche() {
         <p class="surtitre">Fiche de préparation d'entretien · ${date}</p>
         <h2>Ce que le jeune sait déjà faire</h2>
       </div>
-      <p class="badge">${gardees.length} compétence${gardees.length > 1 ? "s" : ""} validée${gardees.length > 1 ? "s" : ""} par le jeune</p>
+      <p class="badge">${gardees.length} compétence${gardees.length > 1 ? "s" : ""} gardée${gardees.length > 1 ? "s" : ""} par le jeune</p>
     </header>
-    <p class="note">Chaque ligne a été relue et gardée par le jeune. Les preuves sont ses propres mots. Ni score, ni niveau : c'est un point de départ pour l'échange.</p>
+    <p class="note">Chaque ligne a été relue et gardée par le jeune. La trace, ce sont ses propres mots : elle montre ce qu'il a raconté, pas qu'il possède la compétence. Ni score, ni niveau : c'est un point de départ pour l'échange.</p>
 
     <table class="tableau">
-      <thead><tr><th>Situation vécue</th><th>Compétence (ROME 4.0)</th><th>Preuve — ses mots</th><th>Question pour en parler</th></tr></thead>
+      <thead><tr><th>Situation vécue</th><th>Compétence (ROME 4.0)</th><th>Trace — ses mots</th><th>Question pour en parler</th></tr></thead>
       <tbody>
         ${gardees
           .map(
@@ -231,7 +246,7 @@ function afficherFiche() {
     ${blocRiasecOutil(gardees)}
 
     <section class="bloc">
-      <h3>Pistes pour ouvrir l'entretien (15 min)</h3>
+      <h3>Pistes pour ouvrir l'entretien</h3>
       <ol>${etat.analyse.pistes_entretien.map((q) => `<li>${echapper(q)}</li>`).join("")}</ol>
     </section>
 
@@ -257,23 +272,25 @@ function afficherFiche() {
     ${blocMetiersOnet(gardees)}
 
     <footer class="fiche-pied">
-      Généré à partir du récit du jeune, non conservé. Compétences : ${echapper(etat.analyse.referentiel)}.
-      ${etat.analyse.ecartees?.length ? `${etat.analyse.ecartees.length} proposition(s) de l'IA écartée(s) automatiquement faute de preuve vérifiable.` : ""}
+      <p><strong>Ces compétences ont été repérées à partir des mots du jeune. Elles ne sont pas un diplôme : c'est un matériau d'entretien.</strong></p>
+      <p>${echapper(RELAIS_ADULTE_PSY)}</p>
+      <p>Généré à partir du récit du jeune, non conservé. Compétences : ${echapper(etat.analyse.referentiel)}.
+      ${etat.analyse.ecartees?.length ? `${etat.analyse.ecartees.length} proposition(s) de l'IA écartée(s) automatiquement faute de citation exacte.` : ""}</p>
     </footer>`;
 }
 
 // Métiers dont le profil d'intérêts ressemble à celui que montrent les compétences
-// validées (majeur = 2, mineur = 1). Calcul déterministe, sans IA (voir fiche.js).
+// gardées (majeur = 2, mineur = 1). Calcul déterministe, sans IA (voir fiche.js).
 function blocMetiersOnet(gardees) {
   return blocMetiers(gardees, onet, rome, {
-    intro: "Métiers dont le profil d'intérêts ressemble à celui que montrent les situations racontées. Ce sont des idées à explorer avec le jeune, pas des recommandations.",
+    intro: "Métiers dont le profil ressemble aux types d'activités des situations racontées. Indicatif : des idées à explorer avec le jeune, pas des recommandations.",
   });
 }
 
 function blocRiasecOutil(gardees) {
   return blocRiasec(gardees, rome, {
     libelle: (c) => c.situation,
-    intro: "France Travail attribue un code RIASEC à la plupart des compétences du ROME (357 sur 506). Voici à quels types d'intérêts se rattachent les situations racontées. C'est un repère à croiser avec le profil d'intérêts du questionnaire du Centre, pas un résultat de test.",
+    intro: INTRO_RIASEC_ROME,
     absent: "Pas apparu dans ce récit, ce qui ne veut pas dire absent.",
     dominantsIntro: "Ce récit met surtout en avant :",
   });

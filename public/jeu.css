@@ -418,7 +418,9 @@ body.ecran {
   transition: background var(--duree-anim), border-color var(--duree-anim), opacity var(--duree-anim);
 }
 .statuts-joueurs li .avatar { width: 1.6em; height: 1.6em; font-size: 1.2em; }
-.statuts-joueurs li.attente { opacity: 0.6; border-style: dashed; }
+/* Affichage neutre : « ✍️ écrit… » sans griser, personne n'est mis en avant comme le dernier. */
+.statuts-joueurs li.en-cours { border-style: dashed; }
+.statuts-joueurs li.en-cours .marque { font-weight: 600; color: var(--discret); }
 .statuts-joueurs li.fait { border-color: var(--succes); background: var(--succes-fond); }
 .statuts-joueurs li.fait .marque { color: var(--succes); font-weight: 900; }
 .statuts-joueurs li.deconnecte { opacity: 0.35; }
@@ -570,3 +572,24 @@ body.telephone { font-size: 18px; }
 .idee-competence .discret { margin: 0; font-size: 0.8em; }
 .idee-libelle { margin: 0.2em 0 0; font-size: 1.4em; font-weight: 800; }
 .idee-auteur .avatar { width: 1.3em; height: 1.3em; font-size: 0.9em; }
+
+/* Avant de jouer : le cadre (« Ce n'est pas un test noté… »), lu à voix haute */
+.annonce-cadre {
+  background: var(--surface); border: 2px solid var(--violet); border-radius: var(--rayon);
+  padding: 0.8em 1.2em; text-align: left; font-size: 1.1em; line-height: 1.4;
+}
+.annonce-cadre .surtitre { margin-bottom: 0.2em; }
+.annonce-cadre.courte { font-size: 0.95em; font-weight: 600; padding: 0.5em 1em; }
+
+/* Phrase de liaison avec l'épisode précédent */
+.liaison {
+  font-size: 1.15em; font-style: italic; color: var(--discret);
+  border-left: 0.25em solid var(--violet); padding-left: 0.7em; line-height: 1.4;
+}
+
+/* Débrief */
+.questions-debrief { text-align: left; font-size: 1.5em; font-weight: 700; line-height: 1.35; display: grid; gap: 0.6em; margin: 0; padding-left: 1.4em; }
+
+/* Aide animateur (tablette de secours) et réglages */
+.aide-animateur { font-size: 0.85em; }
+.reglages input[type="checkbox"] { width: 1.2em; height: 1.2em; accent-color: var(--accent); }

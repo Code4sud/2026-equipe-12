@@ -19,7 +19,7 @@
       width: 210mm; min-height: 297mm; margin: 0 auto 24px; background: #fff; padding: 11mm 12mm 9mm;
       display: flex; flex-direction: column; gap: 5mm; box-shadow: 0 2px 14px rgba(0, 0, 0, 0.15);
     }
-    @media (max-width: 820px) {
+    @media screen and (max-width: 820px) {
       .page { width: auto; min-height: 0; margin: 0 8px 16px; padding: 16px; }
       .gagnees { grid-template-columns: 1fr !important; }
       .entete { flex-wrap: wrap; }
@@ -54,11 +54,14 @@
     .case .ligne-etiquette { display: flex; align-items: flex-end; gap: 2mm; font-size: 9pt; color: var(--discret); }
     .case .ligne-etiquette span:last-child { flex: 1; border-bottom: 1.2px solid var(--trait); height: 10mm; }
 
-      width: 6mm; height: 6mm; border-radius: 50%; flex: none; background: var(--c);
-      -webkit-print-color-adjust: exact; print-color-adjust: exact;
-    }
+    .apres ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3mm; }
+    .apres li { display: flex; flex-direction: column; gap: 1mm; }
+    .apres .etiquette { font-weight: 700; font-size: 10pt; }
+    .apres .etiquette span { font-weight: 400; color: var(--discret); font-size: 9pt; }
+    .apres .ligne { border-bottom: 1.2px solid var(--trait); height: 8mm; }
 
-    .pied { margin-top: auto; font-size: 8.5pt; color: var(--discret); text-align: center; }
+    .pied { margin-top: auto; font-size: 8.5pt; color: var(--discret); text-align: center; display: flex; flex-direction: column; gap: 1mm; }
+    .pied strong { color: var(--texte); }
 
     @media print {
       @page { size: A4; margin: 0; }
@@ -78,7 +81,7 @@
     <header class="entete">
       <div class="titres">
         <h1>Déclic <span>· ma fiche personnage</span></h1>
-        <p class="discret">Recopie tes compétences pendant la partie. C'est toi qui décides de ce que tu gardes.</p>
+        <p class="discret">Écris avec tes mots : un mot-clé suffit. C'est toi qui décides de ce que tu gardes.</p>
         <div class="champ"><span>Nom :</span><span class="ligne"></span></div>
         <div class="champ"><span>Prénom :</span><span class="ligne"></span></div>
         <div class="champ"><span>Date :</span><span class="ligne"></span></div>
@@ -96,19 +99,32 @@
     </section>
 
     <section>
-      <h2>Compétences trouvées pendant le jeu</h2>
+      <h2>Compétences repérées pendant le jeu</h2>
       <div class="gagnees">
-        <div class="case"><p class="numero">Compétence trouvée n° 1</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p></div>
-        <div class="case"><p class="numero">Compétence trouvée n° 2</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p></div>
-        <div class="case"><p class="numero">Compétence trouvée n° 3</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p></div>
-        <div class="case"><p class="numero">Compétence trouvée n° 4</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p></div>
-        <div class="case"><p class="numero">Compétence trouvée n° 5</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p></div>
-        <div class="case"><p class="numero">Compétence trouvée n° 6</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p></div>
+        <div class="case"><p class="numero">Compétence repérée n° 1</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p></div>
+        <div class="case"><p class="numero">Compétence repérée n° 2</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p></div>
+        <div class="case"><p class="numero">Compétence repérée n° 3</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p></div>
+        <div class="case"><p class="numero">Compétence repérée n° 4</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p></div>
+        <div class="case"><p class="numero">Compétence repérée n° 5</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p></div>
+        <div class="case"><p class="numero">Compétence repérée n° 6</p><p class="ligne-etiquette"><span>Compétence :</span><span></span></p></div>
       </div>
     </section>
 
 
-    <p class="pied">Pas de score, pas de classement : cette fiche montre ce que tu sais faire. Tu la montres au psy si tu veux.</p>
+    <section class="apres">
+      <h2>Et maintenant ?</h2>
+      <ul>
+        <li><p class="etiquette">Ce qui m'a surpris sur moi :</p><span class="ligne"></span></li>
+        <li><p class="etiquette">Une piste qui me tente :</p><span class="ligne"></span></li>
+        <li><p class="etiquette">Un premier pas pour l'explorer <span>(une personne à qui parler, un site, un stage…)</span> :</p><span class="ligne"></span></li>
+      </ul>
+    </section>
+
+    <footer class="pied">
+      <p><strong>Ces compétences ont été repérées pendant un jeu, à partir de tes mots. Elles ne sont pas un diplôme : parles-en avec ton psy.</strong></p>
+      <p>Pas de score : cette fiche est à toi. Tu la montres au psy si tu veux.</p>
+      <p>Si quelque chose te pèse, parles-en au psychologue ou au conseiller du Centre : il est là pour ça.</p>
+    </footer>
   </main>
 </body>
 </html>

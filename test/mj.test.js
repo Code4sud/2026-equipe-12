@@ -4,8 +4,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { creerMJ, mjMock, PREUVE_PARTICIPATION, syntheseValide, motsValides, citationValide, motsParDefaut } from "../src/mj.js";
-import { normCitation, citationTrouvee, premiersMots, compterMots, accentuerLibelle, estRemplissage, finDePreuveInterdite, propositionPreuve } from "../src/texte.js";
+import {
+  creerMJ, mjMock, PREUVE_PARTICIPATION, syntheseValide, motsValides, citationValide, motsParDefaut,
+  phraseCompetence, motsActionValides, reformulationValide, liaisonValide, scoreSecours,
+} from "../src/mj.js";
+import {
+  normCitation, citationTrouvee, premiersMots, compterMots, accentuerLibelle, estRemplissage, finDePreuveInterdite, propositionPreuve,
+  AMORCES, MESSAGE_PASSE, MESSAGE_SANS_REPONSE, contientJugement, contientMotInterdit, contientSujetSensible, estSansReponse, refusReponse,
+  TRANSITION_PAR_DEFAUT, transitionFixe,
+} from "../src/texte.js";
+import { aleaDepuis } from "../src/jeu.js";
 import { analyser } from "../src/analyse.js";
 
 const ROME = JSON.parse(readFileSync(new URL("../public/data/rome.json", import.meta.url), "utf-8"));
@@ -119,7 +127,7 @@ test("mock attribuer : compétence par motsCles, preuve = sous-chaîne exacte, p
   assert.ok(longue.includes(res.a.preuve), "preuve = sous-chaîne exacte de la réponse");
   // Preuve = la proposition qui contient les mots-clés (budget, euros), pas les 20 premiers mots.
   assert.equal(res.a.preuve, "Moi je ferais un budget précis avec les 20 euros");
-  assert.deepEqual(res.a.riasec, ["C", "S"]);
+  assert.deepEqual(res.a.riasec, [PROBLEME.riasec.charAt(0)], "type de l'épisode, jamais les codes RIASEC du ROME (critique psy point 8)");
 
   assert.equal(res.b.code, "6D107");
   assert.equal(res.b.preuve, "Je fais une liste et un planning");
@@ -128,7 +136,7 @@ test("mock attribuer : compétence par motsCles, preuve = sous-chaîne exacte, p
     assert.equal(res[id].code, "6D102");
     assert.equal(res[id].typePreuve, "participation");
     assert.equal(res[id].preuve, PREUVE_PARTICIPATION);
-    assert.deepEqual(res[id].riasec, ["E", "C"], "6D1xx sans RIASEC → couleur du problème");
+    assert.deepEqual(res[id].riasec, ["E"], "type dominant de l'épisode");
   }
 
   assert.equal(res.e.typePreuve, "jeu");
@@ -256,7 +264,7 @@ test("IA attribuer : sortie valide acceptée, garde-fous par joueur", async () =
     const msg = params.messages[1].content;
     assert.ok(!/^[a-f] :/m.test(msg), "les joueurs sont étiquetés J1, J2…");
     const un = (a) => sortie({ attributions: [{ joueur: "J1", participation: false, ...a }] });
-    if (msg.includes("budget avec les 20 euros")) return un({ code: "4A201", citation: "on fait un BUDGET avec les 20 euros", mots: "Tu sais gérer un petit budget." });
+    if (msg.includes("budget avec les 20 euros")) return un({ code: "4A201", citation: "on fait un BUDGET avec les 20 euros", mots: "Tu as proposé de faire un budget avec les 20 euros" });
     if (msg.includes("liste et un planning")) return un({ code: "9Z999", citation: "Je fais une liste", mots: "Tu t'organises." }); // code hors liste
     if (msg.includes("aux petits")) return un({ code: "1A102", citation: "On demande aux grands", mots: "Tu penses aux autres." }); // citation introuvable
     if (msg.includes(PROBLEME.choix[2].texte)) return un({ code: "6D107", citation: "n'importe quoi", mots: "Même si tu t'es trompé, bravo." }); // que des choix ; mots interdits
@@ -277,7 +285,7 @@ test("IA attribuer : sortie valide acceptée, garde-fous par joueur", async () =
   // a : accepté tel quel.
   assert.equal(res.a.code, "4A201");
   assert.equal(res.a.preuve, "on fait un BUDGET avec les 20 euros");
-  assert.equal(res.a.mots, "Tu sais gérer un petit budget.");
+  assert.equal(res.a.mots, `Tu as proposé de faire un budget avec les 20 euros : c'est ce qu'on appelle « ${accentuerLibelle(LIBELLE("4A201"))} ».`);
   assert.equal(res.a.typePreuve, "jeu");
   // b : code hors liste → mock pour ce joueur.
   assert.deepEqual(res.b, mock.b);
@@ -335,7 +343,7 @@ test("mock : les mots par défaut rétablissent l'accent initial du ROME (« Ela
   assert.match(LIBELLE("4C101"), /^[EÉ]laborer/);
   const out = await mjMock({ rome: ROME }).attribuer({ probleme, historique: { j1: { reponses: ["On fait un budget ensemble"], choix: null } } });
   assert.equal(out.j1.code, "4C101");
-  assert.match(out.j1.mots, /^Tu as montré que tu sais élaborer/);
+  assert.match(out.j1.mots, /^Tu as proposé « On fait un budget ensemble » : c'est ce qu'on appelle « Élaborer/);
 });
 
 // ───────────────────────── Non-régression (correctifs) ─────────────────────────
@@ -486,16 +494,21 @@ test("compétence générique : competenceParDefaut, puis 6D103, puis le premier
   assert.equal(await code({ ...base, competences: [comps[0], comps[3]] }), "4A201");
 });
 
-test("mots : la phrase écrite pour la compétence du problème passe avant le libellé ROME recopié", async () => {
+test("mots : la trace du joueur passe avant la phrase prévue de l'épisode (qui pourrait en dire plus que sa réponse)", async () => {
   const probleme = { ...PROBLEME, competences: PROBLEME.competences.map((c) => (c.code === "4A201" ? { ...c, mots: "Tu as pensé à compter avant de dépenser." } : c)) };
   const res = await mjMock({ rome: ROME }).attribuer({ probleme, historique: { a: { reponses: ["On fait un budget avec les 20 euros"], choix: null } } });
   assert.equal(res.a.code, "4A201");
-  assert.equal(res.a.mots, "Tu as pensé à compter avant de dépenser.");
-  // Les « mots » rejetés de l'IA retombent aussi sur cette phrase.
+  const attendu = `Tu as proposé « On fait un budget avec les 20 euros » : c'est ce qu'on appelle « ${res.a.libelle} ».`;
+  assert.equal(res.a.mots, attendu);
+  // Sans trace (que des choix, texte du choix vide), la phrase prévue de l'épisode sert de repli.
+  assert.equal(phraseCompetence({ action: "Tu as pensé à compter avant de dépenser.", libelle: "Gérer une caisse" }), "Tu as pensé à compter avant de dépenser : c'est ce qu'on appelle « Gérer une caisse ».");
+  // Citation longue : 12 mots au plus dans la phrase.
+  assert.match(phraseCompetence({ libelle: "Gérer une caisse", citation: "un deux trois quatre cinq six sept huit neuf dix onze douze treize quatorze" }), /^Tu as proposé « un deux trois quatre cinq six sept huit neuf dix onze douze… » : /);
+  // Les « mots » rejetés de l'IA retombent aussi sur la trace.
   const client = fauxClient(sortie({ attributions: [{ joueur: "J1", participation: false, code: "4A201", citation: "On fait un budget", mots: "Bravo Lina !" }] }));
   const mj = creerMJ({ apiKey: "x", rome: ROME, client, journal: silencieux });
   const r2 = await mj.attribuer({ probleme, historique: { a: { reponses: ["On fait un budget avec les 20 euros"], choix: null } }, pseudos: ["Lina"] });
-  assert.equal(r2.a.mots, "Tu as pensé à compter avant de dépenser.");
+  assert.equal(r2.a.mots, `Tu as proposé « On fait un budget » : c'est ce qu'on appelle « ${r2.a.libelle} ».`);
 });
 
 test("libellés ROME : majuscule accentuée et « œuvre » sur le titre de la carte", async () => {
@@ -545,8 +558,13 @@ test("IA attribuer : « mots » injectés ou hors forme → phrase prévue ; par
     const mj = creerMJ({ apiKey: "x", rome: ROME, client, journal: silencieux });
     return (await mj.attribuer({ probleme: PROBLEME, historique, pseudos: ["Lina", "Sam"] })).a;
   };
-  const prevu = motsParDefaut(LIBELLE("4A201"));
-  assert.equal((await essayer({ mots: "Tu sais tenir un petit budget." })).mots, "Tu sais tenir un petit budget.", "forme valide acceptée");
+  const prevu = motsParDefaut(LIBELLE("4A201"), "On fait un budget avec les 20 euros");
+  assert.equal(prevu, `Tu as proposé « On fait un budget avec les 20 euros » : c'est ce qu'on appelle « ${accentuerLibelle(LIBELLE("4A201"))} ».`);
+  assert.equal((await essayer({ mots: "Tu as proposé de tenir un petit budget." })).mots, `Tu as proposé de tenir un petit budget : c'est ce qu'on appelle « ${accentuerLibelle(LIBELLE("4A201"))} ».`, "forme valide acceptée");
+  assert.equal((await essayer({ mots: "Tu sais tenir un petit budget." })).mots, prevu, "« Tu sais » : pas une action proposée");
+  assert.equal((await essayer({ mots: "Tu es vraiment doué pour compter" })).mots, prevu, "jugement sur la personne");
+  assert.equal((await essayer({ mots: "Tu as eu une idée géniale" })).mots, prevu, "superlatif");
+  assert.equal((await essayer({ mots: "Tu as proposé d'aider ta mère à compter" })).mots, prevu, "sujet sensible (famille)");
   assert.equal((await essayer({ mots: "Tu sais compter. Sam est nul." })).mots, prevu, "deux phrases");
   assert.equal((await essayer({ mots: "Tu aides Lina à compter." })).mots, prevu, "pseudo");
   assert.equal((await essayer({ mots: "Bravo, tu sais compter." })).mots, prevu, "ne commence pas par « Tu »");
@@ -677,4 +695,255 @@ test("choisir (IA) : un seul appel, joueurs anonymes, citation vérifiée et san
     assert.ok(res && reponses.some((x) => x.joueurId === res.joueurId));
     assert.equal(warns.length, 1);
   }
+});
+
+// ───────────────────────── Adaptations aux sources (21/11/2026) ─────────────────────────
+
+const CAISSE = () => pb("caisse-buvette");
+const COURTE = { joueurId: "a", texte: "Je recompte la caisse et la monnaie", dejaRetenu: false };
+const LONGUE = {
+  joueurId: "b",
+  texte: "Alors moi je recompte toute la caisse, je compte les billets et les pièces, je vérifie le stock de canettes et les tickets, et je préviens la trésorière",
+  dejaRetenu: false,
+};
+
+test("MJ de secours : la longueur n'est plus un critère (2 mots-clés au plus comptent), +3 pour qui n'a pas encore été retenu", () => {
+  const caisse = CAISSE();
+  assert.ok(compterMots(LONGUE.texte, caisse.competences.flatMap((c) => c.motsCles)) > 4, "la longue réponse a beaucoup plus de mots-clés");
+  assert.equal(scoreSecours(caisse, COURTE), scoreSecours(caisse, LONGUE), "une idée courte et concrète vaut une idée longue");
+  assert.equal(scoreSecours(caisse, COURTE), 2 + 1 + 3);
+  assert.equal(scoreSecours(caisse, { ...COURTE, dejaRetenu: true }), 2 + 1);
+  // Ne pas encore avoir été retenu pèse plus que tout le reste réuni.
+  assert.ok(scoreSecours(caisse, { joueurId: "x", texte: "je vais voir la responsable", dejaRetenu: false }) > scoreSecours(caisse, { ...LONGUE, dejaRetenu: true }));
+});
+
+test("MJ de secours : ex aequo départagés au hasard, tirage enregistré et reproductible (graine)", async () => {
+  const mj = mjMock({ rome: ROME });
+  const caisse = CAISSE();
+  const r = await mj.choisir({ probleme: caisse, reponses: [LONGUE, COURTE] });
+  assert.deepEqual(r.departage.exAequo, ["a", "b"], "ex aequo triés : le tirage ne dépend pas de l'ordre d'arrivée");
+  assert.equal(r.departage.tire, r.joueurId);
+  assert.ok(Number.isInteger(r.departage.graine));
+  // Même entrée, même tirage (dans les deux ordres).
+  assert.deepEqual(await mj.choisir({ probleme: caisse, reponses: [COURTE, LONGUE] }), r);
+  // Avec une graine donnée : le tirage se vérifie à la main.
+  for (let g = 0; g < 5; g++) {
+    const x = await mj.choisir({ probleme: caisse, reponses: [COURTE, LONGUE], graine: g });
+    assert.equal(x.departage.graine, g);
+    assert.equal(x.joueurId, ["a", "b"][Math.floor(aleaDepuis(g)() * 2)]);
+  }
+  // Sur plusieurs graines, chacun a sa chance (pas d'avantage au premier inscrit ni au plus long).
+  const gagnants = new Set();
+  for (let g = 0; g < 30; g++) gagnants.add((await mj.choisir({ probleme: caisse, reponses: [COURTE, LONGUE], graine: g })).joueurId);
+  assert.deepEqual([...gagnants].sort(), ["a", "b"]);
+  // Pas d'ex aequo : pas de tirage.
+  const seul = await mj.choisir({ probleme: caisse, reponses: [COURTE, { ...LONGUE, dejaRetenu: true }] });
+  assert.equal(seul.joueurId, "a");
+  assert.equal(seul.departage, null);
+});
+
+test("MJ de secours : rotation stricte, il choisit parmi les joueurs obligatoires", async () => {
+  const r = await mjMock({ rome: ROME }).choisir({
+    probleme: CAISSE(),
+    reponses: [LONGUE, { joueurId: "c", texte: "Je vais voir la trésorière du club", dejaRetenu: true }],
+    obligatoires: ["c"],
+  });
+  assert.equal(r.joueurId, "c");
+});
+
+test("choisir (IA) : prompt « OBLIGATOIREMENT parmi les pas encore retenus » et « la longueur n'est pas un critère » ; rotation non respectée → MJ de secours parmi eux", async () => {
+  const caisse = CAISSE();
+  const reponses = [
+    { joueurId: "id-a", texte: "Je recompte la caisse tranquillement", dejaRetenu: true },
+    { joueurId: "id-b", texte: "On compte les canettes qui restent", dejaRetenu: false },
+  ];
+  const client = fauxClient(sortie({ joueur: "J1", code: "4A201", citation: "Je recompte la caisse tranquillement", mots: "Tu as proposé de recompter la caisse" }));
+  const warns = [];
+  const mj = creerMJ({ apiKey: "x", rome: ROME, client, journal: { warn: (w) => warns.push(w) } });
+  const r = await mj.choisir({ probleme: caisse, reponses, obligatoires: ["id-b"] });
+  const systeme = client.appels[0].params.messages[0].content;
+  const msg = client.appels[0].params.messages[1].content;
+  assert.match(systeme, /tu choisis OBLIGATOIREMENT parmi eux/);
+  assert.match(systeme, /La longueur d'une réponse n'est pas un critère : une idée courte et concrète vaut une idée longue/);
+  assert.match(msg, /OBLIGATOIREMENT/);
+  assert.equal(r.joueurId, "id-b", "le MJ IA a choisi un joueur déjà retenu : refusé");
+  assert.match(warns[0], /rotation non respectée/);
+});
+
+test("savoir-être en repli : accepté si aucune compétence de l'épisode ne convient, marqué « hors scénario » ; tout autre code refusé", async () => {
+  const caisse = CAISSE();
+  assert.ok(!caisse.competences.some((c) => c.code === "6D101"));
+  const reponses = [{ joueurId: "id-b", texte: "J'écoute ce que la trésorière a à dire", dejaRetenu: false }];
+  const client = fauxClient(sortie({ joueur: "J1", code: "6D101", citation: "J'écoute ce que la trésorière a à dire", mots: "Tu as proposé d'écouter la trésorière" }));
+  const r = await creerMJ({ apiKey: "x", rome: ROME, client, journal: silencieux }).choisir({ probleme: caisse, reponses });
+  assert.equal(r.competence.code, "6D101");
+  assert.equal(r.competence.horsScenario, true);
+  assert.equal(r.competence.mots, "Tu as proposé d'écouter la trésorière : c'est ce qu'on appelle « Être à l'écoute, faire preuve d'empathie ».");
+  const msg = client.appels[0].params.messages[1].content;
+  assert.match(msg, /Savoir-être professionnels \(seulement si aucune compétence autorisée ne correspond honnêtement\)/);
+  assert.match(msg, /- 6D101 \| Être à l'écoute/);
+  // Un code ROME qui n'est ni de l'épisode ni un savoir-être : refusé (MJ de secours).
+  const r2 = await creerMJ({ apiKey: "x", rome: ROME, client: fauxClient(sortie({ joueur: "J1", code: "1A101", citation: "J'écoute ce que la trésorière a à dire", mots: "Tu as proposé d'écouter" })), journal: silencieux }).choisir({ probleme: caisse, reponses });
+  assert.notEqual(r2.competence.code, "1A101");
+  assert.equal(r2.competence.horsScenario, false);
+});
+
+test("prompt : règle 1 étendue (art. 9 du RGPD) et aucun jugement psychologique ; public décrit sans « 15 à 25 ans »", async () => {
+  const client = fauxClient(sortie({ resolu: false, synthese: "" }));
+  await creerMJ({ apiKey: "x", rome: ROME, client, journal: silencieux }).evaluer({ probleme: PROBLEME, reponses: [{ joueurId: "a", texte: "liste" }] });
+  const systeme = client.appels[0].params.messages[0].content;
+  for (const attendu of [
+    "les opinions politiques ou syndicales, la vie ou l'orientation sexuelle, la situation financière",
+    "Aucun jugement sur la personnalité, les émotions, l'intelligence ou l'état psychologique du joueur",
+    "jamais ce qu'il EST",
+    "Tu as proposé de",
+    "Savoir-être professionnels",
+    "TÂCHE « reperer »",
+    "TÂCHE « lier »",
+  ]) assert.ok(systeme.includes(attendu), attendu);
+  assert.ok(!/15 à 25 ans|souvent en décrochage/.test(systeme));
+  assert.ok(!/Tu as montré que tu sais/.test(systeme));
+});
+
+test("phrase de la carte : « Tu as proposé … : c'est ce qu'on appelle « libellé » », jamais « Tu as montré que tu sais »", async () => {
+  assert.equal(phraseCompetence({ libelle: "Etre à l'écoute, faire preuve d'empathie", citation: "je les écoute." }), "Tu as proposé « je les écoute » : c'est ce qu'on appelle « Être à l'écoute, faire preuve d'empathie ».");
+  assert.equal(phraseCompetence({ action: "Tu as proposé de prévenir le coach", libelle: "Gérer une caisse" }), "Tu as proposé de prévenir le coach : c'est ce qu'on appelle « Gérer une caisse ».");
+  const mj = mjMock({ rome: ROME });
+  for (const p of PROBLEMES_JEU) {
+    const r = await mj.choisir({ probleme: p, reponses: [{ joueurId: "j", texte: "Je demande conseil à quelqu'un de confiance", dejaRetenu: false }] });
+    assert.match(r.competence.mots, /^Tu as proposé « Je demande conseil à quelqu'un de confiance » : c'est ce qu'on appelle « .+ »\.$/, p.id);
+    assert.doesNotMatch(r.competence.mots, /tu sais/i);
+  }
+});
+
+test("phrase d'action de l'IA : « Tu as … », sans jugement sur la personne, sans superlatif, sans sujet sensible (filet de sécurité)", () => {
+  assert.ok(motsActionValides("Tu as proposé de prévenir le coach avant d'agir"));
+  assert.ok(motsActionValides("Tu as pensé à compter le stock."));
+  for (const m of [
+    "Tu es créatif",
+    "Tu as montré que tu es intelligent",
+    "Tu as été génial",
+    "Tu as eu une idée incroyable",
+    "Tu as trouvé la solution parfaite",
+    "Tu as montré que t'es doué",
+    "Tu as su gérer ton anxiété et ta timidité",
+    "Tu as aidé ta mère",
+    "Tu sais compter",
+    // Sur-promesse (critique psy point 2) : une proposition, pas une compétence prouvée.
+    "Tu as montré que tu sais organiser",
+    "Tu as montré que tu sais gérer un budget",
+    "Tu as prouvé que tu sais négocier",
+    "Tu as su tenir une caisse",
+  ]) assert.ok(!motsActionValides(m), m);
+  // contientMotInterdit (filet secondaire) normalise le genre et le nombre.
+  for (const t of ["Tu es timide", "elle est anxieuse", "ils sont anxieux", "très intelligente", "tu es émotif", "des idées géniales"]) assert.ok(contientMotInterdit(t), t);
+  for (const t of ["Tu as proposé de prévenir le coach", "un écran parfaitement lisible", "on part de rien et on va nulle part"]) assert.ok(!contientJugement(t), t);
+  assert.ok(contientSujetSensible("comme sa famille") && contientSujetSensible("à la mosquée") && !contientSujetSensible("on prépare le tournoi"));
+});
+
+test("compétence privée (mock) : seulement si la réponse contient une action précise et citable, sinon sa simple idée", async () => {
+  const mj = mjMock({ rome: ROME });
+  const caisse = CAISSE();
+  const res = await mj.attribuerPrivee({
+    probleme: caisse,
+    reponses: [
+      { joueurId: "action", texte: "Je recompte la caisse et la monnaie" },
+      { joueurId: "vague", texte: "Je ferais un truc bien pour tout le monde" },
+      { joueurId: "hesite", texte: "je sais pas trop, on verra" },
+      { joueurId: "vide", texte: "" },
+    ],
+  });
+  assert.deepEqual(Object.keys(res), ["action", "vague", "hesite", "vide"]);
+  assert.equal(res.action.code, "4A201");
+  assert.equal(res.action.typePreuve, "jeu");
+  assert.equal(res.action.preuve, "Je recompte la caisse et la monnaie");
+  assert.match(res.action.mots, /^Tu as proposé « Je recompte la caisse et la monnaie » : c'est ce qu'on appelle « Gérer une caisse »\.$/);
+  for (const id of ["vague", "hesite", "vide"]) assert.deepEqual(res[id], { reformulation: null }, `${id} : pas de compétence générique ni de participation`);
+  // Différence avec l'idée du tour : une réponse sérieuse sans mot-clé y reçoit la compétence générique.
+  const tour = await mj.choisir({ probleme: caisse, reponses: [{ joueurId: "v", texte: "Je ferais un truc bien pour tout le monde", dejaRetenu: false }] });
+  assert.equal(tour.competence.code, caisse.competenceParDefaut);
+});
+
+test("compétence privée (IA) : un appel par joueur ; action citable → compétence ; sinon « Ton idée : … » contrôlée ; sortie hors contrat → MJ de secours", async () => {
+  const caisse = CAISSE();
+  const reponses = [
+    { joueurId: "a", texte: "Je recompte la caisse et la monnaie avec un pote" },
+    { joueurId: "b", texte: "Je ferais un truc pour tout le monde" },
+    { joueurId: "c", texte: "Il faut faire attention à la caisse et à tout" },
+    { joueurId: "d", texte: "On compte les canettes qui restent" },
+    { joueurId: "e", texte: "Je dirais un truc à quelqu'un" },
+    { joueurId: "f", texte: "" },
+  ];
+  const client = fauxClient((params) => {
+    const msg = params.messages[1].content;
+    assert.match(msg, /^TÂCHE : reperer/);
+    assert.equal((msg.match(/^J\d+ :/gm) ?? []).length, 1, "un seul joueur par prompt");
+    const r = (o) => sortie({ action: false, code: "", citation: "", mots: "", reformulation: "", ...o });
+    if (msg.includes("avec un pote")) return r({ action: true, code: "4A201", citation: "Je recompte la caisse et la monnaie", mots: "Tu as proposé de recompter la caisse et la monnaie" });
+    if (msg.includes("truc pour tout le monde")) return r({ reformulation: "Ton idée : faire quelque chose pour tout le groupe." });
+    if (msg.includes("faire attention")) return r({ reformulation: "Ton idée est géniale, Lina" }); // forme, jugement, pseudo
+    if (msg.includes("canettes")) return r({ action: true, code: "9Z999", citation: "On compte les canettes", mots: "Tu as proposé de compter" }); // code hors liste
+    return r({ reformulation: "Ton idée : en parler à ta mère" }); // sujet sensible
+  });
+  const mj = creerMJ({ apiKey: "x", rome: ROME, client, journal: silencieux });
+  const res = await mj.attribuerPrivee({ probleme: caisse, reponses, pseudos: ["Lina"] });
+  assert.equal(client.appels.length, 5, "f n'a rien écrit : pas d'appel");
+  assert.deepEqual(Object.keys(res), ["a", "b", "c", "d", "e", "f"]);
+  assert.equal(res.a.code, "4A201");
+  assert.equal(res.a.preuve, "Je recompte la caisse et la monnaie");
+  assert.equal(res.a.mots, "Tu as proposé de recompter la caisse et la monnaie : c'est ce qu'on appelle « Gérer une caisse ».");
+  assert.deepEqual(res.b, { reformulation: "Ton idée : faire quelque chose pour tout le groupe" });
+  assert.deepEqual(res.c, { reformulation: null });
+  assert.deepEqual(res.d, await mjMock({ rome: ROME }).attribuerPrivee({ probleme: caisse, reponses: [reponses[3]] }).then((x) => x.d), "code hors liste → MJ de secours");
+  assert.equal(res.d.code, "3H101");
+  assert.deepEqual(res.e, { reformulation: null });
+  assert.deepEqual(res.f, { reformulation: null });
+  // Erreur réseau : MJ de secours pour chacun.
+  const enPanne = creerMJ({ apiKey: "x", rome: ROME, client: fauxClient(() => { throw new Error("réseau"); }), journal: silencieux });
+  assert.deepEqual(await enPanne.attribuerPrivee({ probleme: caisse, reponses }), await mjMock({ rome: ROME }).attribuerPrivee({ probleme: caisse, reponses }));
+  assert.ok(reformulationValide("Ton idée : demander de l'aide à quelqu'un"));
+  assert.ok(!reformulationValide("Ton idée : demander. Puis partir"));
+});
+
+test("liaison entre épisodes : phrase du MJ contrôlée (20 mots, sans pseudo ni jugement ni sujet sensible), sinon transition fixe", async () => {
+  const precedent = pb("budget-tournoi");
+  const suivant = pb("affiche-tournoi");
+  const idee = "on compare les prix des boulangeries";
+  assert.equal(await mjMock({ rome: ROME }).lier({ precedent, suivant, idee }), null, "le MJ de secours n'écrit pas de liaison");
+  const essayer = async (phrase) => {
+    const client = fauxClient(sortie({ phrase }));
+    const r = await creerMJ({ apiKey: "x", rome: ROME, client, journal: silencieux }).lier({ precedent, suivant, idee, pseudos: ["Lina"] });
+    return { r, msg: client.appels[0].params.messages[1].content };
+  };
+  const ok = await essayer("Les prix sont comparés, le budget tient : maintenant, il faut faire venir du monde.");
+  assert.equal(ok.r, "Les prix sont comparés, le budget tient : maintenant, il faut faire venir du monde.");
+  assert.match(ok.msg, /^TÂCHE : lier/);
+  assert.ok(ok.msg.includes(idee) && !ok.msg.includes("Lina"));
+  for (const phrase of [
+    "Bravo pour cette idée, place à l'affiche",
+    "Grâce à Lina, le budget tient",
+    "Le budget tient grâce à une idée géniale",
+    "Le budget tient, comme la famille l'avait dit",
+    "un deux trois quatre cinq six sept huit neuf dix onze douze treize quatorze quinze seize dix-sept dix-huit dix-neuf vingt vingt-et-un",
+    "Le budget tient. Place à l'affiche",
+    "",
+  ]) assert.equal((await essayer(phrase)).r, null, phrase);
+  assert.ok(liaisonValide("Les prix sont comparés, place à l'affiche"));
+  // Repli fixe : la transition de l'épisode, sinon une phrase neutre.
+  assert.equal(transitionFixe({ transition: "  Trois semaines avant le tournoi…  " }), "Trois semaines avant le tournoi…");
+  assert.equal(transitionFixe(suivant), suivant.transition?.trim() || TRANSITION_PAR_DEFAUT);
+  assert.equal(transitionFixe(null), TRANSITION_PAR_DEFAUT);
+});
+
+test("« je ne sais pas » : refus doux dès la 1re fois, débuts de phrase ; une amorce envoyée seule n'est pas une réponse", () => {
+  assert.deepEqual(AMORCES, ["Moi, je demanderais à…", "D'abord, je…", "J'irais voir…"]);
+  assert.match(MESSAGE_SANS_REPONSE, /^Toutes les idées comptent !/);
+  assert.match(MESSAGE_SANS_REPONSE, /passe ce tour/);
+  assert.equal(MESSAGE_PASSE, "Pas de souci, l'histoire continue. Tu pourras proposer ton idée au prochain épisode.");
+  for (const t of [...AMORCES, "D'abord, je", "J'irais voir… euh je sais pas", "moi je demanderais a"]) {
+    assert.ok(estSansReponse(t), t);
+    assert.equal(refusReponse(t), MESSAGE_SANS_REPONSE, t);
+  }
+  for (const t of ["D'abord, je préviens le coach", "J'irais voir la trésorière", "Moi, je demanderais à un adulte"]) assert.equal(refusReponse(t), null, t);
+  for (const t of [MESSAGE_SANS_REPONSE, MESSAGE_PASSE, ...AMORCES]) assert.ok(!contientMotInterdit(t), t);
 });

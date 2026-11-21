@@ -2,9 +2,10 @@
 // avec la vraie machine à états (src/jeu.js), le MJ mock (src/mj.js), l'analyse mock
 // (src/analyse.js), le rendu de l'écran commun (public/js/ecran.js) et de la fiche
 // (public/js/fiche.js). Aucun réseau. Vérifie les règles critiques de la SPEC :
-// l'histoire en 6 épisodes, l'idée du tour (une compétence pour son auteur), réponses
-// non retenues privées, « je ne sais pas » refusé (le joueur réécrit),
-// aucun mot interdit, aucun « undefined » à l'écran.
+// l'histoire en 6 épisodes, la réflexion silencieuse, l'idée du tour (sans pseudo tant
+// que son auteur n'a pas dit oui), les compétences privées des autres réponses,
+// réponses non retenues privées, « je ne sais pas » refusé (le joueur réécrit ou
+// passe), aucun mot interdit, aucun « undefined » à l'écran.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -13,7 +14,7 @@ import { appliquer, creerEtat, vue } from "../src/jeu.js";
 import { mjMock } from "../src/mj.js";
 import { analyser, versCompetenceDepart } from "../src/analyse.js";
 import { rendreScene } from "../public/js/ecran.js";
-import { rendreFiche } from "../public/js/fiche.js";
+import { rendreFiche, normaliserFiche, competencesTypees } from "../public/js/fiche.js";
 
 const lire = (p) => JSON.parse(readFileSync(new URL(`../${p}`, import.meta.url), "utf8"));
 const ROME = lire("public/data/rome.json");
@@ -28,7 +29,7 @@ const INTERDITS = /\bfaux\b|mauvaise r[ée]ponse|\bscore\b|classement/i;
 
 async function jouerPartie() {
   const mj = mjMock({ rome: ROME });
-  let etat = creerEtat({ code: "BCDF", problemes: PROBLEMES, nbProblemes: 6, dureeEchange: 10, dureeReponse: 10, graine: 7, maintenant: 0 });
+  let etat = creerEtat({ code: "BCDF", problemes: PROBLEMES, nbProblemes: 6, dureeEchange: 10, dureeReponse: 10, dureeReflexion: 10, debrief: false, graine: 7, maintenant: 0 });
   let t = 1000;
   const effets = [];
   const vuesEcran = [];
@@ -58,7 +59,11 @@ async function jouerPartie() {
         app({ t: "analyse_faite", joueurId: e.joueurId, competences: res.competences.slice(0, 3).map(versCompetenceDepart) });
       } else if (e.type === "choisir") {
         const choix = await mj.choisir(e);
-        app({ t: "attribution_faite", problemeIndex: e.problemeIndex, joueurId: choix?.joueurId ?? null, competence: choix?.competence ?? null });
+        app({ t: "attribution_faite", problemeIndex: e.problemeIndex, essai: e.essai, joueurId: choix?.joueurId ?? null, competence: choix?.competence ?? null, departage: choix?.departage ?? undefined });
+      } else if (e.type === "attribuer") {
+        app({ t: "competences_privees", problemeIndex: e.problemeIndex, competences: await mj.attribuerPrivee({ probleme: e.probleme, reponses: e.reponses }) });
+      } else if (e.type === "lier") {
+        app({ t: "liaison_faite", problemeIndex: e.problemeIndex, essai: e.essai, texte: await mj.lier(e) });
       }
     }
   };
@@ -80,7 +85,9 @@ async function jouerPartie() {
   assert.equal(etat.phase, "presentation");
 
   for (let k = 0; k < 6; k++) {
-    ecran({ t: "suivant" }); // presentation → echange (minuteur)
+    ecran({ t: "suivant" }); // presentation → réflexion silencieuse (minuteur)
+    assert.equal(etat.phase, "reflexion");
+    app({ t: "minuteur_fini" }); // fin de la réflexion : la discussion démarre d'elle-même
     assert.equal(etat.phase, "echange");
     ecran({ t: "fin_minuteur" });
     assert.equal(etat.phase, "reponse");
@@ -99,8 +106,14 @@ async function jouerPartie() {
     const id = etat.idee?.joueurId;
     assert.ok(IDS.includes(id), `idée retenue à l'épisode ${k + 1}`);
     retenus[k] = id;
-    // L'auteur l'écrit sur sa fiche papier et la garde (sauf au 2e épisode) : l'histoire continue.
+    // L'auteur accepte d'afficher son pseudo (sauf au 3e épisode), l'écrit sur sa fiche
+    // papier et la garde (sauf au 2e épisode) ; chacun tranche sa compétence privée.
+    joueur(IDS.indexOf(id), { t: "afficher_pseudo", accord: k !== 2 });
     joueur(IDS.indexOf(id), { t: "garder_competence", garder: k !== 1 });
+    for (const autre of IDS.filter((x) => x !== id)) {
+      if (etat.phase !== "competences") break;
+      if (etat.joueurs[autre].competences.some((c) => c.problemeIndex === k)) joueur(IDS.indexOf(autre), { t: "garder_competence", garder: true });
+    }
   }
   assert.equal(etat.phase, "fin");
   return { etat, vuesEcran, vuesJoueurs, refus, reponses, retenus };
@@ -116,11 +129,16 @@ test("intégration : 6 épisodes de l'histoire, dans l'ordre, sans évaluation n
   for (const ph of ["evaluation", "indice", "echange2", "choix", "solution"]) assert.ok(!phases.has(ph), `plus de phase ${ph}`);
 });
 
-test("intégration : une compétence par épisode, pour l'auteur de l'idée retenue ; chacun est retenu à son tour", async () => {
+test("intégration : une idée du tour par épisode, compétences privées citables pour les autres ; chacun est retenu à son tour", async () => {
   const { etat, reponses, retenus } = await partie;
   for (let k = 0; k < 6; k++) {
-    const avec = IDS.filter((id) => etat.joueurs[id].competences.some((c) => c.problemeIndex === k));
-    assert.deepEqual(avec, [retenus[k]], `épisode ${k + 1} : une seule compétence`);
+    const idees = IDS.filter((id) => etat.joueurs[id].competences.some((c) => c.problemeIndex === k && c.idee === true));
+    assert.deepEqual(idees, [retenus[k]], `épisode ${k + 1} : une seule idée du tour`);
+    for (const id of IDS) {
+      const cs = etat.joueurs[id].competences.filter((c) => c.problemeIndex === k);
+      assert.ok(cs.length <= 1, "une compétence au plus par joueur et par épisode");
+      for (const c of cs) assert.ok(reponses[k][IDS.indexOf(id)].includes(c.preuve), `trace = ses propres mots : « ${c.preuve} »`);
+    }
     const c = etat.joueurs[retenus[k]].competences.find((x) => x.problemeIndex === k);
     const p = etat.catalogue[etat.problemes[k]];
     assert.ok(p.competences.some((x) => x.code === c.code), `${c.code} autorisé pour ${p.id}`);
@@ -128,10 +146,10 @@ test("intégration : une compétence par épisode, pour l'auteur de l'idée rete
     assert.ok(reponses[k][IDS.indexOf(retenus[k])].includes(c.preuve), `preuve = ses propres mots : « ${c.preuve} »`);
     assert.doesNotMatch(c.mots, INTERDITS);
   }
-  assert.deepEqual(new Set(Object.values(retenus)), new Set(IDS), "à idées comparables, chacun est retenu à son tour");
+  assert.deepEqual(new Set(Object.values(retenus).slice(0, 3)), new Set(IDS), "rotation stricte : chacun est retenu une fois dans les 3 premiers épisodes");
 });
 
-test("intégration : l'écran voit qui a répondu ; seule l'idée retenue est montrée, avec son pseudo", async () => {
+test("intégration : l'écran voit qui a répondu ; seule l'idée retenue est montrée, avec son pseudo s'il l'accepte", async () => {
   const { vuesEcran, retenus } = await partie;
   for (const v of vuesEcran) {
     const s = JSON.stringify(v);
@@ -144,6 +162,9 @@ test("intégration : l'écran voit qui a répondu ; seule l'idée retenue est mo
   const avecIdee = vuesEcran.filter((v) => v.idee?.pseudo);
   assert.ok(avecIdee.length >= 6);
   for (const v of avecIdee) assert.equal(v.idee.pseudo, PSEUDOS[IDS.indexOf(retenus[v.problemeIndex])]);
+  assert.ok(!vuesEcran.some((v) => v.problemeIndex === 2 && v.idee?.pseudo), "épisode 3 : « Non, reste discret »");
+  assert.ok(vuesEcran.some((v) => v.phase === "competences" && v.idee?.texte && v.idee.pseudo === null), "l'idée s'affiche d'abord sans nom");
+  assert.ok(vuesEcran.some((v) => v.phase === "reflexion"), "réflexion silencieuse avant la discussion");
 });
 
 test("intégration : un joueur ne voit la réponse d'un autre que si c'est l'idée retenue", async () => {
@@ -185,7 +206,12 @@ test("intégration : la fiche (format de Partie.fiche) se rend avec ses compéte
     competences: structuredClone(j.competences),
     depart: j.competences.filter((c) => c.problemeIndex === null),
     jeu: j.competences.filter((c) => c.problemeIndex !== null),
-    problemes: etat.problemes.map((id, index) => ({ index, id, titre: etat.catalogue[id].titre })),
+    problemes: etat.problemes.map((id, index) => ({
+      index, id, titre: etat.catalogue[id].titre, riasec: etat.catalogue[id].riasec, questionVecu: etat.catalogue[id].questionVecu,
+    })),
+    passes: [],
+    preferences: [],
+    debrief: null,
   };
   const html = rendreFiche(fiche, { rome: ROME, onet: ONET });
   assert.match(html, /Lina/);
@@ -198,4 +224,33 @@ test("intégration : la fiche (format de Partie.fiche) se rend avec ses compéte
   const { retenus } = await partie;
   const retiree = etat.joueurs[retenus[1]].competences.find((c) => c.problemeIndex === 1);
   assert.equal(retiree.gardee, false);
+});
+
+test("intégration : la fiche du téléphone classe comme la fiche imprimée (type de l'épisode, jamais les codes ROME)", async () => {
+  const { etat } = await partie;
+  for (const id of IDS) {
+    const j = etat.joueurs[id];
+    const v = vue(etat, "joueur", id);
+    assert.equal(v.phase, "fin");
+    // Fiche du téléphone (public/js/joueur.js, ecranFin) et fiche imprimée (Partie.fiche).
+    const tel = { code: v.code, pseudo: v.moi.pseudo, avatar: v.moi.avatar, competences: v.moi.competences, problemes: v.fin.problemes };
+    const papier = {
+      code: etat.code,
+      joueur: { id, pseudo: j.pseudo, avatar: j.avatar },
+      competences: structuredClone(j.competences),
+      problemes: etat.problemes.map((pid, index) => ({ index, id: pid, titre: etat.catalogue[pid].titre, riasec: etat.catalogue[pid].riasec, questionVecu: etat.catalogue[pid].questionVecu })),
+    };
+    const typees = (b) => competencesTypees(normaliserFiche(b));
+    const a = typees(tel);
+    const b = typees(papier);
+    assert.equal(a.parEpisode, true, "le téléphone connaît le type de chaque épisode");
+    assert.deepEqual(a.joues, b.joues);
+    assert.deepEqual(a.liste.map((c) => [c.code, c.riasec]), b.liste.map((c) => [c.code, c.riasec]), PSEUDOS[IDS.indexOf(id)]);
+    // Les compétences elles-mêmes portent le type de leur épisode (src/mj.js, fabriquer).
+    for (const c of j.competences.filter((x) => x.problemeIndex !== null)) {
+      assert.deepEqual(c.riasec, [String(etat.catalogue[etat.problemes[c.problemeIndex]].riasec).charAt(0)], c.code);
+    }
+    for (const c of j.competences.filter((x) => x.problemeIndex === null)) assert.deepEqual(c.riasec, [], "récit : pas de type");
+  }
+  assert.match(readFileSync(new URL("../public/js/joueur.js", import.meta.url), "utf8"), /problemes: v\.fin\?\.problemes/, "ecranFin passe les épisodes à rendreFiche");
 });

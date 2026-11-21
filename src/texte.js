@@ -63,7 +63,45 @@ export function lettresRiasec(r) {
 
 // Mots qui ne doivent JAMAIS apparaître dans ce que le MJ dit aux joueurs.
 export const MOTS_INTERDITS = /\b(faux|fausses?|mauvaise?s?|tromp|erron)/i;
-export const contientMotInterdit = (s) => MOTS_INTERDITS.test(sansAccents(s)) || /m[eê]me si/i.test(String(s ?? ""));
+
+// Jugements sur la PERSONNE (filet secondaire derrière le prompt, adaptations
+// « aucune-deduction-sensible » et « phrase-mots-valorisante ») : le MJ décrit ce
+// que le joueur SAIT FAIRE, jamais ce qu'il EST. Racines sans accents : elles
+// couvrent le genre et le nombre (« anxieux », « anxieuse », « anxieuses »).
+// Superlatifs (« génial », « incroyable », « parfait ») : un compliment vide, pas
+// un retour sur une action (Kluger & DeNisi 1996 ; Hattie & Timperley 2007).
+const JUGEMENTS = new RegExp(
+  `\\b(${[
+    "timide", "timidit", "anxieu", "anxiet", "angoiss", "stresse", "intelligen", "emotif", "emotive", "emotionnel", "emotions?\\b",
+    "depress", "deprim", "fragile", "introverti", "extraverti", "personnalite", "surdoue", "douee?s?\\b",
+    "talentueu", "genia(l|le|les|ux)\\b", "incroyable", "parfaite?s?\\b", "extraordinaire",
+    "exceptionnel", "brillant", "idiot", "stupide", "paresseu", "feignant",
+  ].join("|")})`,
+);
+/** « tu es / t'es + adjectif » : une phrase sur la personne, pas sur une action. */
+const SUR_LA_PERSONNE = /\b(tu es|t'es|tu etais)\b/;
+
+/** Vrai si le texte porte un jugement sur la personne (personnalité, émotions, intelligence, superlatif). */
+export function contientJugement(s) {
+  const t = sansAccents(s);
+  return JUGEMENTS.test(t) || SUR_LA_PERSONNE.test(t);
+}
+
+export const contientMotInterdit = (s) =>
+  MOTS_INTERDITS.test(sansAccents(s)) || /m[eê]me si/i.test(String(s ?? "")) || contientJugement(s);
+
+// Sujets sensibles (RGPD art. 9, situation familiale ou financière) : jamais dans
+// une phrase écrite par le MJ pour le groupe ou le joueur (liaison entre épisodes,
+// reformulation, « mots »). Le prompt l'interdit ; ce contrôle est le filet côté serveur.
+const SENSIBLES = new RegExp(
+  `\\b(${[
+    "mere", "pere", "maman", "papa", "parents?\\b", "famille", "familial", "frere", "soeur", "oncle", "tante",
+    "religi", "musulman", "chretien", "juif", "juive", "islam", "eglise", "mosquee", "priere", "ramadan",
+    "origine", "nationalit", "immigr", "etranger", "sante", "malad", "handicap", "medicament", "hopital",
+    "therap", "sexu", "politique", "syndica", "pauvre", "pauvrete", "chomage", "dette",
+  ].join("|")})`,
+);
+export const contientSujetSensible = (s) => SENSIBLES.test(sansAccents(s));
 
 // Les `n` premiers mots du texte, en SOUS-CHAÎNE EXACTE (aucune retouche).
 export function premiersMots(texte, n = 20) {
@@ -193,7 +231,8 @@ export function estRemplissage(texte, motsCles = []) {
 
 /** Vrai si, une fois retirés les mots d'hésitation, il ne reste AUCUN mot porteur de sens. */
 export function estSansReponse(texte) {
-  const reste = sansAccents(texte)
+  // Une amorce seule (« D'abord, je… ») ou suivie d'une hésitation n'est pas une réponse.
+  const reste = sansAmorce(texte)
     .split(/[^a-z0-9]+/)
     .filter((m) => m && !MOTS_HESITATION.has(m) && !/^(.)\1*$/.test(m) && !/^(e+u+h+|h+e+u+|h+m+)$/.test(m))
     .join(" ");
@@ -217,8 +256,27 @@ export const estViolente = (texte) => {
   return VIOLENCE.some((r) => r.test(t));
 };
 
-export const MESSAGE_SANS_REPONSE = "Toutes les idées comptent ! Écris ce que tu ferais, même une toute petite idée.";
+// « Je ne sais pas » (décision de Pierre §3 ; Waterman & Blades 2011 ; étayage,
+// Wood, Bruner & Ross 1976) : dès le 1er « je ne sais pas », le téléphone propose
+// ces débuts de phrase (préremplis quand on les touche) et le bouton « Je passe ce
+// tour », sans reproche. Une amorce envoyée seule, sans suite, n'est pas une réponse.
+export const AMORCES = ["Moi, je demanderais à…", "D'abord, je…", "J'irais voir…"];
+export const MESSAGE_SANS_REPONSE = "Toutes les idées comptent ! Pas facile ? Commence par un de ces débuts de phrase, ou passe ce tour.";
+export const MESSAGE_PASSE = "Pas de souci, l'histoire continue. Tu pourras proposer ton idée au prochain épisode.";
+// Au dernier épisode : plus de « prochain épisode » à promettre.
+export const MESSAGE_PASSE_DERNIER = "Pas de souci, l'histoire continue.";
 export const MESSAGE_VIOLENCE = "Ici, on cherche une solution sans violence. Qu'est-ce que tu pourrais faire d'autre ?";
+
+// Forme de comparaison : sans accents ni ponctuation (« Moi, je demanderais à… » = « moi je demanderais a »).
+const sansPonctuation = (s) => sansAccents(s).replace(/[^a-z0-9']+/g, " ").replace(/\s+/g, " ").trim();
+const AMORCES_NORM = AMORCES.map(sansPonctuation);
+
+/** Retire une amorce en tête de réponse (« D'abord, je sais pas » → « sais pas »). */
+export function sansAmorce(texte) {
+  const t = sansPonctuation(texte);
+  for (const a of AMORCES_NORM) if (t === a || t.startsWith(`${a} `)) return t.slice(a.length);
+  return t;
+}
 
 /** Message à renvoyer au joueur si sa réponse est refusée, sinon null. */
 export function refusReponse(texte) {
@@ -393,4 +451,18 @@ export function propositionAutour(texte, i, { max = 25, min = 3 } = {}) {
   if (!toks.length || !Number.isInteger(i) || i < 0 || i >= toks.length) return "";
   const prop = propositions(t, toks).find(([a, b]) => i >= a && i <= b) ?? [i, i];
   return decouper(t, toks, prop[0], prop[1], i, i, { max, min });
+}
+
+// ───────────────────────── Liaison entre épisodes ─────────────────────────
+
+/** Repli quand le MJ n'a pas écrit de phrase de liaison (adaptation « histoire-tournoi-du-quartier »). */
+export const TRANSITION_PAR_DEFAUT = "L'histoire continue.";
+
+/**
+ * Transition fixe vers un épisode : son champ `transition` (neutre, valable même
+ * quand on a sauté des épisodes), sinon TRANSITION_PAR_DEFAUT.
+ */
+export function transitionFixe(probleme) {
+  const t = probleme?.transition;
+  return typeof t === "string" && t.trim() ? t.trim() : TRANSITION_PAR_DEFAUT;
 }

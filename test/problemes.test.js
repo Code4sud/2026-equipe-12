@@ -118,6 +118,15 @@ for (const p of problemes) {
     assert.ok(MACROS.has(p.competenceParticipation), `${p.competenceParticipation} absent de rome.json`);
   });
 
+  // Décision de Pierre §4, adaptation « histoire-tournoi-du-quartier » : une transition
+  // neutre par épisode (juste même si on saute des épisodes), et aucun jugement dans
+  // le texte fixe, puisque le MJ n'a pas le droit d'en écrire (« bravo »).
+  test(`${p.id} : transition neutre, ni « bravo » ni félicitations`, () => {
+    assert.ok(estTexte(p.transition), "champ « transition » manquant");
+    assert.ok(p.transition.length <= 160 && p.transition.split(/\s+/).length <= 20, "transition courte");
+    for (const texte of [p.situation, p.transition]) assert.doesNotMatch(texte, /\bbravo\b|f[ée]licit/i, texte);
+  });
+
   test(`${p.id} : aucun mot interdit`, () => {
     for (const texte of textesSensibles(p)) {
       const trouves = mots(texte).filter((m) => INTERDITS.has(m));
@@ -273,13 +282,14 @@ test("le contrôle des champs du MJ détecte les écarts (témoin)", () => {
   ]) assert.ok(ecarts.includes(attendu), `écart non détecté : ${attendu}\n${ecarts}`);
 });
 
-test("MJ mock : une réponse sérieuse sans mot-clé reçoit competenceParDefaut et sa phrase", async () => {
+test("MJ mock : une réponse sérieuse sans mot-clé reçoit competenceParDefaut (idée du tour), avec sa trace", async () => {
   // Aucun mot-clé de compétence ni de solution dans aucune des situations.
   const texte = "Je prends un moment pour réfléchir puis je décide";
   for (const p of problemes) {
     assert.equal(p.competences.some((c) => compterMots(texte, c.motsCles) > 0) || compterMots(texte, p.solution.motsCles) > 0, false, `${p.id} : la phrase témoin contient un mot-clé`);
     const { j } = await mj.attribuer({ probleme: p, historique: { j: { reponses: [texte], choix: null } } });
     assert.equal(j.code, p.competenceParDefaut, p.id);
-    assert.equal(j.mots, p.competences.find((x) => x.code === p.competenceParDefaut).mots, p.id);
+    // Phrase de la carte : la trace du joueur (ses mots), puis « c'est ce qu'on appelle « <libellé> » ».
+    assert.equal(j.mots, `Tu as proposé « ${texte} » : c'est ce qu'on appelle « ${j.libelle} ».`, p.id);
   }
 });

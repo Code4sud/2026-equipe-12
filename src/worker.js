@@ -3,7 +3,7 @@
 // le worker ne passe en premier que pour /api/* et /p/* (voir wrangler.jsonc).
 import { analyser } from "./analyse.js";
 import { rome } from "./donnees.js";
-import { DUREE_MAX, DUREE_MIN } from "./jeu.js";
+import { DUREE_MAX, DUREE_MIN, DUREE_REFLEXION_MAX, reflexionValide } from "./jeu.js";
 
 export { Partie } from "./partie.js";
 
@@ -27,7 +27,9 @@ function genererCode(aleatoire = (n) => crypto.getRandomValues(new Uint32Array(n
 const codeValide = (code) => typeof code === "string" && CODE_VALIDE.test(code);
 
 /**
- * Valide le corps de POST /api/parties.
+ * Valide le corps de POST /api/parties. Champs absents = valeurs par défaut :
+ * nombre d'épisodes = nombre de joueurs (3 à 6) et discussion de max(90, 30 × joueurs) s,
+ * calculés au démarrage ; réflexion silencieuse de 30 s ; pas de débrief.
  * @returns {{ reglages: object } | { erreur: string }}
  */
 function lireReglages(corps) {
@@ -46,6 +48,16 @@ function lireReglages(corps) {
       return { erreur: `${cle} doit être un nombre entier de secondes entre ${DUREE_MIN} et ${DUREE_MAX}.` };
     }
     reglages[cle] = n;
+  }
+  if (corps.dureeReflexion !== undefined) {
+    if (!reflexionValide(corps.dureeReflexion)) {
+      return { erreur: `dureeReflexion doit être 0 (sans réflexion) ou un nombre entier de secondes entre ${DUREE_MIN} et ${DUREE_REFLEXION_MAX}.` };
+    }
+    reglages.dureeReflexion = corps.dureeReflexion;
+  }
+  if (corps.debrief !== undefined) {
+    if (typeof corps.debrief !== "boolean") return { erreur: "debrief doit valoir true ou false." };
+    reglages.debrief = corps.debrief;
   }
   return { reglages };
 }

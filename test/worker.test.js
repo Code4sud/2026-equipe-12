@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { register } from "node:module";
 import { readFileSync } from "node:fs";
+import { AMORCES } from "../src/texte.js";
 
 // Bouchon de "cloudflare:workers" (seule la classe DurableObject est utilisée).
 const BOUCHON = "export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }";
@@ -60,10 +61,13 @@ test("lireReglages : valeurs par défaut et valides", () => {
   assert.deepEqual(lireReglages({ nbProblemes: 2, dureeEchange: 20, dureeReponse: 30 }), {
     reglages: { nbProblemes: 2, dureeEchange: 20, dureeReponse: 30 },
   });
+  // Réflexion silencieuse (0 la désactive) et débrief.
+  for (const d of [0, 20, 30, 45]) assert.deepEqual(lireReglages({ dureeReflexion: d }), { reglages: { dureeReflexion: d } });
+  assert.deepEqual(lireReglages({ debrief: true }), { reglages: { debrief: true } });
 });
 
 test("lireReglages : refuse les valeurs hors bornes, en français", () => {
-  for (const corps of [{ nbProblemes: 0 }, { nbProblemes: 7 }, { nbProblemes: 2.5 }, { nbProblemes: "3" }, { dureeEchange: 2 }, { dureeReponse: 99999 }, [], "x"]) {
+  for (const corps of [{ nbProblemes: 0 }, { nbProblemes: 7 }, { nbProblemes: 2.5 }, { nbProblemes: "3" }, { dureeEchange: 2 }, { dureeReponse: 99999 }, { dureeReflexion: 5 }, { dureeReflexion: 121 }, { dureeReflexion: "30" }, { debrief: "oui" }, [], "x"]) {
     const r = lireReglages(corps);
     assert.ok(r.erreur, JSON.stringify(corps));
     assert.equal(typeof r.erreur, "string");
@@ -207,7 +211,7 @@ test("analyse : mode mock forcé même avec une clé, et rome obligatoire", asyn
 test("analyse : norm et conversion au format commun §4.2", () => {
   assert.equal(norm("  L’été,  «chez»   moi."), "l'été, \"chez\" moi");
   const c = versCompetenceDepart({ code_rome: "1A102", libelle_rome: "X", mots_du_jeune: "Tu…", citation: "je garde", riasec: ["S", "E"] });
-  assert.deepEqual(c, { code: "1A102", libelle: "X", mots: "Tu…", preuve: "je garde", typePreuve: "vecu", riasec: ["S", "E"], problemeIndex: null, gardee: null });
+  assert.deepEqual(c, { code: "1A102", libelle: "X", mots: "Tu…", preuve: "je garde", typePreuve: "vecu", riasec: [], problemeIndex: null, gardee: null }, "pas de type RIASEC du ROME pour le récit");
 });
 
 // ─────────────────────────── Durable Object Partie (contexte simulé) ───────────────────────────
@@ -287,7 +291,7 @@ test("Partie : init unique, fiche, partie complète en mode mock sans fuite vers
   const ctx = fauxContexte();
   const partie = new Partie(ctx, { MJ_MODE: "mock" });
   await ctx.pret;
-  const creee = await partie.init({ code: "BCDF", nbProblemes: 1, dureeEchange: 10, dureeReponse: 10 });
+  const creee = await partie.init({ code: "BCDF", nbProblemes: 1, dureeEchange: 10, dureeReponse: 10, dureeReflexion: 0, debrief: false });
   assert.match(creee?.cleEcran ?? "", /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/, "cleEcran = crypto.randomUUID()");
   const CLE = creee.cleEcran;
   assert.equal(await partie.init({ code: "BCDF" }), false, "un code déjà initialisé est refusé");
@@ -330,13 +334,16 @@ test("Partie : init unique, fiche, partie complète en mode mock sans fuite vers
   await envoyer(ecran, { t: "fin_minuteur" }); // l'animateur lance la suite
   assert.equal(partie.etat.phase, "reponse");
 
-  const SECRET_A = "Je demande de l'aide à un pote zorglubA";
+  // Épisode « budget » : chaque réponse contient une action citable (mots-clés
+  // « prix » / « compar » et « ensemble »), le MJ de secours peut donc en repérer une.
+  const SECRET_A = "Je compare les prix avec un pote zorglubA";
   const SECRET_B = "On cherche une solution ensemble zorglubB";
   await envoyer(a, { t: "reponse", texte: SECRET_A });
   // « Je ne sais pas » : refusé pour ce joueur seulement (il réécrit).
   await envoyer(b, { t: "reponse", texte: "je sais pas" });
   assert.equal(b.recus.at(-1).t, "erreur");
   assert.match(b.recus.at(-1).message, /Toutes les idées comptent/);
+  assert.deepEqual(b.recus.at(-1).amorces, AMORCES, "les débuts de phrase arrivent avec le refus");
   assert.equal(partie.etat.phase, "reponse");
   await envoyer(b, { t: "reponse", texte: SECRET_B });
   // Toutes les réponses sont là : le MJ choisit l'idée du tour.
@@ -345,16 +352,26 @@ test("Partie : init unique, fiche, partie complète en mode mock sans fuite vers
   const retenu = partie.etat.idee?.joueurId;
   assert.ok(["joueur-aaaa-1111", "joueur-bbbb-2222"].includes(retenu), "une idée retenue");
   const [auteur, autre] = retenu === "joueur-aaaa-1111" ? [a, b] : [b, a];
-  assert.ok(auteur.derniereVue().moi.competenceDuProbleme, "l'auteur reçoit la compétence");
-  assert.equal(autre.derniereVue().moi.competenceDuProbleme, null, "les autres non");
-  assert.equal(ecran.derniereVue().idee.pseudo, auteur === a ? "Alex" : "Bea", "l'écran montre son pseudo");
+  assert.ok(auteur.derniereVue().moi.competenceDuProbleme.idee, "l'auteur reçoit la compétence de l'idée du tour");
+  assert.equal(ecran.derniereVue().idee.pseudo, null, "l'écran montre d'abord l'idée sans nom");
+  assert.deepEqual(auteur.derniereVue().moi.monIdee, { accordPseudo: null }, "« On affiche ton pseudo ? »");
+  await envoyer(auteur, { t: "afficher_pseudo", accord: true });
+  assert.equal(ecran.derniereVue().idee.pseudo, auteur === a ? "Alex" : "Bea", "pseudo affiché après son accord");
+  // L'autre réponse contient une action citable : compétence privée (MJ de secours).
+  const privee = autre.derniereVue().moi.competenceDuProbleme;
+  assert.ok(privee && privee.idee === false, "compétence privée sur son téléphone");
+  assert.ok(!JSON.stringify(ecran.derniereVue()).includes(privee.preuve), "jamais à l'écran");
   await envoyer(auteur, { t: "garder_competence", garder: true });
+  assert.equal(partie.etat.phase, "competences", "on attend que l'autre tranche la sienne");
+  await envoyer(autre, { t: "garder_competence", garder: true });
   assert.equal(partie.etat.phase, "fin");
   assert.ok(ctx.alarme >= Date.now() + 59 * 60 * 1000, "nettoyage programmé une heure plus tard");
 
   const fiche = await partie.fiche("joueur-aaaa-1111");
   assert.equal(fiche.joueur.pseudo, "Alex");
-  assert.equal(fiche.jeu.length, retenu === "joueur-aaaa-1111" ? 1 : 0);
+  assert.equal(fiche.jeu.length, 1, "l'idée du tour ou sa compétence privée");
+  assert.deepEqual(fiche.passes, []);
+  assert.equal(fiche.problemes[0].questionVecu.length > 0, true, "question sur le vécu pour la fiche");
   assert.ok(fiche.depart.length >= 1);
   assert.equal(await partie.fiche("inconnu-0000"), null);
 
@@ -366,6 +383,7 @@ test("Partie : init unique, fiche, partie complète en mode mock sans fuite vers
   // Seule l'idée retenue (un extrait) est montrée ; la réponse non retenue reste privée.
   const nonRetenue = retenu === "joueur-aaaa-1111" ? "zorglubB" : "zorglubA";
   assert.ok(!JSON.stringify(ecran.recus).includes(nonRetenue), "fuite de la réponse non retenue vers l'écran");
+  assert.equal(b.recus.find((m) => m.t === "erreur" && /Toutes les idées/.test(m.message)).code, "sans_reponse", "code transmis au téléphone");
   assert.ok(!JSON.stringify(autre === a ? b.recus : a.recus).includes(nonRetenue), "fuite de la réponse non retenue");
 
   // Déconnexion puis nettoyage à l'échéance.
@@ -455,7 +473,7 @@ async function partieEnReponse(code, env = { MJ_MODE: "mock" }) {
   const ctx = fauxContexte();
   const partie = new Partie(ctx, env);
   await ctx.pret;
-  await partie.init({ code, nbProblemes: 1, dureeEchange: 10, dureeReponse: 10 });
+  await partie.init({ code, nbProblemes: 1, dureeEchange: 10, dureeReponse: 10, dureeReflexion: 0 });
   const ecran = brancher(ctx, "ecran");
   const a = brancher(ctx, "joueur", "joueur-aaaa-1111");
   const envoyer = (ws, msg) => partie.webSocketMessage(ws, JSON.stringify(msg));
@@ -502,7 +520,7 @@ test("Partie : chien de garde en création (récit resté « en analyse ») et e
   const ctx = fauxContexte();
   let partie = new Partie(ctx, env);
   await ctx.pret;
-  await partie.init({ code: "BCDJ", nbProblemes: 1, dureeEchange: 10, dureeReponse: 10 });
+  await partie.init({ code: "BCDJ", nbProblemes: 1, dureeEchange: 10, dureeReponse: 10, dureeReflexion: 0 });
   const ecran = brancher(ctx, "ecran");
   const a = brancher(ctx, "joueur", "joueur-aaaa-1111");
   const envoyer = (ws, msg) => partie.webSocketMessage(ws, JSON.stringify(msg));
@@ -523,7 +541,7 @@ test("Partie : chien de garde en création (récit resté « en analyse ») et e
   await partie.traiter({ t: "suivant", role: "ecran" }); // echange
   await partie.traiter({ t: "fin_minuteur", role: "ecran" }); // reponse
   partie.lancerIA = async () => {};
-  await partie.traiter({ t: "reponse", texte: "Je le sèche", role: "joueur", joueurId: "joueur-aaaa-1111" });
+  await partie.traiter({ t: "reponse", texte: "Je compare les prix des ballons", role: "joueur", joueurId: "joueur-aaaa-1111" });
   assert.equal(partie.etat.phase, "competences");
   assert.equal(partie.etat.attribution, null);
   ctx.stockage.set("gardesIA", { [cleIA({ type: "choisir", problemeIndex: 0 })]: Date.now() - 1 });
@@ -537,7 +555,7 @@ test("Partie : chien de garde en création (récit resté « en analyse ») et e
 test("Partie : « Suivant » pendant que le MJ réfléchit relance tout de suite avec le MJ de secours", async () => {
   const { ctx, partie, ecran, a, envoyer } = await partieEnReponse("BCDK");
   // MJ IA qui ne répond jamais.
-  partie.mj = { attribuer: () => new Promise(() => {}) };
+  partie.mj = { choisir: () => new Promise(() => {}), attribuer: () => new Promise(() => {}) };
   await envoyer(a, { t: "reponse", texte: "On éteint le téléphone et on le fait sécher" });
   assert.equal(partie.etat.phase, "competences");
   ctx.enAttente.length = 0; // l'appel bloqué n'est pas attendu
@@ -750,8 +768,10 @@ test("cleEcran absente de toute vue (écran, joueur, joueur inconnu) à chaque p
   verifierVues();
   for (let n = 0; partie.etat.phase !== "fin" && n < 20; n++) {
     const phase = partie.etat.phase;
-    if (phase === "competences" && partie.etat.attribution && partie.etat.idee?.joueurId === "joueur-aaaa-1111") await envoyer(a, { t: "garder_competence", garder: true });
-    else await envoyer(ecran, { t: "suivant" });
+    if (phase === "competences" && partie.etat.attribution && partie.etat.idee?.joueurId === "joueur-aaaa-1111") {
+      await envoyer(a, { t: "afficher_pseudo", accord: true });
+      await envoyer(a, { t: "garder_competence", garder: true });
+    } else await envoyer(ecran, { t: "suivant" });
     await attendreIA(ctx);
     verifierVues();
   }
@@ -842,4 +862,91 @@ test("analyse : citation d'un ou deux mots écartée (« citation trop courte »
   const ecoute = mock.competences.find((c) => c.code_rome === "6D101");
   assert.ok(ecoute);
   assert.equal(ecoute.libelle_rome, "Être à l'écoute, faire preuve d'empathie");
+});
+
+// ─────────────────────────── Adaptations aux sources (21/11/2026) ───────────────────────────
+
+const { respecterRotation } = await import("../src/partie.js");
+const HISTOIRE_DO = JSON.parse(readFileSync(new URL("../public/data/problemes.json", import.meta.url), "utf8")).problemes;
+
+test("Partie : rotation stricte côté serveur — un choix hors des joueurs pas encore retenus bascule sur le MJ de secours", async () => {
+  const ctx = fauxContexte();
+  const partie = new Partie(ctx, { MJ_MODE: "mock" });
+  await ctx.pret;
+  const probleme = HISTOIRE_DO.find((p) => p.id === "caisse-buvette");
+  const reponses = [
+    { joueurId: "joueur-aaaa-1111", texte: "On recompte la caisse et la monnaie rendue", dejaRetenu: true },
+    { joueurId: "joueur-bbbb-2222", texte: "Je note chaque vente sur un carnet", dejaRetenu: false },
+  ];
+  // Le MJ IA choisit le joueur déjà retenu : refusé, le MJ de secours choisit parmi les autres.
+  partie.mj = { choisir: async () => ({ joueurId: "joueur-aaaa-1111", competence: { code: probleme.competences[0].code, preuve: "On recompte la caisse" } }) };
+  const ev = await partie.calculerIA({ type: "choisir", problemeIndex: 0, essai: 2, probleme, reponses, obligatoires: ["joueur-bbbb-2222"] });
+  assert.equal(ev.joueurId, "joueur-bbbb-2222");
+  assert.equal(ev.essai, 2, "l'essai est renvoyé pour écarter un résultat périmé");
+  // Sans obligation (tout le monde déjà retenu) : le choix du MJ est gardé.
+  assert.equal((await respecterRotation({ joueurId: "joueur-aaaa-1111" }, { probleme, reponses }, [])).joueurId, "joueur-aaaa-1111");
+});
+
+test("Partie : compétences privées — mj.attribuerPrivee, repli sur le mock, erreur → chacun garde son idée", async () => {
+  const ctx = fauxContexte();
+  const partie = new Partie(ctx, { MJ_MODE: "mock" });
+  await ctx.pret;
+  const probleme = HISTOIRE_DO.find((p) => p.id === "caisse-buvette");
+  const effet = { type: "attribuer", problemeIndex: 1, probleme, reponses: [{ joueurId: "joueur-bbbb-2222", texte: "Je note chaque vente sur un carnet" }] };
+  let recu = null;
+  partie.mj = { attribuerPrivee: async (entree) => { recu = entree; throw new Error("réseau"); } };
+  const ev = await partie.calculerIA(effet);
+  assert.deepEqual(recu.reponses, effet.reponses, "les réponses de l'épisode, une par joueur");
+  assert.equal(ev.t, "competences_privees");
+  assert.equal(ev.problemeIndex, 1);
+  // « note » + « vente » : une action citable → compétence de l'épisode (MJ de secours).
+  assert.ok(probleme.competences.some((c) => c.code === ev.competences["joueur-bbbb-2222"].code), "mock : code de l'épisode");
+  // Une réponse sans action citable : pas de compétence, juste son idée.
+  const vague = await partie.calculerIA({ ...effet, reponses: [{ joueurId: "joueur-bbbb-2222", texte: "Je ferais un truc bien pour tout le monde" }] });
+  assert.deepEqual(vague.competences["joueur-bbbb-2222"], { reformulation: null });
+  // IA et mock en échec : erreur_ia propre aux compétences privées.
+  const evenements = [];
+  partie.calculerIA = async () => { throw new Error("tout est en panne"); };
+  partie.traiter = async (e) => { evenements.push(e); };
+  await partie.lancerIA(effet);
+  assert.deepEqual(evenements, [{ t: "erreur_ia", tache: "attribuer", problemeIndex: 1 }]);
+  assert.equal(cleIA(effet), "attribuer:1", "chien de garde : une clé par épisode");
+});
+
+test("Partie : réflexion silencieuse par défaut, l'alarme enchaîne sur la discussion ; fiche : passes, préférences, débrief", async () => {
+  const ctx = fauxContexte();
+  const partie = new Partie(ctx, { MJ_MODE: "mock" });
+  await ctx.pret;
+  await partie.init({ code: "BCDV", nbProblemes: 1, debrief: true });
+  assert.equal(partie.etat.reglages.dureeReflexion, 30);
+  const ecran = brancher(ctx, "ecran");
+  const a = brancher(ctx, "joueur", "joueur-aaaa-1111");
+  const envoyer = (ws, msg) => partie.webSocketMessage(ws, JSON.stringify(msg));
+  await envoyer(a, { t: "rejoindre", pseudo: "Alex", avatar: "🦊" });
+  assert.equal(ecran.derniereVue().reglages.dureeEchange, 90, "discussion de max(90, 30 × 1) s");
+  await envoyer(ecran, { t: "demarrer" });
+  await envoyer(ecran, { t: "suivant" });
+  await envoyer(a, { t: "lu" });
+  assert.equal(partie.etat.phase, "reflexion");
+  assert.ok(ctx.alarme <= partie.etat.minuteurFin, "alarme à la fin des 30 s");
+  await envoyer(a, { t: "note", texte: "un carnet" });
+  partie.etat.minuteurFin = Date.now() - 1;
+  await partie.alarm();
+  assert.equal(partie.etat.phase, "echange", "fin de la réflexion : la discussion démarre seule");
+  assert.equal(ecran.derniereVue().minuteurDuree, 90000);
+  await envoyer(ecran, { t: "fin_minuteur" });
+  await envoyer(a, { t: "passer" });
+  assert.equal(partie.etat.phase, "competences");
+  await envoyer(a, { t: "preference", valeur: "un_peu" });
+  await envoyer(ecran, { t: "suivant" });
+  assert.equal(partie.etat.phase, "debrief");
+  await envoyer(a, { t: "debrief", texte: "Je tiens la caisse du club de foot." });
+  const fiche = await partie.fiche("joueur-aaaa-1111");
+  assert.deepEqual(fiche.passes, [{ index: 0, titre: partie.etat.catalogue[partie.etat.problemes[0]].titre }], "signalé au psy sur la fiche");
+  assert.deepEqual(fiche.preferences.map((p) => p.valeur), ["un_peu"]);
+  assert.equal(fiche.debrief, "Je tiens la caisse du club de foot.");
+  assert.ok(!JSON.stringify(ecran.recus).includes("un carnet"), "la note reste privée");
+  assert.ok(!JSON.stringify(ecran.recus).includes("caisse du club"), "le débrief reste privé");
+  await envoyer(ecran, { t: "suivant" });
+  assert.equal(partie.etat.phase, "fin");
 });

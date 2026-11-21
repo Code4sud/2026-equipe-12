@@ -4,9 +4,13 @@
 // l'afficher et envoyer les actions du joueur. Aucune logique de jeu ici.
 // Mode démo : ?demo=1 fait défiler des vues factices de chaque phase.
 
-import { echapper, typeDe, couleursLisibles } from "./riasec.js";
+import { echapper, typeDe, couleursLisibles, SANS_TYPE } from "./riasec.js";
 import { rendreFiche } from "./fiche.js";
-import { totalMinuteur, dicteeDisponible, competencesEnAttente, estDepartEnAttente, messageGarder, libelleValiderDepart, fermetureDefinitive, decalageServeur } from "./joueur-outils.js";
+import {
+  totalMinuteur, dicteeDisponible, competencesEnAttente, estDepartEnAttente, messageGarder, libelleValiderDepart,
+  fermetureDefinitive, decalageServeur, decouperPhrases, texteEpisode, texteAmorce, separerMots, retourEpisode,
+  texteMonIdee, ANNONCE_CADRE, MJ_EST_UNE_IA, QUESTIONS_DEBRIEF, messagePasse, PASSE_POUR_LE_PSY, PROMESSE_COMPETENCE, RELAIS_ADULTE,
+} from "./joueur-outils.js";
 
 // Copie de AVATARS (src/jeu.js, SPEC §3).
 const AVATARS = ["🦊", "🐼", "🦁", "🐸", "🐙", "🦉", "🐢", "🐝", "🦄", "🐧", "🐯", "🐨"];
@@ -19,7 +23,7 @@ const RELANCES_RECIT = [
   "Un petit boulot, un coup de main, un club ?",
 ];
 
-const LIMITES = { pseudo: 20, recitMin: 10, recit: 1000, reponse: 500 };
+const LIMITES = { pseudo: 20, recitMin: 10, recit: 1000, reponse: 500, note: 200, debrief: 500 };
 
 const params = new URLSearchParams(location.search);
 const DEMO = params.get("demo") === "1";
@@ -51,6 +55,8 @@ const etat = {
   rome: null,
   onet: null,
   chargements: {},
+  // « Je ne sais pas » refusé (code sans_reponse) : débuts de phrase et « Je passe ce tour ».
+  aide: null, // { pi, amorces, message }
 };
 
 // ---------- Utilitaires ----------
@@ -122,33 +128,83 @@ function rappelQuestion(v) {
     </details>`;
 }
 
-function zoneTexte({ id, label, max, placeholder, aide }) {
+// Ce que devient la voix dictée (adaptation « langage-simple-dictee-accessibilite »).
+const INFO_DICTEE = "Tu peux aussi dicter avec 🎙️ Dicter (à voix basse ou avec des écouteurs). Ton navigateur peut envoyer ta voix à son service de reconnaissance vocale pour la transformer en texte. Déclic ne garde pas ta voix. Tu peux toujours écrire au clavier.";
+
+function zoneTexte({ id, label, max, placeholder, aide, rows = 5, infoDictee = false }) {
   return `<div class="champ">
       <label for="${id}">${label}</label>
-      <textarea id="${id}" name="texte" rows="5" maxlength="${max}" data-brouillon="${id}" placeholder="${echapper(placeholder)}"></textarea>
+      <textarea id="${id}" name="texte" rows="${rows}" maxlength="${max}" data-brouillon="${id}" placeholder="${echapper(placeholder)}"></textarea>
       <div class="rangee tel-sous-champ">
         <button type="button" class="bouton discret" data-action="micro" data-cible="${id}" aria-pressed="false" hidden>🎙️ Dicter</button>
         <span class="discret" data-compteur="${id}"></span>
       </div>
+      ${infoDictee ? `<p class="discret tel-info-dictee" data-info-dictee hidden>${INFO_DICTEE}</p>` : ""}
       ${aide ? `<p class="discret">${aide}</p>` : ""}
     </div>`;
+}
+
+// Réécouter l'épisode (synthèse vocale du téléphone, si le navigateur le permet).
+function boutonEcouter(v) {
+  if (!v.probleme || typeof window === "undefined" || !("speechSynthesis" in window)) return "";
+  return `<button type="button" class="bouton secondaire large" data-action="ecouter">🔊 Réécouter l'épisode</button>`;
+}
+
+// Phrase qui relie l'épisode au précédent (à partir du 2e).
+const htmlLiaison = (v) => (v.liaison ? `<p class="tel-liaison">${echapper(v.liaison)}</p>` : "");
+
+// Note privée pendant la réflexion et la discussion : facultative, jamais évaluée.
+function formNote(v, pi) {
+  const id = `note-${pi}`;
+  if (etat.brouillons[id] == null && v.moi?.maNote) etat.brouillons[id] = v.moi.maNote;
+  return `<form class="pile serre tel-note" data-form="note" novalidate>
+      ${zoneTexte({ id, label: "Ta note (facultatif)", max: LIMITES.note, rows: 2, placeholder: "Un mot pour ne pas oublier ton idée…", aide: "🔒 Personne ne la verra : ni les autres, ni l'écran, ni le MJ." })}
+      <button type="submit" class="bouton secondaire large" data-envoi>${v.moi?.maNote ? "✓ Note gardée · la mettre à jour" : "Garder ma note"}</button>
+    </form>`;
+}
+
+// « Ce genre de situation, tu aimerais en vivre dans un travail ? » (facultatif, sans score).
+function blocPreference(v) {
+  if (!v.moi?.peutDonnerPreference) return "";
+  const p = v.moi.maPreference;
+  const b = (val, lib) => `<button type="button" class="bouton" data-action="preference" data-valeur="${val}" aria-pressed="${p === val}">${lib}</button>`;
+  return `<section class="pile serre tel-preference" aria-label="Ton avis sur cette situation">
+      <p><strong>Ce genre de situation, tu aimerais en vivre dans un travail ?</strong></p>
+      <div class="rangee tel-choix-avis" role="group">${b("oui", "Oui")}${b("un_peu", "Un peu")}${b("non", "Non")}</div>
+      <p class="discret">${p ? "C'est noté. Tu peux changer d'avis." : "Facultatif. Ta réponse va seulement sur ta fiche."}</p>
+    </section>`;
 }
 
 const libelleDe = (c) => c.libelle ?? c.libelle_rome ?? c.code ?? "";
 const motsDe = (c) => c.mots ?? c.mots_du_jeune ?? "";
 const preuveDe = (c) => c.preuve ?? c.citation ?? "";
 
+// Type d'une carte : le type RIASEC de l'épisode, porté par la compétence (src/mj.js),
+// jamais les codes RIASEC du fichier ROME (critique psy point 8) ; le récit de
+// départ n'a pas d'épisode, donc pas de type.
+const typeCarte = (c) => (c?.problemeIndex === null || c?.problemeIndex === undefined || c?.typePreuve === "vecu"
+  ? { lettre: null, nom: "Ton récit", couleur: SANS_TYPE.couleur }
+  : typeDe(c, null));
+
 function carteCompetence(c, { surtitre = "", corps = "" } = {}) {
-  const t = typeDe(c, etat.rome);
+  const t = typeCarte(c);
   // Bordure à la couleur SPEC ; bandeau assombri si besoin pour un texte lisible (AA).
   const { fond, texte } = couleursLisibles(t.couleur);
+  // « Tu as proposé de … : c'est ce qu'on appelle « libellé ». » : le libellé n'est
+  // pas répété juste en dessous (critique psy point 2).
+  const libelle = libelleDe(c);
+  const coupe = separerMots(motsDe(c), libelle);
+  const titre = coupe
+    ? `<p class="mots">${echapper(coupe.avant)}</p><h2>« ${echapper(libelle)} »${coupe.apres ? ` ${echapper(coupe.apres)}` : ""}</h2>`
+    : `<h2>${echapper(libelle)}</h2>${motsDe(c) ? `<p class="mots">${echapper(motsDe(c))}</p>` : ""}`;
   return `<article class="carte-competence" style="--type:${t.couleur};--fond-type:${fond};--sur-type:${texte}">
       <p class="carte-competence-bandeau">${surtitre ? `${echapper(surtitre)} · ` : ""}${t.lettre ? `${t.lettre} · ${t.nom}` : t.nom}</p>
       <div class="carte-competence-corps">
-        <h2>${echapper(libelleDe(c))}</h2>
-        ${motsDe(c) ? `<p class="mots">${echapper(motsDe(c))}</p>` : ""}
-        ${preuveDe(c) ? `<p class="discret">Ta preuve :</p><blockquote class="citation">« ${echapper(preuveDe(c))} »</blockquote>` : ""}
+        ${titre}
+        ${c.horsScenario === true ? `<p class="discret">(repérée hors scénario, à discuter avec ton psy)</p>` : ""}
+        ${preuveDe(c) ? `<p class="discret">Ta trace (tes mots) :</p><blockquote class="citation">« ${echapper(preuveDe(c))} »</blockquote>` : ""}
         ${corps}
+        <p class="discret carte-verifier">Compétence repérée, à vérifier avec ton psy.</p>
       </div>
     </article>`;
 }
@@ -203,33 +259,57 @@ function ecranPour(v) {
       return ecranCreation(v);
     case "presentation":
       return {
-        cle: `presentation:${pi}:${!!moi.aLu}`,
+        cle: `presentation:${pi}:${!!moi.aLu}:${v.liaison ?? ""}`,
         titre: moi.aLu ? "On attend les autres" : "Regarde l'écran",
         html: `<div class="pile centre large">
             <p class="tel-emoji" aria-hidden="true">👀</p>
+            ${htmlLiaison(v)}
             <h1>Regarde l'écran</h1>
             <p>L'animateur lit la situation${v.probleme?.titre ? ` « ${echapper(v.probleme.titre)} »` : ""}.</p>
+            ${pi === 0 ? `<p class="tel-cadre">${echapper(ANNONCE_CADRE[0])} ${echapper(ANNONCE_CADRE[1])}</p>` : ""}
             ${boutonLu(v)}
+            ${boutonEcouter(v)}
           </div>
+          ${rappelQuestion(v)}`,
+      };
+    // Réflexion silencieuse avant la discussion : note privée facultative.
+    case "reflexion":
+      return {
+        cle: `reflexion:${pi}:${moi.maNote ?? ""}`,
+        titre: "Réfléchis en silence",
+        html: `<div class="pile centre large">
+            <p class="tel-emoji" aria-hidden="true">🤫</p>
+            <h1>Réfléchis en silence</h1>
+            <p>Réfléchis dans ta tête à ce que tu ferais. On en parle juste après.</p>
+            ${htmlMinuteur(v)}
+          </div>
+          ${formNote(v, pi)}
+          ${boutonEcouter(v)}
           ${rappelQuestion(v)}`,
       };
     case "echange":
       return {
-        cle: `${v.phase}:${pi}:${!!v.tempsEcoule}`,
+        cle: `${v.phase}:${pi}:${!!v.tempsEcoule}:${moi.maNote ?? ""}`,
         titre: "Discutez à voix haute",
         html: `<div class="pile centre large">
             <p class="tel-emoji" aria-hidden="true">🗣️</p>
-            <h1>Discutez à voix haute</h1>
-            <p>Rien à écrire pour l'instant. Dites ce que vous feriez, toutes les idées comptent.</p>
+            <h1>Tour de table</h1>
+            <p>Chacun peut dire son idée en une phrase, sans être coupé. Tu peux aussi passer. Ensuite, discussion libre. Rien à écrire pour l'instant.</p>
             ${htmlMinuteur(v)}
             ${v.tempsEcoule ? `<p class="tel-temps-ecoule" role="status">⏰ Temps écoulé. L'animateur lance la suite.</p>` : ""}
           </div>
+          <details class="rappel"${moi.maNote ? " open" : ""}>
+            <summary>📝 Ta note (personne ne la voit)</summary>
+            ${formNote(v, pi)}
+          </details>
           ${rappelQuestion(v)}`,
       };
     case "reponse":
       return ecranReponse(v, pi);
     case "competences":
       return ecranCompetence(v, pi);
+    case "debrief":
+      return ecranDebrief(v);
     case "fin":
       return ecranFin(v);
     default:
@@ -303,7 +383,11 @@ function ecranRejoindre(v) {
     titre: "Choisis ton pseudo et ton avatar",
     html: `<form class="pile large" data-form="rejoindre" novalidate>
         <h1>Bienvenue !</h1>
-        <p class="aide">Choisis un pseudo (pas ton vrai nom) et un avatar. Rien n'est gardé après la partie : <a href="confidentialite.html" target="_blank" rel="noopener">tes données</a>.</p>
+        <div class="tel-cadre pile serre">
+          ${ANNONCE_CADRE.map((ph) => `<p>${echapper(ph)}</p>`).join("")}
+          <p>${echapper(MJ_EST_UNE_IA)} Tes réponses sont lues par un service d'IA externe (voir <a href="confidentialite.html" target="_blank" rel="noopener">tes données</a>).</p>
+        </div>
+        <p class="aide">Choisis un pseudo (pas ton vrai nom) et un avatar. Rien n'est gardé après la partie.</p>
         <div class="champ">
           <label for="pseudo">Ton pseudo</label>
           <input type="text" id="pseudo" name="pseudo" maxlength="${LIMITES.pseudo}" autocomplete="off" data-brouillon="pseudo" required>
@@ -353,7 +437,7 @@ function ecranCreation(v) {
             <h1>Voilà ce qu'on a repéré</h1>
             ${props.length
               ? `<p class="aide">C'est toi qui décides : garde ce qui te ressemble.</p>${cartes}`
-              : `<p>On n'a pas trouvé de compétence à prouver cette fois. Pas grave : tu vas en gagner pendant le jeu !</p>`}
+              : `<p>On n'a pas trouvé de compétence dans ton récit cette fois. Ce n'est pas un jugement : l'histoire te donnera d'autres occasions, et tu pourras en parler avec le psy.</p>`}
             <button type="button" class="bouton principal large grand" data-action="valider-depart" data-envoi>${libelleValiderDepart(etat.choixDepart)}</button>
           </div>`,
       };
@@ -369,7 +453,7 @@ function ecranCreation(v) {
               <h1>C'est noté !</h1>
             </div>
             ${gardees.length
-              ? `<p>Recopie-les dans « Ce que je sais déjà faire » sur ta fiche papier :</p>
+              ? `<p>Écris-les sur ta fiche papier, dans « Ce que je sais déjà faire », avec tes mots : un mot-clé suffit, et tu peux demander de l'aide.</p>
                  <ul class="tel-liste-gardees">${gardees.map((c) => `<li>${consigneMini(c)}</li>`).join("")}</ul>`
               : ""}
             <p class="discret centre-texte">On attend les autres joueurs. ${points}</p>
@@ -384,7 +468,7 @@ function ecranCreation(v) {
             <h1>Crée ton personnage</h1>
             <p class="aide">Écris 1 ou 2 trucs que tu as déjà faits dans la vraie vie. Même si ça te paraît « rien ». Écris comme tu parles.</p>
             <div class="relances">${RELANCES_RECIT.map((q) => `<button type="button" class="relance" data-action="relance">${echapper(q)}</button>`).join("")}</div>
-            ${zoneTexte({ id: "recit", label: "Ce que tu as déjà fait", max: LIMITES.recit, placeholder: "Par exemple : j'ai réparé le vélo d'un pote avec des tutos…" })}
+            ${zoneTexte({ id: "recit", label: "Ce que tu as déjà fait", max: LIMITES.recit, placeholder: "Par exemple : j'ai réparé le vélo d'un pote avec des tutos…", infoDictee: true })}
             <button type="submit" class="bouton principal large grand" data-envoi>Envoyer</button>
           </form>`,
       };
@@ -392,16 +476,51 @@ function ecranCreation(v) {
 }
 
 function consigneMini(c) {
-  const t = typeDe(c, etat.rome);
+  const t = typeCarte(c);
   return `<span class="pastille${t.lettre ? "" : " pastille-blanche"}" style="--type:${t.couleur}" aria-hidden="true"></span>
     <span><strong>${echapper(libelleDe(c))}</strong> <span class="discret">— ${echapper(t.nom)}</span></span>`;
 }
 
+// « Je ne sais pas » refusé (code sans_reponse) : dès le 1er refus, des débuts de
+// phrase à toucher (préremplis) et « Je passe ce tour », sans reproche
+// (décision de Pierre §3, critique psy point 11).
+function blocAide(v, pi) {
+  const a = etat.aide;
+  if (!a || a.pi !== pi) return "";
+  const amorces = Array.isArray(a.amorces) ? a.amorces : [];
+  return `<section class="pile serre tel-aide" role="status">
+      <p>${echapper(a.message || "Pas facile ? Commence par un de ces débuts de phrase, ou passe ce tour.")}</p>
+      ${amorces.length ? `<div class="relances">${amorces.map((x, i) => `<button type="button" class="relance" data-action="amorce" data-i="${i}">${echapper(x)}</button>`).join("")}</div>` : ""}
+      <button type="button" class="bouton secondaire large" data-action="passer" data-envoi>Je passe ce tour</button>
+      <p class="discret">${echapper(PASSE_POUR_LE_PSY)}</p>
+    </section>`;
+}
+
 function ecranReponse(v, pi) {
-  const envoyee = typeof v.moi.maReponse === "string" && !etat.edition;
+  const moi = v.moi;
+  // « Je passe ce tour » : réponse vide, sans reproche ; une vraie réponse peut encore la remplacer.
+  if (moi.jaiPasse && !etat.edition) {
+    return {
+      cle: `reponse:${pi}:passe:${!!v.tempsEcoule}:${moi.maPreference ?? ""}`,
+      titre: "Tu passes ce tour",
+      html: `<div class="pile large">
+          <div class="pile centre">
+            <p class="tel-emoji" aria-hidden="true">🙂</p>
+            <h1>Pas de souci</h1>
+            <p>${echapper(messagePasse(v))}</p>
+            <p class="discret">${echapper(PASSE_POUR_LE_PSY)}</p>
+            ${htmlMinuteur(v)}
+            ${htmlCompte(v)}
+          </div>
+          <button type="button" class="bouton secondaire large" data-action="modifier">Finalement, j'ai une idée</button>
+          ${blocPreference(v)}
+        </div>`,
+    };
+  }
+  const envoyee = typeof moi.maReponse === "string" && moi.maReponse !== "" && !etat.edition;
   if (envoyee) {
     return {
-      cle: `reponse:${pi}:envoyee:${!!v.tempsEcoule}`,
+      cle: `reponse:${pi}:envoyee:${!!v.tempsEcoule}:${moi.maPreference ?? ""}`,
       titre: "Ta réponse est envoyée",
       html: `<div class="pile large">
           <div class="pile centre">
@@ -410,14 +529,16 @@ function ecranReponse(v, pi) {
             ${htmlMinuteur(v)}
             ${htmlCompte(v)}
           </div>
-          ${v.moi.maReponse ? `<blockquote class="citation">${echapper(v.moi.maReponse)}</blockquote>` : ""}
-          <p class="discret">Personne d'autre ne la voit. Tu peux la changer tant que tout le monde n'a pas répondu.</p>
+          <blockquote class="citation">${echapper(moi.maReponse)}</blockquote>
+          <p class="discret">Les autres ne la voient pas. Si elle devient l'idée du tour, un bout de ta phrase s'affiche sur l'écran, sans ton nom sauf si tu dis oui. Tu peux la changer tant que tout le monde n'a pas répondu.</p>
           <button type="button" class="bouton secondaire large" data-action="modifier">Modifier ma réponse</button>
+          ${blocPreference(v)}
         </div>`,
     };
   }
+  const note = moi.maNote || etat.brouillons[`note-${pi}`] || "";
   return {
-    cle: `reponse:${pi}:saisie:${!!v.tempsEcoule}`,
+    cle: `reponse:${pi}:saisie:${!!v.tempsEcoule}:${etat.aide?.pi === pi}`,
     titre: "À toi de répondre",
     html: `<form class="pile" data-form="reponse" novalidate>
         <div class="rangee tel-titre-minuteur">
@@ -425,13 +546,17 @@ function ecranReponse(v, pi) {
           ${htmlMinuteur(v)}
         </div>
         ${htmlTempsEcoule(v, "Le temps est écoulé, mais on t'attend : envoie ta réponse.")}
-        ${v.probleme?.question ? `<p class="tel-question">${echapper(v.probleme.question)}</p>` : ""}
+        <p class="tel-question">Et toi, que fais-tu ?</p>
+        <p>Raconte ce que tu ferais, toi. Écris TON idée avec tes mots, même si elle ressemble à une autre.</p>
+        ${note ? `<p class="discret">📝 Ta note : « ${echapper(note)} »</p>` : ""}
+        ${blocAide(v, pi)}
         ${zoneTexte({
           id: `reponse-${pi}`,
           label: "Ta réponse",
           max: LIMITES.reponse,
           placeholder: "Ce que tu ferais, avec tes mots…",
-          aide: "🔒 Personne d'autre ne verra ta réponse.",
+          aide: "🔒 Les autres ne voient pas ta réponse. Si elle devient l'idée du tour, un bout de ta phrase s'affiche sur l'écran, sans ton nom sauf si tu dis oui. Le MJ (une IA) la lit.",
+          infoDictee: true,
         })}
         <button type="submit" class="bouton principal large grand" data-envoi>Envoyer ma réponse</button>
         ${htmlCompte(v)}
@@ -440,61 +565,141 @@ function ecranReponse(v, pi) {
   };
 }
 
+// Recopie allégée sur la fiche papier (adaptation « ecrire-sa-competence-a-la-main »).
+const CONSIGNE_FICHE = "✍️ Écris cette compétence sur ta <strong>fiche papier</strong> avec tes mots. Un mot-clé suffit, et tu peux demander de l'aide. Puis dis-nous si tu la gardes.";
+
+function basGarder(c, pi) {
+  if (c.gardee === true) {
+    return `<p>C'est noté : elle va sur ta fiche.</p>
+      <button type="button" class="bouton discret" data-action="garder" data-garder="0" data-pi="${pi}">Finalement, pas moi</button>`;
+  }
+  if (c.gardee === false) {
+    return `<p>D'accord, elle ne va pas sur ta fiche.</p>
+      <button type="button" class="bouton discret" data-action="garder" data-garder="1" data-pi="${pi}">Finalement, je la garde</button>`;
+  }
+  return `<p class="consigne-fiche">${CONSIGNE_FICHE}</p>
+      <div class="rangee tel-garde" role="group" aria-label="Ton choix">
+        <button type="button" class="bouton succes grand" data-action="garder" data-garder="1" data-pi="${pi}">✓ Je la garde</button>
+        <button type="button" class="bouton grand" data-action="garder" data-garder="0" data-pi="${pi}">Pas moi</button>
+      </div>`;
+}
+
+// L'idée du tour, vue par les autres joueurs : sans nom tant que son auteur n'a pas dit oui.
+function ideeDuTour(idee) {
+  if (idee.aucune) return `<p class="discret">Pas d'idée retenue cette fois : l'histoire continue au prochain épisode.</p>`;
+  return `<section class="pile serre tel-idee-du-tour">
+      <p class="discret">Cette idée fait avancer l'histoire${idee.pseudo ? ` (l'idée de ${echapper(idee.avatar ?? "")} ${echapper(idee.pseudo)})` : ""} :</p>
+      <blockquote class="citation">« ${echapper(idee.texte ?? "")} »</blockquote>
+    </section>`;
+}
 
 function ecranCompetence(v, pi) {
-  const c = v.moi.competenceDuProbleme;
+  const moi = v.moi;
+  const c = moi.competenceDuProbleme;
   const idee = v.idee;
-  if (v.attenteIA || !idee) {
+  const sorte = retourEpisode(v);
+  if (sorte === "attente") {
     return {
       cle: `competences:${pi}:attente`,
       titre: "Le MJ lit vos idées",
       html: `<div class="pile centre large">
           <p class="tel-emoji" aria-hidden="true">💡</p>
           <h1>Le MJ lit vos idées…</h1>
-          <p>Il choisit celle qui fait avancer l'histoire. Regarde l'écran.</p>
+          <p>Le MJ est une IA : il propose une idée qui fait avancer l'histoire, l'animateur valide. Regarde l'écran.</p>
           ${points}
         </div>`,
     };
   }
-  if (!c) {
-    // L'idée d'un autre joueur est retenue (ou aucune) : on regarde l'écran.
+  if (c && !etat.rome) charger("rome");
+  const pref = blocPreference(v);
+  const cle = `competences:${pi}:${sorte}:${idee.aucune ? "" : `${idee.texte}:${idee.pseudo ?? ""}`}:${c?.code ?? ""}:${c?.gardee}:${moi.monIdee?.accordPseudo ?? ""}:${moi.maPreference ?? ""}:${!!etat.rome}:${!!moi.monIdeeEcartee}`;
+
+  // C'est son idée : d'abord l'accord pour afficher son pseudo (décision de Pierre §2).
+  if (sorte === "mon-idee") {
+    const accord = moi.monIdee.accordPseudo;
+    const question = accord === null || accord === undefined
+      ? `<p><strong>On affiche ton pseudo sur l'écran ?</strong></p>
+         <div class="rangee tel-choix-avis" role="group" aria-label="Afficher ton pseudo">
+           <button type="button" class="bouton" data-action="pseudo" data-accord="1">Oui</button>
+           <button type="button" class="bouton" data-action="pseudo" data-accord="0">Non, reste discret</button>
+         </div>`
+      : `<p>${accord ? "Ton pseudo est affiché sur l'écran." : "Ton idée reste anonyme sur l'écran."}</p>
+         <button type="button" class="bouton discret" data-action="pseudo" data-accord="${accord ? "0" : "1"}">${accord ? "Finalement, reste discret" : "Finalement, affiche mon pseudo"}</button>`;
     return {
-      cle: `competences:${pi}:autre:${idee.aucune ? "" : idee.pseudo}`,
-      titre: "L'idée du tour",
-      html: `<div class="pile centre large">
-          <p class="tel-emoji" aria-hidden="true">👀</p>
-          ${idee.aucune
-            ? `<h1>Pas d'idée retenue cette fois</h1><p>L'histoire continue au prochain épisode.</p>`
-            : `<h1>L'idée de ${echapper(idee.pseudo)} est retenue</h1>
-               <blockquote class="citation">« ${echapper(idee.texte ?? "")} »</blockquote>
-               <p>Regarde l'écran : l'histoire continue avec son idée. À toi au prochain épisode !</p>`}
+      cle,
+      titre: "C'est ton idée",
+      html: `<div class="pile large">
+          <h1>C'est ton idée !</h1>
+          <p>Elle fait avancer l'histoire :</p>
+          <blockquote class="citation">« ${echapper(idee.texte ?? "")} »</blockquote>
+          <section class="pile serre tel-accord">${question}</section>
+          ${c ? `${carteCompetence(c)}${basGarder(c, pi)}` : ""}
+          ${pref}
         </div>`,
     };
   }
-  if (!etat.rome) charger("rome");
-  let bas;
-  if (c.gardee === true) {
-    bas = `<p>C'est noté : elle va sur ta fiche.</p>
-      <p class="discret centre-texte">L'histoire continue. ${points}</p>
-      <button type="button" class="bouton discret" data-action="garder" data-garder="0" data-pi="${pi}">Finalement, pas moi</button>`;
-  } else if (c.gardee === false) {
-    bas = `<p>D'accord, elle ne va pas sur ta fiche.</p>
-      <p class="discret centre-texte">L'histoire continue. ${points}</p>
-      <button type="button" class="bouton discret" data-action="garder" data-garder="1" data-pi="${pi}">Finalement, je la garde</button>`;
+
+  let corps;
+  let titre;
+  if (sorte === "competence") {
+    // Compétence privée : seulement sur son téléphone (décision de Pierre §1), sans 🎉.
+    titre = "Ce que le MJ a repéré";
+    corps = `<h1>Ce que le MJ a repéré dans ta réponse</h1>
+      ${moi.monIdeeEcartee ? `<p>L'animateur a choisi une autre idée pour la suite de l'histoire. Ta compétence reste à toi.</p>` : ""}
+      ${carteCompetence(c)}
+      ${basGarder(c, pi)}`;
+  } else if (sorte === "idee") {
+    // Pas d'action précise et citable : une reformulation, sans compétence (critique psy point 3).
+    titre = "Ton idée";
+    corps = `<h1>Ton idée</h1>
+      <p class="tel-mon-idee">${echapper(texteMonIdee(moi))}</p>
+      <p class="discret">Cette fois, le MJ n'a pas repéré de compétence dans ta réponse. ${echapper(PROMESSE_COMPETENCE)}</p>`;
+  } else if (sorte === "passe") {
+    titre = "L'histoire continue";
+    corps = `<h1>L'histoire continue</h1>
+      <p>${echapper(messagePasse(v))}</p>`;
   } else {
-    bas = `<p class="consigne-fiche">✍️ Écris cette compétence sur ta <strong>fiche papier</strong>, dans « Compétences trouvées pendant le jeu », puis dis-nous si tu la gardes.</p>
-      <div class="rangee tel-garde" role="group" aria-label="Ton choix">
-        <button type="button" class="bouton succes grand" data-action="garder" data-garder="1" data-pi="${pi}">✓ Je la garde</button>
-        <button type="button" class="bouton grand" data-action="garder" data-garder="0" data-pi="${pi}">Pas moi</button>
-      </div>`;
+    titre = "Le MJ regarde ta réponse";
+    corps = `<h1>Ta réponse</h1>
+      <p>Le MJ lit ta réponse… ${points}</p>`;
   }
   return {
-    cle: `competences:${pi}:${c.code}:${c.gardee}:${!!etat.rome}`,
-    titre: "Ton idée est retenue",
+    cle,
+    titre,
     html: `<div class="pile large">
-        <h1>🎉 Ton idée est retenue pour la suite de l'histoire !</h1>
-        ${carteCompetence(c)}
-        ${bas}
+        ${ideeDuTour(idee)}
+        ${corps}
+        ${pref}
+      </div>`,
+  };
+}
+
+// Débrief collectif (adaptation « nouveau-debriefing ») : 2 questions à l'oral, la
+// 3e écrite en privé (facultative), pour le psychologue.
+function ecranDebrief(v) {
+  const moi = v.moi;
+  if (etat.brouillons.debrief == null && moi.monDebrief) etat.brouillons.debrief = moi.monDebrief;
+  return {
+    cle: `debrief:${moi.monDebrief ?? ""}`,
+    titre: "Débrief",
+    html: `<div class="pile large">
+        <div class="pile centre">
+          <p class="tel-emoji" aria-hidden="true">💬</p>
+          <h1>On en parle ensemble</h1>
+          <p>Regarde l'écran : on se pose quelques questions avant ta fiche.</p>
+        </div>
+        <ol class="tel-questions">${QUESTIONS_DEBRIEF.slice(0, 2).map((q) => `<li>${echapper(q)}</li>`).join("")}</ol>
+        <form class="pile" data-form="debrief" novalidate>
+          ${zoneTexte({
+            id: "debrief",
+            label: echapper(QUESTIONS_DEBRIEF[2]),
+            max: LIMITES.debrief,
+            rows: 4,
+            placeholder: "Une fois où tu as fait quelque chose comme ça…",
+            aide: "Facultatif. Personne d'autre ne la voit : elle ira sur ta fiche, pour en parler avec le psy.",
+          })}
+          <button type="submit" class="bouton principal large" data-envoi>${moi.monDebrief ? "✓ C'est noté · mettre à jour" : "Garder ma réponse"}</button>
+        </form>
       </div>`,
   };
 }
@@ -504,7 +709,8 @@ function ecranFin(v) {
   if (!etat.onet) charger("onet");
   const moi = v.moi;
   const fiche = rendreFiche(
-    { code: v.code ?? CODE, pseudo: moi.pseudo, avatar: moi.avatar, competences: moi.competences ?? [] },
+    // Les épisodes et leur type RIASEC : même classement que la fiche imprimée.
+    { code: v.code ?? CODE, pseudo: moi.pseudo, avatar: moi.avatar, competences: moi.competences ?? [], problemes: v.fin?.problemes ?? [] },
     { rome: etat.rome, onet: etat.onet, psy: false, metiersOuverts: false },
   );
   return {
@@ -513,7 +719,7 @@ function ecranFin(v) {
     html: `<div class="pile large">
         <div class="pile centre">
           <p class="tel-emoji" aria-hidden="true">🎉</p>
-          <h1>Bravo, la partie est finie !</h1>
+          <h1>La partie est finie, merci d'avoir joué !</h1>
           <p>Voici ta fiche. Tu peux l'imprimer et la montrer au psy pour en parler ensemble.</p>
         </div>
         <div class="pile serre">
@@ -522,6 +728,7 @@ function ecranFin(v) {
         <!--en-attente-->
         <article class="fiche-tel">${fiche}</article>
         ${etat.onet ? "" : `<p class="discret centre-texte">Je cherche des métiers à découvrir… ${points}</p>`}
+        <p class="tel-relais">${echapper(RELAIS_ADULTE)}</p>
       </div>`,
   };
 }
@@ -530,7 +737,7 @@ function ecranFin(v) {
 
 // Écrans où le joueur n'a rien d'autre à faire : on lui rappelle les compétences
 // qu'il n'a pas encore gardées ou retirées (l'animateur a pu passer à la suite).
-const PHASES_AVEC_ATTENTE = new Set(["presentation", "echange", "competences", "fin"]);
+const PHASES_AVEC_ATTENTE = new Set(["presentation", "reflexion", "echange", "competences", "debrief", "fin"]);
 
 function blocEnAttente(v) {
   if (!PHASES_AVEC_ATTENTE.has(v?.phase) || !v.moi?.pseudo) return { cle: "", html: "" };
@@ -542,7 +749,7 @@ function blocEnAttente(v) {
   const cible = (c) => (estDepartEnAttente(c) ? `data-dep="${c.departIndex}"` : `data-pi="${c.problemeIndex}"`);
   const cartes = liste
     .map((c) => `<div class="tel-proposition">
-        ${carteCompetence(c, { surtitre: estDepartEnAttente(c) ? "Ton histoire" : `Problème ${c.problemeIndex + 1}` })}
+        ${carteCompetence(c, { surtitre: estDepartEnAttente(c) ? "Ton histoire" : `Épisode ${c.problemeIndex + 1}` })}
         <div class="rangee tel-garde" role="group" aria-label="Ton choix pour cette compétence">
           <button type="button" class="bouton succes" data-action="garder" data-garder="1" ${cible(c)}>✓ Je la garde</button>
           <button type="button" class="bouton" data-action="garder" data-garder="0" ${cible(c)}>Pas moi</button>
@@ -564,6 +771,8 @@ function blocEnAttente(v) {
 function afficher(v) {
   etat.vue = v;
   if (v && v.phase !== "reponse") etat.edition = false;
+  // Les débuts de phrase ne valent que pour la réponse en cours.
+  if (etat.aide && (v?.phase !== "reponse" || v.problemeIndex !== etat.aide.pi)) etat.aide = null;
   if (v && !(v.phase === "creation" && v.moi?.depart?.etat === "a_valider")) etat.choixDepart = [];
   const e = ecranPour(v);
   const attente = blocEnAttente(v);
@@ -584,7 +793,8 @@ function afficher(v) {
       annoncer(e.titre);
     }
     restaurerBrouillons();
-    if (DICTEE) ecranEl.querySelectorAll('[data-action="micro"]').forEach((b) => (b.hidden = false));
+    if (DICTEE) ecranEl.querySelectorAll('[data-action="micro"], [data-info-dictee]').forEach((b) => (b.hidden = false));
+    if (!("speechSynthesis" in window)) ecranEl.querySelectorAll('[data-action="ecouter"]').forEach((b) => (b.hidden = true));
     if (!memeEcran) window.scrollTo(0, 0);
   }
   majDynamique();
@@ -601,7 +811,7 @@ function majDynamique() {
   const v = etat.vue;
   if (v?.compte) {
     const { repondu = 0, total = 0 } = v.compte;
-    const verbe = v.phase === "presentation" ? "ont lu" : "ont répondu";
+    const verbe = v.phase === "presentation" ? "ont lu" : v.phase === "competences" ? "ont fait leur choix" : "ont répondu";
     ecranEl.querySelectorAll("[data-compte]").forEach((el) => (el.textContent = `${repondu}/${total} ${verbe}`));
   }
   ecranEl.querySelectorAll("[data-envoi]").forEach((b) => (b.disabled = etat.envoiEnCours));
@@ -649,6 +859,16 @@ const Reco = window.SpeechRecognition || window.webkitSpeechRecognition;
 // la dictée échouerait toujours (not-allowed). On ne propose donc pas le bouton.
 const DICTEE = dicteeDisponible(window);
 let recoActive = null;
+// Reconnaissance sur l'appareil quand le navigateur le permet : la voix ne quitte
+// pas le téléphone (adaptation « langage-simple-dictee-accessibilite »).
+let dicteeLocale = false;
+if (DICTEE && typeof Reco?.available === "function") {
+  try {
+    Promise.resolve(Reco.available({ langs: ["fr-FR"], processLocally: true }))
+      .then((s) => { dicteeLocale = s === "available"; })
+      .catch(() => {});
+  } catch { /* API absente ou différente : dictée classique */ }
+}
 
 function basculerDictee(bouton) {
   if (recoActive) {
@@ -659,6 +879,7 @@ function basculerDictee(bouton) {
   if (!zone || !Reco) return;
   const r = new Reco();
   r.lang = "fr-FR";
+  if (dicteeLocale && "processLocally" in r) r.processLocally = true;
   r.continuous = true;
   r.interimResults = false;
   r.onresult = (e) => {
@@ -691,6 +912,26 @@ function arreterDictee() {
   const r = recoActive;
   recoActive = null;
   if (r) try { r.abort(); } catch { /* déjà arrêtée */ }
+}
+
+// ---------- Réécouter l'épisode (synthèse vocale du téléphone) ----------
+
+function ecouterEpisode(v) {
+  if (!("speechSynthesis" in window)) return;
+  if (speechSynthesis.speaking || speechSynthesis.pending) {
+    speechSynthesis.cancel();
+    return;
+  }
+  const voix = speechSynthesis.getVoices();
+  const fr = voix.find((x) => x.lang === "fr-FR") ?? voix.find((x) => x.lang?.toLowerCase().startsWith("fr")) ?? null;
+  // Une phrase par énoncé : Chrome coupe en silence les énoncés trop longs.
+  for (const phrase of decouperPhrases(texteEpisode(v))) {
+    const u = new SpeechSynthesisUtterance(phrase);
+    u.lang = "fr-FR";
+    if (fr) u.voice = fr;
+    u.rate = 0.95;
+    speechSynthesis.speak(u);
+  }
 }
 
 // ---------- Actions du joueur ----------
@@ -777,6 +1018,33 @@ ecranEl.addEventListener("click", (e) => {
     case "lu":
       envoyerAvecAttente({ t: "lu" });
       break;
+    case "ecouter":
+      ecouterEpisode(v);
+      break;
+    case "amorce": {
+      // Début de phrase prérempli : le joueur n'a plus qu'à continuer.
+      const a = etat.aide?.amorces?.[Number(b.dataset.i)];
+      const z = ecranEl.querySelector('[data-form="reponse"] textarea');
+      if (!a || !z) break;
+      z.value = texteAmorce(a);
+      etat.brouillons[z.dataset.brouillon] = z.value;
+      majCompteur(z);
+      ecranEl.querySelectorAll('[data-action="amorce"]').forEach((x) => x.classList.toggle("choisie", x === b));
+      z.focus();
+      z.setSelectionRange?.(z.value.length, z.value.length);
+      break;
+    }
+    case "passer":
+      arreterDictee();
+      etat.edition = false;
+      envoyerAvecAttente({ t: "passer" });
+      break;
+    case "preference":
+      envoyer({ t: "preference", valeur: b.dataset.valeur, problemeIndex: v?.problemeIndex });
+      break;
+    case "pseudo":
+      envoyer({ t: "afficher_pseudo", accord: b.dataset.accord === "1" });
+      break;
     case "garder":
       // problemeIndex : la compétence visée (celle du problème en cours, ou une
       // compétence restée en attente d'un problème précédent).
@@ -824,6 +1092,18 @@ ecranEl.addEventListener("submit", (e) => {
       envoyerAvecAttente({ t: "reponse", texte: texte.slice(0, LIMITES.reponse) });
       break;
     }
+    case "note": {
+      arreterDictee();
+      const texte = String(f.elements.texte.value).trim().slice(0, LIMITES.note);
+      envoyerAvecAttente({ t: "note", texte });
+      break;
+    }
+    case "debrief": {
+      arreterDictee();
+      const texte = String(f.elements.texte.value).trim().slice(0, LIMITES.debrief);
+      envoyerAvecAttente({ t: "debrief", texte });
+      break;
+    }
   }
 });
 
@@ -840,6 +1120,13 @@ function recevoir(m) {
   } else if (m.t === "erreur") {
     etat.envoiEnCours = false;
     etat.derniereErreur = String(m.message ?? "");
+    // « Je ne sais pas » : débuts de phrase et « Je passe ce tour » dans l'écran de réponse.
+    if (m.code === "sans_reponse" && etat.vue?.phase === "reponse") {
+      etat.aide = { pi: etat.vue.problemeIndex ?? 0, amorces: Array.isArray(m.amorces) ? m.amorces.map(String) : [], message: etat.derniereErreur };
+      etat.edition = true;
+      rafraichir();
+      return;
+    }
     if (etat.derniereErreur) toast(etat.derniereErreur);
     if (etat.vue) majDynamique();
     else afficher(null);
@@ -919,22 +1206,41 @@ const DEMO_PROBLEME = {
   question: "Que faites-vous ?",
   illustration: "illustrations/budget-tournoi.svg"
 };
-const DEMO_PROPOSITIONS = [
-  { code: "3E205", libelle: "Réparer un équipement, une machine, une installation", mots: "Tu sais réparer des objets en suivant des explications.", preuve: "j'ai réparé le vélo d'un pote avec des tutos", typePreuve: "vecu", riasec: ["R"], situation: "Vélo réparé", problemeIndex: null, gardee: null },
-  { code: "1D101", libelle: "Conseiller, accompagner une personne", mots: "Tu aides les autres quand ils sont bloqués.", preuve: "je l'ai aidé à remplir son dossier", typePreuve: "vecu", riasec: ["S"], situation: "Coup de main", problemeIndex: null, gardee: null },
-];
-const DEMO_COMPETENCE = {
-  code: "6B318", libelle: "Collecter et analyser des données, des informations", mots: "Tu as pensé à chercher les infos avant d'agir.",
-  preuve: "on regarde sur internet combien ça coûte", typePreuve: "jeu", riasec: ["C"], problemeIndex: 0, gardee: null,
+const DEMO_PROBLEME_2 = {
+  id: "affiche-tournoi",
+  titre: "L'affiche du tournoi",
+  situation: "Le budget est bouclé. Mais à trois semaines du tournoi, presque personne dans le quartier n'est au courant, et il manque encore des équipes. Le club vous demande de faire l'affiche et de faire venir des joueurs et du public.",
+  question: "Que faites-vous ?",
+  illustration: "illustrations/affiche-tournoi.svg"
 };
+const DEMO_LIAISON = "La liste des achats et les prix comparés ont permis de boucler le budget. Reste à faire connaître le tournoi.";
+// Copies de AMORCES et MESSAGE_SANS_REPONSE (src/texte.js) : le serveur les envoie avec le refus.
+const DEMO_AMORCES = ["Moi, je demanderais à…", "D'abord, je…", "J'irais voir…"];
+const DEMO_MESSAGE_SANS_REPONSE = "Toutes les idées comptent ! Pas facile ? Commence par un de ces débuts de phrase, ou passe ce tour.";
+const DEMO_PROPOSITIONS = [
+  { code: "3E205", libelle: "Réparer un équipement, une machine, une installation", mots: "Tu as raconté avoir réparé un vélo : c'est ce qu'on appelle « Réparer un équipement, une machine, une installation ».", preuve: "j'ai réparé le vélo d'un pote avec des tutos", typePreuve: "vecu", riasec: ["R"], situation: "Vélo réparé", problemeIndex: null, gardee: null },
+  { code: "1D101", libelle: "Conseiller, accompagner une personne", mots: "Tu as aidé quelqu'un à remplir un dossier : c'est ce qu'on appelle « Conseiller, accompagner une personne ».", preuve: "je l'ai aidé à remplir son dossier", typePreuve: "vecu", riasec: ["S"], situation: "Coup de main", problemeIndex: null, gardee: null },
+];
+// Compétence de l'idée du tour (Lina) et compétence privée (une autre réponse).
+const DEMO_COMPETENCE = {
+  code: "6B318", libelle: "Collecter et analyser des données, des informations", mots: "Tu as proposé de chercher les prix avant d'acheter : c'est ce qu'on appelle « Collecter et analyser des données, des informations ».",
+  preuve: "on regarde sur internet combien ça coûte", typePreuve: "jeu", idee: true, riasec: ["C"], problemeIndex: 0, gardee: null,
+};
+const DEMO_PRIVEE = {
+  code: "6D103", libelle: "Être force de proposition", mots: "Tu as proposé de demander au boulanger d'offrir le goûter : c'est ce qu'on appelle « Être force de proposition ».",
+  preuve: "demander au boulanger du quartier de nous offrir le goûter", typePreuve: "jeu", idee: false, horsScenario: true, riasec: [], problemeIndex: 0, gardee: null,
+};
+const DEMO_IDEE_SANS_NOM = { pseudo: null, avatar: null, accordPseudo: null, texte: DEMO_COMPETENCE.preuve, competence: { code: DEMO_COMPETENCE.code, libelle: DEMO_COMPETENCE.libelle } };
 
 function scenesDemo() {
   const moi = (x = {}) => ({
     id: "demo-lina", pseudo: "Lina", avatar: "🦊",
     depart: { etat: "valide", propositions: DEMO_PROPOSITIONS, gardees: [DEMO_PROPOSITIONS[0]] },
-    maReponse: null, competenceDuProbleme: null, competences: [], ...x,
+    maReponse: null, maNote: null, jaiPasse: false, sansReponse: false, maPreference: null, peutDonnerPreference: false,
+    monIdee: null, retourPrive: null, maReformulation: null, competenceDuProbleme: null, competences: [], monDebrief: null, ...x,
   });
-  const base = (phase, x = {}) => ({ code: "DEMO", phase, problemeIndex: 0, nbProblemes: 3, probleme: DEMO_PROBLEME, minuteurFin: null, compte: null, ...x });
+  const apres = (x = {}) => moi({ maReponse: "On regarde sur internet combien ça coûte et on demande au boulanger du quartier de nous offrir le goûter.", peutDonnerPreference: true, ...x });
+  const base = (phase, x = {}) => ({ code: "DEMO", phase, problemeIndex: 0, nbProblemes: 3, probleme: DEMO_PROBLEME, liaison: null, minuteurFin: null, compte: null, ...x });
   const dans = (s) => Date.now() + s * 1000;
   return [
     ["Rejoindre", () => base("accueil", { probleme: null, moi: null })],
@@ -942,22 +1248,31 @@ function scenesDemo() {
     ["Création : récit", () => base("creation", { probleme: null, moi: moi({ depart: { etat: "attente" } }) })],
     ["Création : analyse", () => base("creation", { probleme: null, moi: moi({ depart: { etat: "analyse" } }) })],
     ["Création : C'est moi / Pas moi", () => base("creation", { probleme: null, moi: moi({ depart: { etat: "a_valider", propositions: DEMO_PROPOSITIONS } }) })],
+    ["Création : aucune compétence", () => base("creation", { probleme: null, moi: moi({ depart: { etat: "a_valider", propositions: [] } }) })],
     ["Création : validé", () => base("creation", { probleme: null, moi: moi() })],
-    ["Présentation", () => base("presentation", { moi: moi() })],
-    ["Échange", () => base("echange", { moi: moi(), minuteurFin: dans(120) })],
-    ["Réponse", () => base("reponse", { moi: moi(), minuteurFin: dans(90), compte: { repondu: 1, total: 4 } })],
-    ["Réponse envoyée", () => base("reponse", { moi: moi({ maReponse: "On regarde sur internet combien ça coûte et on met une protection en attendant." }), minuteurFin: dans(42), compte: { repondu: 3, total: 4 } })],
-    ["Le MJ lit vos idées", () => base("competences", { moi: moi(), attenteIA: true })],
-    ["Idée d'un autre joueur", () => base("competences", { moi: moi(), idee: { pseudo: "Sam", avatar: "🐼", texte: "on demande au boulanger du quartier de nous offrir le goûter", competence: { code: "6D115", libelle: "Faire preuve de créativité, d'inventivité" } } })],
-    ["Ton idée est retenue", () => base("competences", { moi: moi({ competenceDuProbleme: { ...DEMO_COMPETENCE } }), idee: { pseudo: "Lina", avatar: "🦊", texte: DEMO_COMPETENCE.preuve, competence: { code: DEMO_COMPETENCE.code, libelle: DEMO_COMPETENCE.libelle } } })],
-    ["Compétence notée", () => base("competences", { moi: moi({ competenceDuProbleme: { ...DEMO_COMPETENCE, gardee: true } }), idee: { pseudo: "Lina", avatar: "🦊", texte: DEMO_COMPETENCE.preuve, competence: { code: DEMO_COMPETENCE.code, libelle: DEMO_COMPETENCE.libelle }, notee: true } })],
+    ["Présentation (épisode 1)", () => base("presentation", { moi: moi() })],
+    ["Réflexion en silence", () => base("reflexion", { moi: moi(), minuteurFin: dans(30) })],
+    ["Tour de table", () => base("echange", { moi: moi({ maNote: "comparer les prix" }), minuteurFin: dans(120) })],
+    ["Réponse", () => base("reponse", { moi: moi({ maNote: "comparer les prix" }), minuteurFin: dans(90), compte: { repondu: 1, total: 4 } })],
+    ["Réponse : « je ne sais pas »", () => base("reponse", { moi: moi(), minuteurFin: dans(70), compte: { repondu: 2, total: 4 }, demoAide: true })],
+    ["Je passe ce tour", () => base("reponse", { moi: moi({ maReponse: "", jaiPasse: true, peutDonnerPreference: true }), minuteurFin: dans(50), compte: { repondu: 3, total: 4 } })],
+    ["Réponse envoyée + avis", () => base("reponse", { moi: apres(), minuteurFin: dans(42), compte: { repondu: 3, total: 4 } })],
+    ["Le MJ lit vos idées", () => base("competences", { moi: apres(), attenteIA: true })],
+    ["C'est ton idée : pseudo ?", () => base("competences", { moi: apres({ monIdee: { accordPseudo: null }, competenceDuProbleme: { ...DEMO_COMPETENCE } }), idee: { ...DEMO_IDEE_SANS_NOM } })],
+    ["Ton idée : pseudo affiché", () => base("competences", { moi: apres({ monIdee: { accordPseudo: true }, competenceDuProbleme: { ...DEMO_COMPETENCE, gardee: true }, maPreference: "oui" }), idee: { ...DEMO_IDEE_SANS_NOM, pseudo: "Lina", avatar: "🦊", accordPseudo: true } })],
+    ["Ce que le MJ a repéré", () => base("competences", { moi: apres({ retourPrive: "competence", competenceDuProbleme: { ...DEMO_PRIVEE } }), idee: { ...DEMO_IDEE_SANS_NOM, pseudo: "Sam", avatar: "🐼", accordPseudo: true } })],
+    ["Ton idée (sans compétence)", () => base("competences", { moi: apres({ retourPrive: "idee", maReformulation: "Ton idée : chercher les prix sur internet et demander de l'aide aux commerçants" }), idee: { ...DEMO_IDEE_SANS_NOM } })],
+    ["Le MJ regarde ta réponse", () => base("competences", { moi: apres(), idee: { ...DEMO_IDEE_SANS_NOM } })],
+    ["Tu as passé ce tour", () => base("competences", { moi: moi({ maReponse: "", jaiPasse: true, peutDonnerPreference: true, retourPrive: "idee" }), idee: { ...DEMO_IDEE_SANS_NOM } })],
+    ["Présentation (épisode 2, liaison)", () => base("presentation", { problemeIndex: 1, probleme: DEMO_PROBLEME_2, liaison: DEMO_LIAISON, moi: moi() })],
+    ["Débrief", () => base("debrief", { problemeIndex: 2, probleme: null, moi: moi() })],
     ["Fin", () => base("fin", {
       phase: "fin", problemeIndex: 2, probleme: null,
       moi: moi({ competences: [
         { ...DEMO_PROPOSITIONS[0], gardee: true },
         { ...DEMO_COMPETENCE, gardee: true },
-        { code: "6D102", libelle: "Avoir l'esprit d'équipe", mots: "Tu as participé à la discussion avec le groupe.", preuve: "A participé à la discussion de groupe", typePreuve: "participation", riasec: [], problemeIndex: 1, gardee: true },
-        { code: "1D101", libelle: "Conseiller, accompagner une personne", mots: "Tu as pensé à rassurer la personne.", preuve: "je lui explique calmement", typePreuve: "jeu", riasec: ["S"], problemeIndex: 2, gardee: true },
+        { ...DEMO_PRIVEE, problemeIndex: 1, gardee: true },
+        { code: "1D101", libelle: "Conseiller, accompagner une personne", mots: "Tu as proposé de lui expliquer calmement : c'est ce qu'on appelle « Conseiller, accompagner une personne ».", preuve: "je lui explique calmement", typePreuve: "jeu", idee: false, riasec: ["S"], problemeIndex: 2, gardee: true },
       ] }),
       fin: { lienFiche: "fiche.html?demo=1" },
     })],
@@ -966,7 +1281,7 @@ function scenesDemo() {
       moi: moi({ competences: [
         { ...DEMO_PROPOSITIONS[0], gardee: true },
         { ...DEMO_COMPETENCE, gardee: true },
-        { code: "1D101", libelle: "Conseiller, accompagner une personne", mots: "Tu as pensé à rassurer la personne.", preuve: "je lui explique calmement", typePreuve: "jeu", riasec: ["S"], problemeIndex: 2, gardee: null },
+        { code: "1D101", libelle: "Conseiller, accompagner une personne", mots: "Tu as proposé de lui expliquer calmement : c'est ce qu'on appelle « Conseiller, accompagner une personne ».", preuve: "je lui explique calmement", typePreuve: "jeu", idee: false, riasec: ["S"], problemeIndex: 2, gardee: null },
       ] }),
       fin: { lienFiche: "fiche.html?demo=1" },
     })],
@@ -988,8 +1303,20 @@ function montrerScene(i) {
   demo.vue = fabrique();
   $("#demo-etiquette").textContent = `${demo.index + 1}/${demo.scenes.length} · ${nom}`;
   etat.cle = null;
+  etat.aide = null;
+  etat.edition = false;
+  etat.brouillons = {};
+  // Scène « je ne sais pas » : on simule le refus du serveur (débuts de phrase + « Je passe ce tour »).
+  if (demo.vue.demoAide) {
+    afficher(demo.vue);
+    recevoir({ t: "erreur", message: DEMO_MESSAGE_SANS_REPONSE, code: "sans_reponse", amorces: DEMO_AMORCES });
+    return;
+  }
   afficher(demo.vue);
 }
+
+/** Réponse de démo refusée comme « je ne sais pas » (approximation de estSansReponse, src/texte.js). */
+const demoSansReponse = (t) => /^\s*(je\s+)?(ne\s+)?(sais\s+pas|sait\s+pas|jsp|aucune\s+id[ée]e|je\s+vois\s+pas|euh+|bof)\b[\s.!?…]*$/i.test(String(t ?? ""));
 
 function actionDemo(msg) {
   if (!demo.prevenu) {
@@ -1016,8 +1343,33 @@ function actionDemo(msg) {
       v.moi.depart = { etat: "valide", propositions: DEMO_PROPOSITIONS, gardees: DEMO_PROPOSITIONS.filter((_, i) => msg.garder[i]) };
       break;
     case "reponse":
+      if (demoSansReponse(msg.texte)) {
+        setTimeout(() => recevoir({ t: "erreur", message: DEMO_MESSAGE_SANS_REPONSE, code: "sans_reponse", amorces: DEMO_AMORCES }), 150);
+        return true;
+      }
       if (typeof v.moi.maReponse !== "string" && v.compte) v.compte.repondu++;
       v.moi.maReponse = msg.texte;
+      v.moi.jaiPasse = false;
+      v.moi.peutDonnerPreference = true;
+      break;
+    case "passer":
+      if (typeof v.moi.maReponse !== "string" && v.compte) v.compte.repondu++;
+      v.moi.maReponse = "";
+      v.moi.jaiPasse = true;
+      v.moi.peutDonnerPreference = true;
+      break;
+    case "note":
+      v.moi.maNote = msg.texte || null;
+      break;
+    case "preference":
+      v.moi.maPreference = msg.valeur;
+      break;
+    case "afficher_pseudo":
+      if (v.moi.monIdee) v.moi.monIdee.accordPseudo = msg.accord;
+      if (v.idee) Object.assign(v.idee, { accordPseudo: msg.accord, pseudo: msg.accord ? v.moi.pseudo : null, avatar: msg.accord ? v.moi.avatar : null });
+      break;
+    case "debrief":
+      v.moi.monDebrief = msg.texte || null;
       break;
     case "garder_competence": {
       if (Number.isInteger(msg.departIndex)) {
