@@ -21,12 +21,15 @@ Une partie = 2 à 6 joueurs autour d'une table + un **écran commun** (PC ou pro
 
 1. **Accueil** : l'animateur crée la partie sur l'écran commun, qui affiche un QR code et un code à 4 lettres. Les joueurs rejoignent la partie avec un pseudo et un avatar (emoji).
 2. **Création du personnage** : chaque joueur écrit sur son téléphone 1 ou 2 choses qu'il a déjà faites dans la vraie vie. L'IA en tire **au maximum 3 compétences de départ** (avec les mêmes règles que l'outil existant : liste ROME fermée, citation exacte). Le joueur garde ou retire chacune (« C'est moi / Pas moi »).
-3. **L'histoire « Le tournoi du quartier »** (décision du 19/11/2026) : jusqu'à 6 épisodes qui s'enchaînent, joués **dans l'ordre** (`public/data/problemes.json`, champ `episode`). Pour chaque épisode :
+3. **L'histoire « Le tournoi du quartier »** (décision du 19/11/2026) : de 3 à 6 épisodes qui s'enchaînent, joués **dans l'ordre** de l'histoire (`public/data/problemes.json`, champ `episode`). **Par défaut, autant d'épisodes que de joueurs, entre 3 et 6**, avec des types RIASEC éloignés sur l'hexagone : 3 → E, A, R ; 4 → E, A, I, C ; 5 → E, A, I, R, C ; 6 → les 6 (décision de Pierre du 21/11/2026 §4, adaptations `duree-episode-et-partie` et `defaut-3-episodes-couverture-riasec`). L'animateur peut choisir un autre nombre (1 à 6). Pour chaque épisode :
    1. **Présentation** : l'écran commun affiche l'illustration et la situation, et le MJ la lit à voix haute (synthèse vocale du navigateur).
-   2. **Phase d'échange** (minuteur, 120 s par défaut) : les joueurs **discutent à voix haute** entre eux. Rien n'est saisi.
-   3. **Réponse** (minuteur, 90 s par défaut) : chacun écrit **sa** réponse sur son téléphone. **Elle est privée** : seul son auteur la voit (et le MJ IA la lit). L'écran commun affiche seulement qui a répondu, jamais quoi. **Il n'y a ni bonne ni mauvaise réponse.** Seules deux réponses sont refusées, **au joueur concerné seulement** (les autres ne voient rien et ne sont jamais relancés) : « je ne sais pas » (rien d'autre que de l'hésitation, ou vide) et la violence ; il reçoit un message bienveillant et réécrit (« Toutes les idées comptent ! … », « Ici, on cherche une solution sans violence… »). On boucle ainsi jusqu'à ce que tout le monde ait donné une vraie réponse ; l'animateur peut passer sans attendre (un absent a une réponse vide).
-   4. **L'idée du tour** : dès que tout le monde a répondu, le MJ IA choisit **l'idée qui fait avancer l'histoire** (effet `choisir`, un seul appel avec toutes les réponses anonymes J1, J2…) et l'écran l'affiche avec le **pseudo** de son auteur et **ses propres mots** (la preuve, extrait exact de sa réponse). **Seul ce joueur reçoit une compétence** ; il l'écrit sur sa fiche papier et dit s'il la garde (« Je la garde / Pas moi »), ce qui lance l'épisode suivant (l'animateur peut aussi passer). À idées comparables, le MJ préfère un joueur pas encore retenu. Ce n'est pas un classement : l'idée est présentée comme « l'idée retenue pour la suite de l'histoire », jamais comme « la meilleure ». Personne n'a rien écrit : pas d'idée retenue, l'histoire continue.
-4. **Fin** : chaque joueur voit **sa fiche** sur son téléphone : compétences de départ et compétences gagnées en jeu, avec leurs preuves, ses repères RIASEC, des métiers à découvrir (O*NET + ESCO), un lien pour imprimer sa fiche et la fiche pour le psy. L'écran commun affiche un message de fin **collectif**, sans aucune comparaison entre joueurs.
+   2. **Réflexion silencieuse** (minuteur, 30 s par défaut ; options 0 / 20 / 30 / 45 s ; 0 la désactive) : chacun réfléchit seul à ce qu'il ferait et peut noter un mot sur son téléphone (note privée, facultative, jamais évaluée, jamais envoyée au MJ ni à l'écran). À la fin du temps, la discussion démarre **d'elle-même**, sans rien couper (adaptations `ordre-oral-puis-ecrit`, `nouveau-temps-de-reflexion-individuel`, `nouveau-premiere-idee-avant-discussion` ; 30 s est un choix de conception à chronométrer : principe transposé de Tobin et du brainstorming, objectif différent — critique point 23).
+   3. **Phase d'échange** (minuteur ; par défaut **max(90, 30 × nombre de joueurs) s** : 90 s jusqu'à 3 joueurs, 120 s à 4, 150 s à 5, 180 s à 6 ; heuristique à valider au chronomètre, adaptation `duree-discussion-120s`) : les joueurs **discutent à voix haute** entre eux. Rien n'est saisi.
+   4. **Réponse** (minuteur, 90 s par défaut) : chacun écrit **sa** réponse sur son téléphone. **Elle est privée** : seul son auteur la voit (et le MJ IA la lit). L'écran commun affiche seulement qui a répondu, jamais quoi. **Il n'y a ni bonne ni mauvaise réponse.** Seules deux réponses sont refusées, **au joueur concerné seulement** (les autres ne voient rien et ne sont jamais relancés) : « je ne sais pas » (rien d'autre que de l'hésitation, ou vide) et la violence ; il reçoit un message bienveillant (« Toutes les idées comptent ! … », « Ici, on cherche une solution sans violence… »). Dès le **1er** « je ne sais pas », le refus porte le code `sans_reponse` : le téléphone propose des débuts de phrase (« Moi, je demanderais à… », « D'abord, je… », « J'irais voir… ») et un bouton **« Je passe ce tour »**, sans reproche (réponse vide, comme un absent ; décision de Pierre §3, critique point 11). Le fait d'avoir passé est signalé **au psychologue seulement**, sur la fiche (`passes`), jamais au groupe : l'écran le voit « fini » comme les autres. La violence reste refusée. L'animateur peut passer sans attendre (un absent a une réponse vide). Après sa réponse, une question **facultative** : « Ce genre de situation, tu aimerais en vivre dans un travail ? » (oui / un peu / non, sans score ; adaptation `nouveau-preference-par-episode`).
+   5. **L'idée du tour** : dès que tout le monde a répondu, le MJ IA choisit **l'idée qui fait avancer l'histoire** (effet `choisir`, un seul appel avec toutes les réponses anonymes J1, J2…). Les réponses sont **mélangées (Fisher-Yates) avant l'étiquetage J1, J2…**, avec un tirage enregistré dans l'état (`tirages`) pour pouvoir le vérifier (adaptation `idee-du-tour`). **Rotation stricte, contrôlée par le serveur** : si au moins un joueur pas encore retenu a écrit une vraie réponse (pas du remplissage), l'idée est choisie parmi eux ; sinon « rotation non respectée » → MJ de secours parmi eux (adaptation `rotation-joueurs-retenus`). Garantie : tout joueur qui répond sérieusement à chaque épisode est retenu au moins une fois (6 joueurs au plus, autant d'épisodes que de joueurs). L'écran affiche d'abord l'idée **sans nom** (« Cette idée fait avancer l'histoire : « … » », ses propres mots, extrait exact de sa réponse) ; son auteur reçoit sur son téléphone « C'est ton idée ! On affiche ton pseudo ? [Oui] [Non, reste discret] » et le pseudo n'apparaît que sur Oui (décision de Pierre §2). Il reçoit la compétence de l'idée dans les deux cas, l'écrit sur sa fiche papier et dit s'il la garde (« Je la garde / Pas moi »). L'animateur peut **« Choisir une autre idée »** : le joueur proposé est écarté pour cet épisode, le MJ choisit parmi les autres réponses (le MJ propose, l'animateur valide ; adaptation `mj-ia-bienveillant`). Ce n'est pas un classement : l'idée n'est jamais présentée comme « la meilleure ». Personne n'a rien écrit : pas d'idée retenue, l'histoire continue.
+   6. **Compétences privées** (décision de Pierre §1, critique point 3) : ensuite, **chaque autre réponse écrite** peut recevoir une compétence, affichée **seulement sur le téléphone de son auteur** (effet `attribuer`), **uniquement si la réponse contient une action précise et citable** (citation exacte d'au moins 3 mots, ou la réponse entière ; pas la carte « participation ») ; sinon le joueur retrouve simplement son idée, sans compétence. Promesse affichée : « chacun a la même chance d'en recevoir une », jamais « chacun repart avec au moins une ». L'épisode suivant démarre quand l'auteur de l'idée a répondu aux deux questions et que chacun a dit s'il garde sa compétence privée (ou quand l'animateur passe ; une compétence restée sans réponse reste modifiable plus tard).
+4. **Débrief** (réglage `debrief`, désactivé par défaut tant que les écrans ne l'affichent pas) : après le dernier épisode, l'écran pose « Quel moment de l'histoire t'a surpris ? », « Quelle compétence de ta fiche te ressemble le plus ? », « Raconte une fois, dans ta vraie vie, où tu l'as déjà utilisée. » ; la réponse à la 3e question est écrite en privé (facultative) et va sur la fiche pour le psychologue. L'animateur termine (adaptation `nouveau-debriefing` ; durée et questions : choix de conception).
+5. **Fin** : chaque joueur voit **sa fiche** sur son téléphone : compétences de départ et compétences gagnées en jeu, avec leurs preuves, ses repères RIASEC, des métiers à découvrir (O*NET + ESCO), un lien pour imprimer sa fiche et la fiche pour le psy. L'écran commun affiche un message de fin **collectif**, sans aucune comparaison entre joueurs.
 
 **Jamais affiché nulle part** : le mot « faux », « mauvaise réponse », un score, un classement, ou qui a trouvé. Le contenu d'une réponse n'est montré qu'à son auteur.
 
@@ -79,7 +82,7 @@ Chaque agent ne modifie **que les fichiers dont il est propriétaire**. S'il a b
 
 | Méthode | Route | Effet |
 |---|---|---|
-| POST | `/api/parties` | crée une partie. Corps optionnel `{ nbProblemes?: 1..6, dureeEchange?: s, dureeReponse?: s }`. Génère un code de 4 lettres majuscules sans voyelle ambiguë (alphabet `BCDFGHJKLMNPQRSTVWXZ`), initialise le DO `getByName(code)`, et renvoie `{ code, cleEcran }` (voir « Accès animateur » ci-dessous) |
+| POST | `/api/parties` | crée une partie. Corps optionnel `{ nbProblemes?: 1..6, dureeEchange?: s, dureeReponse?: s, dureeReflexion?: 0 \| 10..120, debrief?: bool }` (`nbProblemes` et `dureeEchange` absents = automatiques selon le nombre de joueurs, figés au démarrage ; réflexion 30 s par défaut). Génère un code de 4 lettres majuscules sans voyelle ambiguë (alphabet `BCDFGHJKLMNPQRSTVWXZ`), initialise le DO `getByName(code)`, et renvoie `{ code, cleEcran }` (voir « Accès animateur » ci-dessous) |
 | GET | `/api/parties/:code/ws?role=ecran&cle=<cleEcran>` | WebSocket de l'écran commun (animateur) : `cle` obligatoire, sinon fermeture **4003** (§2.3) |
 | GET | `/api/parties/:code/ws?role=joueur&joueur=<id?>` | WebSocket d'un joueur (`joueur` absent = nouveau joueur) |
 | GET | `/api/parties/:code/fiche/:joueurId` | JSON de la fiche du joueur (pour `fiche.html`) ; 404 si inconnu |
@@ -120,14 +123,22 @@ Tous les messages sont du JSON `{ t: "<type>", ... }`.
 | écran | `{ t:"fin_minuteur" }` | termine le minuteur en cours et passe à la suite (même si le temps est déjà écoulé) |
 | écran | `{ t:"reglages", dureeEchange?, dureeReponse? }` | phase `accueil` seulement |
 
-Tout message invalide ou hors phase → `{ t:"erreur", message }` en français, sans changer l'état.
+| joueur | `{ t:"note", texte }` | phases `reflexion` et `echange` (0 à 200 caractères) : note privée, jamais envoyée au MJ ni à l'écran |
+| joueur | `{ t:"passer" }` | phase `reponse` : « Je passe ce tour » (réponse vide, `passe:true`) ; une vraie réponse envoyée ensuite la remplace |
+| joueur | `{ t:"preference", valeur:"oui"\|"un_peu"\|"non", problemeIndex? }` | après sa réponse (épisode en cours) ou pour un épisode déjà joué ; ne fait jamais avancer |
+| joueur | `{ t:"afficher_pseudo", accord:bool }` | phase `competences`, auteur de l'idée du tour seulement |
+| joueur | `{ t:"debrief", texte }` | phase `debrief` (0 à 500 caractères, privé) |
+| écran | `{ t:"autre_idee" }` | phase `competences`, une idée affichée : le MJ choisit parmi les autres réponses |
+| écran | `{ t:"reglages", …, dureeReflexion?, nbProblemes?: 1..6\|null, debrief? }` | phase `accueil` (`nbProblemes:null` = retour à l'automatique) |
+
+Tout message invalide ou hors phase → `{ t:"erreur", message }` en français, sans changer l'état. Un refus de réponse porte en plus `code` : `"sans_reponse"` (« je ne sais pas ») ou `"violence"`.
 
 ## 3. Machine à états (`src/jeu.js`, PURE)
 
 `src/jeu.js` **n'a aucune I/O** : pas de `fetch`, pas d'horloge système (le temps `maintenant` est passé en paramètre), pas d'aléatoire non injecté. API :
 
 ```js
-export function creerEtat({ code, problemes, nbProblemes = 3, dureeEchange = 120, dureeReponse = 90, graine }) → etat
+export function creerEtat({ code, problemes, nbProblemes /* absent = auto */, dureeEchange /* absent = auto */, dureeReponse = 90, dureeReflexion = 30, debrief = false, graine }) → etat
 export function appliquer(etat, evenement, maintenant) → { etat, effets }
 export function vue(etat, role, joueurId) → objet sérialisable (vue filtrée)
 export function effetsIAEnAttente(etat) → [effets IA que l'état attend encore] (chien de garde du DO)
@@ -137,13 +148,16 @@ export const AVATARS = ["🦊","🐼","🦁","🐸","🐙","🦉","🐢","🐝",
 - `evenement` = un message client enrichi `{ ...msg, role, joueurId }` **ou** un événement interne :
   - `{ t:"minuteur_fini" }` : l'alarme du minuteur. Elle **ne fait jamais avancer la partie** : elle met `tempsEcoule:true` (une seule fois). On attend que tout le monde ait répondu (`reponse`, `choix`), ou l'animateur (`fin_minuteur` / `suivant`)
   - `{ t:"analyse_faite", joueurId, competences }` (création du personnage ; accepté aussi **après** `creation` si le joueur était encore en `analyse` quand l'animateur a clos la création : ses propositions deviennent alors directement des compétences de départ en attente)
-  - `{ t:"attribution_faite", problemeIndex, competences: { [joueurId]: competence } }`
+  - `{ t:"attribution_faite", problemeIndex, essai?, joueurId, competence }` (l'idée du tour ; refusée si `essai` périmé, si le joueur a été écarté par l'animateur, ou si la rotation stricte n'est pas respectée)
+  - `{ t:"competences_privees", problemeIndex, competences: { [joueurId]: competence } }` (une seule fois par épisode, acceptée même après le passage à l'épisode suivant)
+  - `{ t:"erreur_ia", tache:"attribuer", problemeIndex }` : compétences privées impossibles → chacun garde son idée
   - `{ t:"erreur_ia", tourId|joueurId }` → dernier recours quand l'IA **et** le mock échouent : récit → 0 proposition (le joueur peut valider ; après `creation` : `depart.etat:"valide"`, 0 compétence de départ) ; évaluation → `indice` ; attribution → chaque joueur reçoit la compétence de participation (jamais sans compétence)
 - `effets` = une liste d'actions que le DO exécute **après** avoir persisté le nouvel état :
   - `{ type:"minuteur", fin: <epoch ms> }` (programme l'alarme) / `{ type:"annuler_minuteur" }`
   - `{ type:"analyser_recit", joueurId, texte }`
   - `{ type:"evaluer", tourId, probleme, reponses:[{ joueurId, texte }], secours? }`
-  - `{ type:"choisir", problemeIndex, probleme, reponses: [{ joueurId, texte, dejaRetenu }], secours? }` → `{ t:"attribution_faite", problemeIndex, joueurId|null, competence|null }` (une seule compétence, pour l'auteur de l'idée du tour)
+  - `{ type:"choisir", problemeIndex, essai, probleme, reponses: [{ joueurId, texte, dejaRetenu }] /* mélangées */, obligatoires: [joueurId], secours? }` → `{ t:"attribution_faite", problemeIndex, essai, joueurId|null, competence|null }` (la compétence de l'idée du tour)
+  - `{ type:"attribuer", problemeIndex, probleme, reponses: [{ joueurId, texte }] }` → `mj.attribuer` (un appel par joueur) → `{ t:"competences_privees", … }`
   - `{ type:"nettoyer", fin }` (supprime la partie une heure après la fin)
   - `secours: true` = calculer directement avec le MJ mock (relance par l'écran ou par le chien de garde).
 - **Chien de garde IA (DO)** : `effetsIAEnAttente` liste aussi `analyser_recit` pour un joueur resté en `analyse` **après** la création (création close par l'animateur). Pour chaque effet IA, le DO persiste une échéance (`gardesIA`, 45 s) **avant** l'appel et programme l'alarme au plus tard à cette échéance. Si l'appel est perdu (redémarrage du DO, rechargement de `wrangler dev`, déploiement), l'alarme reconstruit l'effet avec `effetsIAEnAttente(etat)` et le relance avec le mock. Un résultat en double est refusé par les gardes de `tourId`, de `problemeIndex` et d'attribution déjà présente.
@@ -152,17 +166,19 @@ export const AVATARS = ["🦊","🐼","🦁","🐸","🐙","🦉","🐢","🐝",
 ### 3.1 Phases
 
 ```
-accueil → creation → [ presentation → echange → reponse → competences ] × nbProblemes → fin
+accueil → creation → [ presentation → reflexion? → echange → reponse → competences ] × nbProblemes → debrief? → fin
 ```
 
 | Phase | Entrée | Sortie |
 |---|---|---|
 | `accueil` | création | écran `demarrer` (≥ 1 joueur) |
 | `creation` | | dès que **tous** les joueurs ont validé leurs compétences de départ, **ou** écran `suivant`. Dans ce cas, un joueur dont l'analyse est prête (`a_valider`) mais qui n'a pas validé ne perd rien : ses propositions deviennent des compétences de départ **en attente** (`problemeIndex:null`, `gardee:null`, `departIndex`), `depart.etat:"valide"` ; il les garde ou les retire plus tard (`garder_competence` avec `departIndex`, listées dans `moi.competencesEnAttente`). Un joueur encore en `analyse` : son `analyse_faite` est accepté hors `creation` et donne de même des compétences en attente. Un joueur qui n'a rien écrit n'a aucune compétence de départ |
-| `presentation` | chaque joueur valide « J'ai lu » | **tous** ont lu, **ou** écran `suivant` |
+| `presentation` | chaque joueur valide « J'ai lu » | **tous** ont lu, **ou** écran `suivant` → `reflexion` (ou `echange` si `dureeReflexion` = 0) |
+| `reflexion` | minuteur `dureeReflexion` | à 0, **passe seule** à `echange` (seule phase qui avance d'elle-même) ; écran `fin_minuteur`/`suivant` |
 | `echange` | minuteur `dureeEchange` | écran `fin_minuteur`/`suivant` (à 0, `tempsEcoule` : on attend l'animateur) |
 | `reponse` | minuteur `dureeReponse` | tous ont donné une vraie réponse, **ou** écran `fin_minuteur`/`suivant` → effet `attribuer`, phase `competences` (les absents : réponse vide). À 0, `tempsEcoule` : les joueurs peuvent encore répondre |
 | `competences` | « Le MJ lit vos idées… » (effet `choisir`) puis l'idée du tour à l'écran (vue `idee` : pseudo, avatar, texte, compétence) | `attribution_faite` → chaque joueur voit sa compétence ; quand l'**auteur de l'idée** a répondu `garder_competence`, **ou** écran `suivant` → problème suivant (`presentation`) ou `fin`. Avant l'attribution, écran `suivant` = relance avec le MJ de secours. Une compétence restée sans réponse reste modifiable ensuite (`garder_competence` avec `problemeIndex`) |
+| `debrief` | (réglage `debrief`) après le dernier épisode | écran `suivant` → `fin` |
 | `fin` | effet `nettoyer` | — |
 
 Un joueur qui rejoint après `accueil` est refusé (« La partie a déjà commencé ») **sauf reconnexion** avec un `joueurId` connu. Un joueur déconnecté reste dans la partie : s'il ne répond pas, sa réponse est vide.
@@ -172,22 +188,29 @@ Un joueur qui rejoint après `accueil` est refusé (« La partie a déjà commen
 ```js
 {
   code, phase, creeA, graine,
-  reglages: { nbProblemes, dureeEchange, dureeReponse },
+  reglages: { nbProblemes, nbProblemesAuto, dureeEchange, dureeEchangeAuto, dureeReponse, dureeReflexion, debrief },
   problemes: [ids tirés], problemeIndex, tour /*1|2*/, tourId /*string unique*/,
   minuteurFin: epoch|null, minuteurDebut: epoch|null,
   joueurs: { [id]: { id, pseudo, avatar, connecte, recit, depart:{ etat:"attente"|"analyse"|"a_valider"|"valide", propositions:[…], gardees:[…] },
-                     reponses: { [problemeIndex]: { tour1: texte|null, lu: bool } },
-                     competences: [ { problemeIndex|null, departIndex? /* compétences de départ */, code, libelle, mots, preuve, typePreuve:"vecu"|"jeu"|"participation", riasec, gardee: bool|null } ] } },
+                     reponses: { [problemeIndex]: { tour1: texte|null, lu: bool, note?, passe?: true, preference?: "oui"|"un_peu"|"non", retour?: "competence"|"idee" } },
+                     competences: [ { problemeIndex|null, departIndex? /* compétences de départ */, idee?: bool /* true = idée du tour, false = compétence privée */, code, libelle, mots, preuve, typePreuve:"vecu"|"jeu"|"participation", riasec, gardee: bool|null } ],
+                     debrief: texte|null } },
   attribution: { [id]: competence } | null,
+  idee: { joueurId|null, accordPseudo: bool|null } | null,
+  tirages: { [problemeIndex]: { essai, graine, ordre:[joueurId] } },   // mélange de Fisher-Yates enregistré
+  essaisChoix: { [problemeIndex]: n }, exclus: { [problemeIndex]: [joueurId] },  // « Choisir une autre idée »
+  privees: { [problemeIndex]: "attente"|"fait" },                      // compétences privées
 }
 ```
 
 ### 3.3 Vues (`vue(etat, role, joueurId)`)
 
 - **écran** : `{ code, phase, problemeIndex, nbProblemes, probleme:{ id,titre,situation,question,illustration } | null, minuteurFin, minuteurDebut, minuteurDuree, joueurs:[{ pseudo, avatar, connecte, aFini }]` (`aFini` : ce joueur a-t-il lu / validé / répondu / choisi / gardé sa compétence dans la phase en cours, `null` si la phase n'attend rien des joueurs ; décision de Pierre du 19/11/2026 : l'animateur doit voir **qui** il attend, jamais **ce que** le joueur a répondu), `compte:{ repondu, total }` (rempli en `creation`, `presentation`, `reponse`, `indice`, `choix` et `competences`), `tempsEcoule` (minuteur à 0, la partie attend), `reglages`, `attenteIA` (le MJ travaille), `evaluation:{ resolu, synthese|null }` (pendant `solution`), `indice` (pendant `indice` et après), `choix:[textes]` (pendant `choix`, **sans** dire lequel est correct), `solution` (pendant `solution`), `fin:{ nbCompetencesTotal }` }. **Jamais** le texte d'une réponse, jamais quel joueur a trouvé, jamais les compétences d'un joueur nommé.
-- **joueur** : `{ code, phase, moi:{ id, pseudo, avatar, depart, aLu, maReponse, competenceDuProbleme, competencesEnAttente, competences }, probleme…, minuteurFin, minuteurDebut, minuteurDuree, tempsEcoule, compte, indice, choix, solution, fin:{ lienFiche } }` : uniquement **ses** données à lui.
+- **écran** (ajouts du 21/11/2026) : `idee:{ pseudo|null, avatar|null, accordPseudo, texte, competence, notee }` (pseudo et avatar `null` tant que l'auteur n'a pas dit oui), `autreIdeePossible`, `reglages` complets (avec `nbProblemesAuto`, `dureeEchangeAuto`, `dureeReflexion`, `debrief`). En `competences`, `compte` ne compte que les joueurs qui ont quelque chose à trancher. Jamais une compétence privée, jamais qui a passé son tour.
+- **joueur** : `{ code, phase, moi:{ id, pseudo, avatar, depart, aLu, maNote, maReponse, jaiPasse, sansReponse, maPreference, peutDonnerPreference, monIdee:{ accordPseudo }|null, retourPrive:"competence"|"idee"|null, competenceDuProbleme, competencesEnAttente, competences, monDebrief }, probleme…, minuteurFin, minuteurDebut, minuteurDuree, tempsEcoule, compte, idee, fin:{ lienFiche } }` : uniquement **ses** données à lui. `competenceDuProbleme` (idée du tour ou compétence privée) n'apparaît qu'une fois l'idée du tour affichée. `sansReponse` : l'animateur est passé sans sa réponse (« Pas de souci, l'histoire continue. Tu pourras proposer ton idée au prochain épisode. »).
+- **Fiche** (`GET /api/parties/:code/fiche/:joueurId`) : en plus des compétences, `problemes[i]` porte `riasec` et `questionVecu`, et la fiche donne `passes:[{ index, titre }]` (pour le psychologue : « A préféré passer à l'épisode X : à explorer en entretien »), `preferences:[{ index, titre, valeur }]` et `debrief`.
   - `competencesEnAttente` : ses compétences encore sans réponse (`gardee:null`), **hors** `competenceDuProbleme` (déjà affichée) : compétences de jeu (chacune porte son `problemeIndex`, à renvoyer dans `garder_competence`) et compétences de départ mises en attente quand l'animateur a clos la création (`problemeIndex:null` + `departIndex`, à renvoyer dans `garder_competence`), celles de départ en premier. Le téléphone les propose avec le même bloc « Cette compétence t'attend » (« Je la garde / Pas moi ») à tout moment, y compris en phase `fin`. La fiche (`fiche.js`) ne montre une compétence qu'une fois gardée (`gardee:true`).
-- **Minuteur (les deux vues)** : `minuteurFin` (epoch ms du serveur), `minuteurDebut` (epoch ms du serveur) et `minuteurDuree` (ms, = `minuteurFin - minuteurDebut`), tous `null` hors `echange`/`reponse`/`echange2`/`choix`. Le client calcule `total = minuteurDuree` et `reste = minuteurFin - (Date.now() + decalage)` avec le `decalage` du dernier `{ t:"etat", serveur }` (§2.3) : le cercle reste juste après un rechargement de la page et ne dépend pas de l'horloge du téléphone.
+- **Minuteur (les deux vues)** : `minuteurFin` (epoch ms du serveur), `minuteurDebut` (epoch ms du serveur) et `minuteurDuree` (ms, = `minuteurFin - minuteurDebut`), tous `null` hors `reflexion`/`echange`/`reponse`. Le client calcule `total = minuteurDuree` et `reste = minuteurFin - (Date.now() + decalage)` avec le `decalage` du dernier `{ t:"etat", serveur }` (§2.3) : le cercle reste juste après un rechargement de la page et ne dépend pas de l'horloge du téléphone.
 
 ## 4. Données
 

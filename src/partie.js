@@ -15,7 +15,7 @@
 // Rien n'est conservé après la partie : deleteAll() une heure après la fin
 // (et après 6 h d'inactivité pour une partie abandonnée).
 //
-// Chien de garde IA : chaque appel IA (analyse du récit, évaluation, attribution)
+// Chien de garde IA : chaque appel IA (analyse du récit, idée du tour, compétences privées)
 // laisse une échéance dans le stockage (clé "gardesIA"). Si l'appel est perdu
 // (redémarrage du DO, rechargement de wrangler dev, déploiement), l'alarme
 // relance l'étape avec le MJ mock à l'échéance : la partie ne reste jamais bloquée.
@@ -26,6 +26,20 @@ import { analyser, versCompetenceDepart } from "./analyse.js";
 import { problemes, rome } from "./donnees.js";
 
 const ROLES = new Set(["ecran", "joueur"]);
+
+/**
+ * Rotation stricte, contrôlée par le serveur (adaptation « rotation-joueurs-retenus ») :
+ * si des joueurs pas encore retenus ont écrit une vraie réponse (`obligatoires`,
+ * calculés par jeu.js), l'idée doit être l'une des leurs. Sinon, « rotation non
+ * respectée » : le MJ de secours choisit parmi eux seulement.
+ */
+export async function respecterRotation(choix, entree, obligatoires) {
+  if (!Array.isArray(obligatoires) || !obligatoires.length) return choix;
+  if (choix?.joueurId && obligatoires.includes(choix.joueurId)) return choix;
+  console.warn("[partie] rotation non respectée : le MJ de secours choisit parmi les joueurs pas encore retenus");
+  const reponses = (entree.reponses ?? []).filter((r) => obligatoires.includes(r.joueurId));
+  return mjMock({ rome }).choisir({ ...entree, reponses });
+}
 /** Code de fermeture d'un écran sans la bonne clé animateur (SPEC §2.3). */
 export const CODE_ACCES_REFUSE = 4003;
 export const MESSAGE_ACCES_REFUSE = "Accès animateur refusé : cette page ne s'ouvre que depuis l'ordinateur qui a créé la partie.";
@@ -108,14 +122,14 @@ export class Partie extends DurableObject {
    * transmettre UNE fois au créateur), ou false si ce code est déjà utilisé (le
    * worker retente alors avec un autre code).
    */
-  async init({ code, nbProblemes, dureeEchange, dureeReponse } = {}) {
+  async init({ code, nbProblemes, dureeEchange, dureeReponse, dureeReflexion, debrief } = {}) {
     if (this.etat) return false;
     const graine = crypto.getRandomValues(new Uint32Array(1))[0];
     const maintenant = Date.now();
     const cleEcran = crypto.randomUUID();
     // `cleEcran` vit dans l'état persisté, mais vue() et fiche() construisent leurs
     // objets champ par champ : elle n'en sort jamais.
-    const etat = { ...creerEtat({ code, problemes, nbProblemes, dureeEchange, dureeReponse, graine, maintenant }), cleEcran };
+    const etat = { ...creerEtat({ code, problemes, nbProblemes, dureeEchange, dureeReponse, dureeReflexion, debrief, graine, maintenant }), cleEcran };
     this.etat = etat;
     await this.ctx.storage.put({ etat, activite: maintenant });
     await this.ctx.storage.setAlarm(maintenant + DELAI_ABANDON_MS);
@@ -128,6 +142,8 @@ export class Partie extends DurableObject {
     const j = e?.joueurs?.[joueurId];
     if (!j) return null;
     const competences = structuredClone(j.competences ?? []);
+    const titre = (id) => e.catalogue?.[id]?.titre ?? id;
+    const reponse = (index) => j.reponses?.[index] ?? null;
     return {
       code: e.code,
       phase: e.phase,
@@ -137,7 +153,24 @@ export class Partie extends DurableObject {
       competences,
       depart: competences.filter((c) => c.problemeIndex === null),
       jeu: competences.filter((c) => c.problemeIndex !== null),
-      problemes: e.problemes.map((id, index) => ({ index, id, titre: e.catalogue?.[id]?.titre ?? id })),
+      problemes: e.problemes.map((id, index) => ({
+        index,
+        id,
+        titre: titre(id),
+        riasec: e.catalogue?.[id]?.riasec ?? null,
+        questionVecu: e.catalogue?.[id]?.questionVecu ?? null,
+      })),
+      // Pour le psychologue seulement (décision de Pierre §3) : les épisodes où le
+      // jeune a préféré passer son tour, à explorer en entretien. Jamais montré au groupe.
+      passes: e.problemes
+        .map((id, index) => ({ index, titre: titre(id) }))
+        .filter(({ index }) => reponse(index)?.passe === true),
+      // « Ce genre de situation, tu aimerais en vivre dans un travail ? » (facultatif, sans score).
+      preferences: e.problemes
+        .map((id, index) => ({ index, titre: titre(id), valeur: reponse(index)?.preference ?? null }))
+        .filter((p) => p.valeur !== null),
+      // Débrief : « Raconte une fois, dans ta vraie vie, où tu l'as déjà utilisée » (privé).
+      debrief: typeof j.debrief === "string" && j.debrief ? j.debrief : null,
     };
   }
 
@@ -414,9 +447,10 @@ export class Partie extends DurableObject {
     if (!this.etat) return false;
     const maintenant = Date.now();
     const avant = this.etat;
-    const { etat, effets, erreur } = appliquer(avant, evenement, maintenant);
+    const { etat, effets, erreur, code } = appliquer(avant, evenement, maintenant);
     if (erreur) {
-      if (origine) envoyer(origine, { t: "erreur", message: erreur });
+      // `code` (ex. "sans_reponse") : le téléphone propose des débuts de phrase et « Je passe ce tour ».
+      if (origine) envoyer(origine, code ? { t: "erreur", message: erreur, code } : { t: "erreur", message: erreur });
       else console.log(`[partie ${avant.code}] événement ignoré (${evenement.t}) : ${erreur}`);
       return false;
     }
@@ -446,6 +480,7 @@ export class Partie extends DurableObject {
           break;
         case "analyser_recit":
         case "choisir":
+        case "attribuer":
           // Échéance du chien de garde, PERSISTÉE avant l'appel : elle survit à un redémarrage.
           this.gardes[cleIA(effet)] = maintenant + DELAI_GARDE_IA_MS;
           gardesChangees = true;
@@ -506,10 +541,10 @@ export class Partie extends DurableObject {
       evenement = await this.calculerIA(effet);
     } catch (err) {
       console.error(`[partie] échec IA (${effet.type}) :`, err?.message ?? err);
-      evenement =
-        effet.type === "analyser_recit"
-          ? { t: "erreur_ia", joueurId: effet.joueurId }
-          : { t: "erreur_ia" }; // attribution : jeu.js donne la participation à chacun
+      if (effet.type === "analyser_recit") evenement = { t: "erreur_ia", joueurId: effet.joueurId };
+      // Compétences privées : chacun garde son idée, sans compétence cette fois.
+      else if (effet.type === "attribuer") evenement = { t: "erreur_ia", tache: "attribuer", problemeIndex: effet.problemeIndex };
+      else evenement = { t: "erreur_ia" }; // idée du tour : pas d'idée retenue, l'histoire continue
     }
     // Les résultats périmés (autre tour, autre problème, autre phase) sont refusés par jeu.js.
     await this.traiter(evenement);
@@ -554,7 +589,8 @@ export class Partie extends DurableObject {
         };
       }
       case "choisir": {
-        // L'idée du tour : le MJ choisit une réponse, son auteur reçoit la compétence.
+        // L'idée du tour : le MJ choisit une réponse (réponses déjà mélangées par
+        // jeu.js, tirage enregistré), son auteur reçoit la compétence.
         const entree = { probleme: effet.probleme, reponses: effet.reponses ?? [], pseudos: this.pseudos() };
         let choix;
         try {
@@ -563,7 +599,25 @@ export class Partie extends DurableObject {
           console.warn("[partie] choix de l'idée impossible, bascule sur le mock :", err?.message ?? err);
           choix = await mjMock({ rome }).choisir(entree);
         }
-        return { t: "attribution_faite", problemeIndex: effet.problemeIndex, joueurId: choix?.joueurId ?? null, competence: choix?.competence ?? null };
+        choix = await respecterRotation(choix, entree, effet.obligatoires);
+        const ev = { t: "attribution_faite", problemeIndex: effet.problemeIndex, joueurId: choix?.joueurId ?? null, competence: choix?.competence ?? null };
+        if (Number.isInteger(effet.essai)) ev.essai = effet.essai;
+        return ev;
+      }
+      case "attribuer": {
+        // Compétences privées : une par autre réponse, si elle contient une action
+        // citable (jeu.js le vérifie ; sinon le joueur garde simplement son idée).
+        // Un appel à l'IA par joueur (mj.attribuer) : jamais la réponse d'un autre dans le prompt.
+        const historique = Object.fromEntries((effet.reponses ?? []).map((r) => [r.joueurId, { reponses: [r.texte], choix: null }]));
+        const entree = { probleme: effet.probleme, historique, pseudos: this.pseudos() };
+        let competences;
+        try {
+          competences = await mj.attribuer(entree);
+        } catch (err) {
+          console.warn("[partie] compétences privées impossibles, bascule sur le mock :", err?.message ?? err);
+          competences = await mjMock({ rome }).attribuer(entree);
+        }
+        return { t: "competences_privees", problemeIndex: effet.problemeIndex, competences: competences ?? {} };
       }
       default:
         throw new Error(`Effet IA inconnu : ${effet.type}`);
