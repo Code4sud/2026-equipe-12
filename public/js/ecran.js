@@ -4,7 +4,7 @@
 // (/api/parties/<code>/ws?role=ecran), reçoit après chaque changement une vue
 // complète { t:"etat", vue } (SPEC §3.3) et l'affiche telle quelle.
 // Les boutons de l'animateur envoient seulement { t:"demarrer" | "suivant" |
-// "fin_minuteur" | "reglages" } ; c'est le serveur qui décide.
+// "fin_minuteur" | "autre_idee" | "reglages" } ; c'est le serveur qui décide.
 //
 // Accès animateur : l'accueil ouvre ecran.html?code=XXXX#cle=<cleEcran>. La clé
 // (fragment : jamais envoyé au serveur) est rangée dans sessionStorage sous
@@ -19,6 +19,10 @@
 // Les fonctions pures sont exportées (tests `node --test`) ; le code qui touche
 // au DOM ne s'exécute que dans un navigateur.
 
+import { decouperPhrases, texteEpisode, ANNONCE_CADRE, QUESTIONS_DEBRIEF } from "./joueur-outils.js";
+
+export { decouperPhrases };
+
 // ---------------------------------------------------------------------------
 // Constantes
 // ---------------------------------------------------------------------------
@@ -27,9 +31,11 @@ export const LIBELLES_PHASES = {
   accueil: "Accueil",
   creation: "Création des personnages",
   presentation: "Présentation de l'épisode",
+  reflexion: "Réflexion en silence",
   echange: "Discussion",
   reponse: "Réponses sur les téléphones",
   competences: "Compétences",
+  debrief: "Débrief",
   fin: "Fin de la partie",
 };
 
@@ -42,10 +48,22 @@ export const RIASEC = {
   C: { nom: "Conventionnel", verbe: "Gérer, être précis" },
 };
 
-const DUREES_DEFAUT = { dureeEchange: 120, dureeReponse: 90 };
-const OPTIONS_ECHANGE = [60, 90, 120, 180, 240, 300];
+// Valeurs de repli seulement : les vraies durées arrivent dans vue.reglages
+// (discussion automatique selon le nombre de joueurs, SPEC §1).
+const DUREES_DEFAUT = { dureeEchange: 120, dureeReponse: 90, dureeReflexion: 30 };
+const OPTIONS_ECHANGE = [60, 90, 120, 150, 180, 240, 300];
 const OPTIONS_REPONSE = [45, 60, 90, 120, 180];
-const PHASES_MINUTEUR = new Set(["echange", "reponse"]);
+// Réflexion silencieuse : 0 la désactive (adaptation « nouveau-temps-de-reflexion-individuel »).
+const OPTIONS_REFLEXION = [0, 20, 30, 45];
+const PHASES_MINUTEUR = new Set(["reflexion", "echange", "reponse"]);
+
+/** Taille de groupe conseillée (adaptation « taille-groupe-1-a-6 »). */
+export const TAILLE_CONSEILLEE = "Souvent recommandé : 3 à 5 joueurs (6 maximum).";
+/** Aide animateur : un joueur sans téléphone (adaptation « telephone-sans-installation »). */
+export const AIDE_TABLETTE = "Un joueur sans téléphone, sans batterie ou sans données ? Donne-lui une tablette du Centre : même QR code ou même code, aucune installation.";
+
+/** Nombre d'épisodes automatique (copie de nbEpisodesParDefaut, src/jeu.js) : 1 par joueur, entre 3 et 6. */
+export const episodesAuto = (nbJoueurs) => Math.min(6, Math.max(3, Number(nbJoueurs) || 0));
 
 // ---------------------------------------------------------------------------
 // Fonctions pures (testables sous Node)
@@ -184,7 +202,14 @@ export function dureePhase(phase, reglages = {}) {
   const r = { ...DUREES_DEFAUT, ...reglages };
   if (phase === "echange") return r.dureeEchange;
   if (phase === "reponse") return r.dureeReponse;
+  if (phase === "reflexion") return r.dureeReflexion;
   return null;
+}
+
+/** 30 → "30 secondes" ; 90 → "1 min 30" (à lire au groupe). */
+export function dureeEnClair(secondes) {
+  const s = Math.round(Number(secondes) || 0);
+  return s < 60 ? `${s} secondes` : libelleDuree(s);
 }
 
 /** Progression du minuteur entre 1 (plein) et 0 (fini). */
@@ -194,35 +219,18 @@ export function progressionMinuteur(fin, total, maintenant) {
 }
 
 
-/** Texte lu par la synthèse vocale pendant la présentation. */
-export function texteALire(vue) {
-  const p = vue?.probleme;
-  if (!p) return "";
-  return [p.titre, p.situation, p.question].filter(Boolean).join(". ").replace(/\.\s*\./g, ".");
-}
-
 /**
- * Découpe un texte en morceaux courts pour la synthèse vocale : une phrase par
- * morceau, et une phrase trop longue est recoupée aux virgules puis aux mots.
- * Chrome coupe en silence un énoncé de plus de ~15 s avec les voix réseau
- * (« Google français ») : on enchaîne donc plusieurs petits énoncés.
+ * Texte lu par la synthèse vocale : l'annonce du cadre pendant la création, la
+ * situation (précédée de la liaison) pendant la présentation, et avant le 1er
+ * épisode un rappel court du cadre (« Ce n'est pas un test noté… », lu à voix
+ * haute) ; les questions pendant le débrief.
  */
-export function decouperPhrases(texte, max = 160) {
-  const regrouper = (morceaux, sep) => {
-    const out = [];
-    for (const m of morceaux) {
-      const dernier = out[out.length - 1];
-      if (dernier && (dernier + sep + m).length <= max) out[out.length - 1] = dernier + sep + m;
-      else out.push(m);
-    }
-    return out;
-  };
-  const phrases = String(texte ?? "").replace(/\s+/g, " ").trim().split(/(?<=[.!?…])\s+/).filter(Boolean);
-  return phrases.flatMap((ph) => {
-    if (ph.length <= max) return [ph];
-    return regrouper(ph.split(/(?<=[,;:])\s+/), " ").flatMap((bout) =>
-      bout.length <= max ? [bout] : regrouper(bout.split(" "), " "));
-  });
+export function texteALire(vue) {
+  if (vue?.phase === "creation") return ANNONCE_CADRE.join(" ");
+  if (vue?.phase === "debrief") return QUESTIONS_DEBRIEF.join(" ");
+  const texte = texteEpisode(vue);
+  if (!texte) return "";
+  return vue.problemeIndex === 0 ? `${ANNONCE_CADRE.slice(0, 2).join(" ")} ${texte}` : texte;
 }
 
 /** Adresse que les téléphones ne peuvent pas joindre (le PC lui-même). */
@@ -263,10 +271,15 @@ export function estRaccourciSuivant(e) {
  * dynamiques (joueurs, compteur, minuteur) au lieu de tout reconstruire.
  */
 export function cleScene(vue) {
+  const i = vue?.phase === "competences" ? vue.idee : null;
   return JSON.stringify([
     vue?.phase, vue?.problemeIndex ?? null, vue?.probleme?.id ?? null,
     vue?.fin ?? null,
     vue?.phase === "competences" ? !!vue.attenteIA : null,
+    // L'idée du tour : le pseudo apparaît (accord), la compétence est notée.
+    i ? [!!i.aucune, i.texte ?? "", i.pseudo ?? "", i.accordPseudo ?? "", !!i.notee] : null,
+    vue?.phase === "presentation" ? vue.liaison ?? "" : null,
+    vue?.phase === "echange" ? (Array.isArray(vue.joueurs) && vue.joueurs.length === 1) : null,
   ]);
 }
 
@@ -276,29 +289,102 @@ export function commandesPour(vue) {
   switch (vue?.phase) {
     case "accueil":
       return [{ id: "demarrer", libelle: "Commencer", message: { t: "demarrer" }, principal: true,
-        desactive: nbJoueurs < 1, aide: nbJoueurs < 1 ? "Il faut au moins 1 joueur." : "" }];
+        desactive: nbJoueurs < 1,
+        aide: nbJoueurs < 1 ? "Il faut au moins 1 joueur."
+          : nbJoueurs === 1 ? "Un seul joueur : il réfléchit à voix haute avec toi pendant la discussion." : "" }];
     case "creation":
       return [{ id: "suivant", libelle: "Suivant", message: { t: "suivant" }, principal: true,
         aide: "Passe au premier épisode (ceux qui n'ont pas fini commencent sans compétence de départ)." }];
-    case "presentation":
+    case "presentation": {
+      const sansReflexion = vue.reglages?.dureeReflexion === 0;
+      return [{ id: "suivant", libelle: sansReflexion ? "Lancer la discussion" : "Lancer la réflexion", message: { t: "suivant" }, principal: true,
+        aide: `${sansReflexion ? "La discussion" : "La réflexion en silence"} démarre seule quand tout le monde a appuyé sur « J'ai lu ». Ce bouton n'attend pas.` }];
+    }
+    case "reflexion":
       return [{ id: "suivant", libelle: "Lancer la discussion", message: { t: "suivant" }, principal: true,
-        aide: "La discussion démarre seule quand tout le monde a appuyé sur « J'ai lu ». Ce bouton n'attend pas." }];
+        aide: "La discussion démarre seule à la fin du temps de réflexion. Ce bouton n'attend pas." }];
     // À la fin du minuteur, la partie N'AVANCE PAS seule : c'est l'animateur qui
     // lance la suite (ou, pour les réponses, le dernier joueur qui répond).
     case "echange":
       return [{ id: "fin_minuteur", libelle: "Passer aux réponses",
         message: { t: "fin_minuteur" }, principal: true,
-        aide: vue.tempsEcoule ? "Le temps est écoulé : lance la suite quand le groupe est prêt." : "Arrête la discussion maintenant." }];
+        aide: vue.tempsEcoule ? "Le temps est écoulé : lance la suite quand le groupe est prêt."
+          : "Invite chacun à dire au moins une phrase. Ce bouton arrête la discussion maintenant." }];
     case "reponse":
       return [{ id: "fin_minuteur", libelle: "Continuer sans attendre", message: { t: "fin_minuteur" }, principal: true,
-        aide: "La suite démarre seule quand tout le monde a répondu. Ceux qui n'ont pas répondu ne perdent rien : ils auront quand même une compétence." }];
+        aide: "La suite démarre seule quand tout le monde a répondu. Chaque réponse écrite peut montrer une compétence : ceux qui n'ont pas encore répondu peuvent le faire jusqu'à la fin du minuteur." }];
     case "competences": {
       const dernier = Number.isFinite(vue.nbProblemes) && vue.problemeIndex >= vue.nbProblemes - 1;
-      return [{ id: "suivant", libelle: dernier ? "Voir la fin" : "Épisode suivant", message: { t: "suivant" }, principal: true,
-        aide: vue.idee?.pseudo ? `L'histoire continue seule quand ${vue.idee.pseudo} a noté sa compétence.` : "" }];
+      const liste = [{ id: "suivant", libelle: dernier ? (vue.reglages?.debrief ? "Passer au débrief" : "Voir la fin") : "Épisode suivant",
+        message: { t: "suivant" }, principal: true,
+        aide: vue.attenteIA ? "Le MJ met du temps : ce bouton relance l'étape avec le MJ de secours."
+          : "L'histoire continue seule quand chacun a fait son choix sur son téléphone." }];
+      // Le MJ propose, l'animateur valide (adaptation « mj-ia-bienveillant »).
+      if (vue.autreIdeePossible) {
+        liste.push({ id: "autre_idee", libelle: "Choisir une autre idée", message: { t: "autre_idee" }, principal: false,
+          aide: "Le MJ propose, tu valides : cette idée est écartée pour cet épisode et le MJ en choisit une autre parmi les réponses." });
+      }
+      return liste;
     }
+    case "debrief":
+      return [{ id: "suivant", libelle: "Voir la fin", message: { t: "suivant" }, principal: true,
+        aide: "Termine le débrief : chacun voit sa fiche sur son téléphone." }];
     default:
       return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Réglages de l'animateur (phase accueil)
+// ---------------------------------------------------------------------------
+
+function options(valeurs, actuelle, libelle) {
+  const liste = valeurs.includes(actuelle) || !Number.isFinite(actuelle) ? valeurs : [...valeurs, actuelle].sort((a, b) => a - b);
+  return liste.map((v) => `<option value="${v}" ${v === actuelle ? "selected" : ""}>${echapper(libelle(v))}</option>`).join("");
+}
+
+/**
+ * Réglages de la partie, avant de commencer : nombre d'épisodes (automatique =
+ * 1 par joueur, entre 3 et 6), réflexion en silence, discussion (automatique
+ * selon le nombre de joueurs), réponse, débrief. Chaque champ porte
+ * `data-reglage` : on n'envoie que le réglage changé (messageReglage).
+ */
+export function reglagesHtml(reglages = {}, nbJoueurs = 0) {
+  const r = { ...DUREES_DEFAUT, ...reglages };
+  const autoEp = r.nbProblemesAuto !== false;
+  const nbAuto = autoEp && Number.isFinite(r.nbProblemes) ? r.nbProblemes : episodesAuto(nbJoueurs);
+  const episodes = `<option value="auto" ${autoEp ? "selected" : ""}>Auto : ${nbAuto} (1 par joueur, 3 à 6)</option>`
+    + [1, 2, 3, 4, 5, 6].map((n) => `<option value="${n}" ${!autoEp && r.nbProblemes === n ? "selected" : ""}>${n} épisode${n > 1 ? "s" : ""}</option>`).join("");
+  const autoEch = r.dureeEchangeAuto === true;
+  const echange = (autoEch ? `<option value="auto" selected>Auto : ${libelleDuree(r.dureeEchange)} (selon le groupe)</option>` : "")
+    + options(OPTIONS_ECHANGE, autoEch ? NaN : r.dureeEchange, libelleDuree);
+  const reponse = options(OPTIONS_REPONSE, r.dureeReponse, (v) => (v === 90 ? `${libelleDuree(v)} (2-3 phrases)` : libelleDuree(v)));
+  const reflexion = options(OPTIONS_REFLEXION, r.dureeReflexion, (v) => (v === 0 ? "Sans" : libelleDuree(v)));
+  return `<div class="reglages" role="group" aria-label="Réglages de la partie">
+    <label for="reglage-episodes" title="3 épisodes : 3 types d'activités très différents. 6 épisodes : les 6 types.">Épisodes <select id="reglage-episodes" data-reglage="nbProblemes">${episodes}</select></label>
+    <label for="reglage-reflexion" title="Temps de réflexion en silence avant la discussion.">Réflexion <select id="reglage-reflexion" data-reglage="dureeReflexion">${reflexion}</select></label>
+    <label for="reglage-echange" title="Par défaut : 1 min 30 jusqu'à 3 joueurs, puis 30 s de plus par joueur.">Discussion <select id="reglage-echange" data-reglage="dureeEchange">${echange}</select></label>
+    <label for="reglage-reponse">Réponse <select id="reglage-reponse" data-reglage="dureeReponse">${reponse}</select></label>
+    <label for="reglage-debrief"><input type="checkbox" id="reglage-debrief" data-reglage="debrief" ${r.debrief ? "checked" : ""}> Débrief à la fin</label>
+  </div>`;
+}
+
+/** Message { t:"reglages" } pour UN réglage changé ; null s'il n'y a rien à envoyer. */
+export function messageReglage(champ, valeur) {
+  switch (champ) {
+    case "nbProblemes":
+      return { t: "reglages", nbProblemes: valeur === "auto" ? null : Number(valeur) };
+    case "debrief":
+      return { t: "reglages", debrief: valeur === true || valeur === "true" };
+    case "dureeEchange":
+    case "dureeReponse":
+    case "dureeReflexion": {
+      if (valeur === "auto") return null; // l'automatique est déjà actif
+      const n = Number(valeur);
+      return Number.isInteger(n) ? { t: "reglages", [champ]: n } : null;
+    }
+    default:
+      return null;
   }
 }
 
@@ -331,41 +417,43 @@ function illustration(p) {
   return `<img class="illustration" src="${echapper(p.illustration)}" alt="" data-repli="🧩">`;
 }
 
-function legendeRiasec() {
-  return `<ul class="rangee" style="list-style:none;padding:0;margin:0;justify-content:center" aria-label="Couleurs des types d'intérêts (RIASEC)">
-    ${Object.entries(RIASEC).map(([k, t]) => `<li class="rangee riasec-${k}" style="gap:.4em"><span class="puce-riasec" aria-hidden="true">${k}</span> ${t.nom}</li>`).join("")}
-  </ul>`;
+function boutonLire() {
+  return '<div><button type="button" class="bouton discret bouton-lire" id="bouton-lire" aria-pressed="false">🔊 Lire à voix haute</button></div>';
 }
 
 /** Blocs mis à jour sans reconstruire la scène. */
 export const BLOCS = {
   joueurs(vue) {
     const joueurs = Array.isArray(vue.joueurs) ? vue.joueurs : [];
-    if (!joueurs.length) return `<p class="discret">En attente des joueurs ${pointsAttente()}</p>`;
+    if (!joueurs.length) return `<p class="discret">En attente des joueurs ${pointsAttente()}</p><p class="discret">${TAILLE_CONSEILLEE}</p>`;
     const items = joueurs.map((j) => `<li class="${j.connecte === false ? "deconnecte" : ""}">
         <span class="avatar" aria-hidden="true">${echapper(j.avatar)}</span>${echapper(j.pseudo)}${j.connecte === false ? '<span class="visuellement-cache"> (déconnecté)</span>' : ""}
       </li>`).join("");
     const n = joueurs.length;
-    return `<p><strong>${n}</strong> joueur${n > 1 ? "s" : ""} ${n === 1 ? "est là" : "sont là"}${n === 1 ? " · 2 ou plus, c'est mieux !" : ""}</p>
+    return `<p><strong>${n}</strong> joueur${n > 1 ? "s" : ""} ${n === 1 ? "est là" : "sont là"} · <span class="discret">${TAILLE_CONSEILLEE}</span></p>
       <ul class="liste-joueurs">${items}</ul>`;
   },
   avatars(vue) {
     const joueurs = Array.isArray(vue.joueurs) ? vue.joueurs : [];
     return `<ul class="liste-joueurs anonyme" aria-hidden="true">${joueurs.map((j) => `<li><span class="avatar">${echapper(j.avatar)}</span></li>`).join("")}</ul>`;
   },
-  // Qui a fini (lu, répondu, choisi…) : l'animateur sait qui attendre. Jamais le
-  // contenu d'une réponse ni d'un choix.
+  // Qui a fini (lu, répondu, fait son choix…) : l'animateur sait qui attendre.
+  // Affichage neutre (adaptation « ecran-montre-qui-a-repondu ») : les joueurs
+  // restent dans l'ordre d'arrivée dans la partie, jamais dans l'ordre de réponse,
+  // « ✓ » pour qui a fini et « ✍️ écrit… » pour les autres, personne n'est mis en
+  // avant comme le dernier. Jamais le contenu d'une réponse, jamais qui a passé son tour.
   compte(vue) {
     const c = compteReponses(vue);
     if (!c) return "";
     const { repondu, total } = c;
     const verbe = verbeCompte(vue.phase);
+    const enCours = enCoursCompte(vue.phase);
     const joueurs = (Array.isArray(vue.joueurs) ? vue.joueurs : []).filter((j) => typeof j?.aFini === "boolean");
     const detail = joueurs.length
-      ? `<ul class="statuts-joueurs">${joueurs.map((j) => `<li class="${j.aFini ? "fait" : "attente"}${j.connecte === false ? " deconnecte" : ""}">
+      ? `<ul class="statuts-joueurs">${joueurs.map((j) => `<li class="${j.aFini ? "fait" : "en-cours"}${j.connecte === false ? " deconnecte" : ""}">
             <span class="avatar" aria-hidden="true">${echapper(j.avatar)}</span><span class="pseudo">${echapper(j.pseudo)}</span>
-            <span class="marque" aria-hidden="true">${j.aFini ? "✓" : "…"}</span>
-            <span class="visuellement-cache">${j.aFini ? "a fini" : "pas encore"}${j.connecte === false ? ", déconnecté" : ""}</span>
+            <span class="marque" aria-hidden="true">${j.aFini ? "✓" : enCours}</span>
+            <span class="visuellement-cache">${j.aFini ? "a fini" : "en cours"}${j.connecte === false ? ", déconnecté" : ""}</span>
           </li>`).join("")}</ul>`
       : `<div class="points-anonymes" aria-hidden="true">${Array.from({ length: total }, (_, i) => `<span class="${i < repondu ? "plein" : ""}"></span>`).join("")}</div>`;
     return `<div class="rangee bloc-compte" style="gap:1.2em">
@@ -388,8 +476,17 @@ function verbeCompte(phase) {
   switch (phase) {
     case "presentation": return "ont lu";
     case "creation": return "sont prêts";
-    case "competences": return "a noté sa compétence";
+    case "competences": return "ont fait leur choix";
     default: return "ont répondu";
+  }
+}
+
+function enCoursCompte(phase) {
+  switch (phase) {
+    case "creation":
+    case "reponse": return "✍️ écrit…";
+    case "presentation": return "👀 lit…";
+    default: return "…";
   }
 }
 
@@ -418,44 +515,80 @@ export const SCENES = {
         </div>
         <p class="code-geant" aria-label="Code de la partie : ${echapper(String(vue.code).split("").join(" "))}">${echapper(vue.code)}</p>
         ${bloc("joueurs", vue)}
+        <p class="discret aide-animateur">${echapper(AIDE_TABLETTE)}</p>
       </div>
     </div>`;
   },
 
+  // Avant le 1er épisode : le cadre, à lire à voix haute (adaptation
+  // « nouveau-annonce-pas-un-test », critique psy point 28) et le MJ est une IA
+  // (adaptation « nouveau-transparence-ia »).
   creation(vue) {
     return `<div class="pile centre large apparition message-plein">
       <p class="surtitre">Étape 1 · Ton personnage</p>
       <h1>Chacun crée son personnage sur son téléphone</h1>
-      <p class="situation">Raconte 1 ou 2 choses que tu as déjà faites dans la vraie vie. Le MJ en tire tes premières compétences.</p>
+      <p class="situation">Raconte 1 ou 2 choses que tu as déjà faites dans la vraie vie. Le maître du jeu est une IA : il te propose des compétences, et c'est toi qui décides de les garder ou non.</p>
+      <div class="annonce-cadre pile serre">
+        <p class="surtitre">Avant de jouer</p>
+        ${ANNONCE_CADRE.map((ph) => `<p>${echapper(ph)}</p>`).join("")}
+      </div>
+      ${boutonLire()}
       ${bloc("compte", vue)}
     </div>`;
   },
 
   presentation(vue) {
     const p = vue.probleme ?? {};
+    const premier = vue.problemeIndex === 0;
     return `<div class="probleme-grille apparition">
       ${illustration(p)}
       <div class="pile large">
+        ${vue.liaison ? `<p class="liaison">${echapper(vue.liaison)}</p>` : ""}
+        ${premier ? `<p class="annonce-cadre courte">${echapper(ANNONCE_CADRE[0])} ${echapper(ANNONCE_CADRE[1])}</p>` : ""}
         <div class="pile serre">
           <p class="surtitre">Le tournoi du quartier · Épisode ${(vue.problemeIndex ?? 0) + 1}${vue.nbProblemes ? ` sur ${vue.nbProblemes}` : ""}</p>
           <h1>${echapper(p.titre)}</h1>
         </div>
         <p class="situation">${echapper(p.situation)}</p>
         <p class="question">${echapper(p.question)}</p>
-        <div><button type="button" class="bouton discret bouton-lire" id="bouton-lire" aria-pressed="false">🔊 Lire à voix haute</button></div>
+        ${boutonLire()}
         <p class="discret">Quand tu as lu, appuie sur « J'ai lu » sur ton téléphone.</p>
         ${bloc("compte", vue)}
       </div>
     </div>`;
   },
 
+  // Réflexion silencieuse avant l'oral (adaptations « ordre-oral-puis-ecrit »,
+  // « nouveau-temps-de-reflexion-individuel »).
+  reflexion(vue) {
+    const s = Number.isFinite(vue.minuteurDuree) && vue.minuteurDuree > 0
+      ? Math.round(vue.minuteurDuree / 1000)
+      : dureePhase("reflexion", vue.reglages);
+    return `<div class="minuteur-grille apparition">
+      ${blocMinuteur()}
+      <div class="pile large">
+        <p class="surtitre">Chacun pour soi</p>
+        <p class="consigne-geante">Réfléchis en silence</p>
+        <p class="situation">${echapper(dureeEnClair(s))} en silence : chacun réfléchit à ce qu'il ferait. On en parle juste après.</p>
+        <p class="discret">Tu peux noter un mot sur ton téléphone pour ne pas l'oublier : personne ne le verra.</p>
+        ${rappelProbleme(vue)}
+      </div>
+    </div>`;
+  },
+
+  // Tour de table puis discussion libre (adaptation « nouveau-relance-equite-de-parole ») ;
+  // seul, on réfléchit à voix haute avec l'animateur (adaptation « taille-groupe-1-a-6 »).
   echange(vue) {
+    const seul = Array.isArray(vue.joueurs) && vue.joueurs.length === 1;
     return `<div class="minuteur-grille apparition">
       ${blocMinuteur()}
       <div class="pile large">
         <p class="surtitre">À vous de jouer</p>
-        <p class="consigne-geante">Discutez entre vous&nbsp;!</p>
-        <p class="situation">Parlez à voix haute : toutes les idées comptent. Rien à écrire pour l'instant.</p>
+        ${seul
+          ? `<p class="consigne-geante">Réfléchis à voix haute avec l'animateur</p>
+             <p class="situation">Dis ce que tu ferais, comme ça te vient. Rien à écrire pour l'instant.</p>`
+          : `<p class="consigne-geante">Tour de table&nbsp;!</p>
+             <p class="situation">Chacun dit son idée en une phrase, sans être coupé. Ensuite, discussion libre. Rien à écrire pour l'instant.</p>`}
         ${bloc("temps", vue)}
         ${rappelProbleme(vue)}
       </div>
@@ -468,7 +601,7 @@ export const SCENES = {
       <div class="pile large">
         <p class="surtitre">Chacun pour soi</p>
         <p class="consigne-geante">Écrivez votre réponse sur votre téléphone</p>
-        <p class="situation">Toutes les idées comptent. Chaque réponse est privée : seul le MJ la lit.</p>
+        <p class="situation">Toutes les idées comptent. Chaque réponse est privée : les autres joueurs ne la voient pas. Le maître du jeu est une IA : il propose, tu décides.</p>
         ${bloc("temps", vue)}
         ${bloc("compte", vue)}
         ${rappelProbleme(vue)}
@@ -476,14 +609,15 @@ export const SCENES = {
     </div>`;
   },
 
-  // L'idée du tour : le pseudo de son auteur, ses mots, et la compétence qu'il écrit
-  // sur sa fiche papier.
+  // L'idée du tour : d'abord sans nom ; le pseudo n'apparaît que si son auteur
+  // accepte sur son téléphone (décision de Pierre §2). Les compétences privées
+  // restent sur les téléphones.
   competences(vue) {
     if (vue.attenteIA || !vue.idee) {
       return `<div class="pile centre large mj-reflechit apparition">
         <div class="bulle" aria-hidden="true">💡</div>
         <h1>Le MJ lit vos idées ${pointsAttente()}</h1>
-        <p class="situation discret">Il choisit l'idée qui fait avancer l'histoire.</p>
+        <p class="situation discret">Le MJ est une IA : il propose une idée qui fait avancer l'histoire, l'animateur valide.</p>
       </div>`;
     }
     if (vue.idee.aucune) {
@@ -495,25 +629,47 @@ export const SCENES = {
     }
     const i = vue.idee;
     const k = Array.isArray(i.competence?.riasec) ? i.competence.riasec.find((x) => RIASEC[x]) : null;
+    const auteur = i.pseudo
+      ? `<p class="idee-auteur"><span class="avatar grand" aria-hidden="true">${echapper(i.avatar ?? "")}</span> L'idée de ${echapper(i.pseudo)}</p>`
+      : "";
+    const statut = i.notee
+      ? "✓ Notée sur la fiche papier. L'histoire continue…"
+      : `${i.pseudo ? echapper(i.pseudo) : "Son auteur"} l'écrit sur sa fiche papier…`;
     return `<div class="pile centre large apparition message-plein idee-du-tour" style="max-width:1300px">
-      <p class="surtitre">L'idée retenue pour la suite de l'histoire</p>
-      <h1 class="idee-auteur"><span class="avatar grand" aria-hidden="true">${echapper(i.avatar ?? "")}</span> ${echapper(i.pseudo ?? "")}</h1>
+      <p class="surtitre">L'idée du tour</p>
+      <h1>Cette idée fait avancer l'histoire&nbsp;:</h1>
       <blockquote class="idee-texte">« ${echapper(i.texte ?? "")} »</blockquote>
+      ${auteur}
       <div class="idee-competence${k ? ` riasec-${k}` : ""}">
-        <p class="discret">Compétence à écrire sur sa fiche papier</p>
+        <p class="discret">Compétence repérée</p>
         <p class="idee-libelle">${k ? `<span class="puce-riasec" aria-hidden="true">${k}</span> ` : ""}${echapper(i.competence?.libelle ?? "")}</p>
       </div>
-      <p class="situation discret">${i.notee ? "✓ Notée sur la fiche. L'histoire continue…" : `${echapper(i.pseudo ?? "")} l'écrit sur sa fiche papier…`}</p>
+      <p class="situation discret">${statut}</p>
+      <p class="situation">Regardez vos téléphones : chacun retrouve ce que sa réponse montre.</p>
+      ${bloc("compte", vue)}
     </div>`;
   },
 
+  // Court débrief collectif avant la fiche (adaptation « nouveau-debriefing »).
+  debrief() {
+    return `<div class="pile centre large apparition message-plein" style="max-width:1300px">
+      <p class="surtitre">Avant la fiche · Débrief</p>
+      <h1>On en parle ensemble</h1>
+      <ol class="questions-debrief">${QUESTIONS_DEBRIEF.map((q) => `<li>${echapper(q)}</li>`).join("")}</ol>
+      <p class="situation discret">La dernière question, tu peux y répondre par écrit sur ton téléphone : personne d'autre ne le voit, et ça ira sur ta fiche pour en parler avec le psy.</p>
+      ${boutonLire()}
+    </div>`;
+  },
+
+  // Fin collective, sans éloge général (adaptation « fin-collective ») : on renvoie
+  // aux traces écrites (« trace », pas « preuve » : critique psy point 2).
   fin(vue) {
     const n = vue.fin?.nbCompetencesTotal;
     return `<div class="pile centre large apparition message-plein" style="max-width:1300px">
       <div class="palette-riasec" aria-hidden="true">${Object.keys(RIASEC).map((k) => `<span class="riasec-${k}"></span>`).join("")}</div>
       <h1 class="fin-titre">Bravo l'équipe&nbsp;!</h1>
       ${Number.isFinite(n) && n > 0 ? `<p class="fin-chiffre">Ensemble, vous avez fait apparaître <strong>${n}</strong> compétence${n > 1 ? "s" : ""}.</p>` : ""}
-      <p class="situation">Chacun a des talents, et vous l'avez montré en équipe. Ta fiche t'attend sur ton téléphone : tu peux l'imprimer et en parler avec ton conseiller.</p>
+      <p class="situation">Vos idées ont fait avancer l'histoire. Chaque compétence repérée garde la trace de vos propres mots. Ta fiche t'attend sur ton téléphone : tu peux l'imprimer et en parler avec le psy ou le conseiller.</p>
       <p class="discret">Merci d'avoir joué. Rien n'est gardé après la partie.</p>
     </div>`;
   },
@@ -544,10 +700,13 @@ const DEMO_PROBLEMES = [
     id: "affiche-tournoi",
     titre: "L'affiche du tournoi",
     illustration: "illustrations/affiche-tournoi.svg",
-    situation: "Le budget est bouclé, bravo. Mais à trois semaines du tournoi, presque personne dans le quartier n'est au courant, et il manque encore des équipes. Le club vous demande de faire l'affiche et de faire venir des joueurs et du public.",
+    situation: "Le budget est bouclé. Mais à trois semaines du tournoi, presque personne dans le quartier n'est au courant, et il manque encore des équipes. Le club vous demande de faire l'affiche et de faire venir des joueurs et du public.",
     question: "Que faites-vous ?"
   }
 ];
+
+/** Phrase de liaison factice (écrite par le MJ, sans pseudo ni jugement). */
+const DEMO_LIAISON = "La liste des achats et les prix comparés ont permis de boucler le budget. Reste à faire connaître le tournoi.";
 
 const DEMO_JOUEURS = [
   { pseudo: "Lina", avatar: "🦊", connecte: true },
@@ -556,28 +715,41 @@ const DEMO_JOUEURS = [
   { pseudo: "Yanis", avatar: "🐸", connecte: true },
 ];
 
+const DEMO_REGLAGES = { nbProblemes: 4, nbProblemesAuto: true, dureeEchange: 120, dureeEchangeAuto: true, dureeReponse: 90, dureeReflexion: 30, debrief: true };
+
 /** Liste des vues factices (une par étape du défilement), dépend de l'heure `maintenant`. */
 export function vuesDemo(maintenant = Date.now(), code = "KDMZ") {
-  const base = { code, nbProblemes: 2, minuteurFin: null, fin: null };
+  const base = { code, nbProblemes: 2, minuteurFin: null, fin: null, reglages: { ...DEMO_REGLAGES, nbProblemes: 2, nbProblemesAuto: false } };
   const joueurs = (n, repondu = 0) => DEMO_JOUEURS.slice(0, n).map((j, i) => ({ ...j, aFini: i < repondu }));
-  const pb = (i, phase, extra = {}) => ({ ...base, phase, problemeIndex: i, probleme: DEMO_PROBLEMES[i], joueurs: joueurs(4), compte: null, ...extra });
+  const pb = (i, phase, extra = {}) => ({ ...base, phase, problemeIndex: i, probleme: DEMO_PROBLEMES[i], liaison: i > 0 ? DEMO_LIAISON : null, joueurs: joueurs(4), compte: null, ...extra });
+  const minuteur = (s) => ({ minuteurFin: maintenant + s * 1000, minuteurDebut: maintenant, minuteurDuree: s * 1000 });
+  const ideeLina = { texte: "On fait la liste de ce qu'il faut et on compare les prix avant d'acheter", competence: { code: "4C101", libelle: "Élaborer, suivre et piloter un budget", riasec: ["C"] } };
+  // En `competences`, le compte ne porte que sur ceux qui ont quelque chose à trancher.
+  const choix = (n) => DEMO_JOUEURS.map((j, i) => ({ ...j, aFini: i === 2 ? null : i < n }));
+  const accueil = (n, reglages = DEMO_REGLAGES) => ({ ...base, phase: "accueil", problemeIndex: null, probleme: null, joueurs: joueurs(n), compte: null, reglages: { ...reglages } });
   return [
-    { ...base, phase: "accueil", problemeIndex: 0, probleme: null, joueurs: [], compte: null },
-    { ...base, phase: "accueil", problemeIndex: 0, probleme: null, joueurs: joueurs(1), compte: null },
-    { ...base, phase: "accueil", problemeIndex: 0, probleme: null, joueurs: joueurs(4), compte: null },
-    { ...base, phase: "creation", problemeIndex: 0, probleme: null, joueurs: joueurs(4), compte: { repondu: 1, total: 4 } },
-    { ...base, phase: "creation", problemeIndex: 0, probleme: null, joueurs: joueurs(4), compte: { repondu: 3, total: 4 } },
-    pb(0, "presentation"),
-    pb(0, "echange", { minuteurFin: maintenant + 120_000 }),
-    pb(0, "reponse", { minuteurFin: maintenant + 90_000, joueurs: joueurs(4, 1), compte: { repondu: 1, total: 4 } }),
-    pb(0, "reponse", { minuteurFin: maintenant + 12_000, joueurs: joueurs(4, 3), compte: { repondu: 3, total: 4 } }),
+    accueil(0, { ...DEMO_REGLAGES, nbProblemes: 3, dureeEchange: 90 }),
+    accueil(1, { ...DEMO_REGLAGES, nbProblemes: 3, dureeEchange: 90 }),
+    accueil(4),
+    { ...base, phase: "creation", problemeIndex: null, probleme: null, joueurs: joueurs(4), compte: { repondu: 1, total: 4 } },
+    { ...base, phase: "creation", problemeIndex: null, probleme: null, joueurs: joueurs(4, 3), compte: { repondu: 3, total: 4 } },
+    pb(0, "presentation", { joueurs: joueurs(4, 2), compte: { repondu: 2, total: 4 } }),
+    pb(0, "reflexion", minuteur(30)),
+    pb(0, "echange", minuteur(120)),
+    pb(0, "echange", { ...minuteur(90), joueurs: joueurs(1) }),
+    pb(0, "reponse", { ...minuteur(90), joueurs: joueurs(4, 1), compte: { repondu: 1, total: 4 } }),
+    pb(0, "reponse", { minuteurFin: maintenant + 12_000, minuteurDebut: maintenant - 78_000, minuteurDuree: 90_000, joueurs: joueurs(4, 3), compte: { repondu: 3, total: 4 } }),
     pb(0, "competences", { attenteIA: true }),
-    pb(0, "competences", { idee: { pseudo: "Lina", avatar: "🦊", texte: "On fait la liste de ce qu'il faut et on compare les prix avant d'acheter", competence: { code: "4C101", libelle: "Élaborer, suivre et piloter un budget", riasec: ["C"] }, notee: false } }),
+    // L'idée s'affiche d'abord sans nom ; son auteur décide sur son téléphone.
+    pb(0, "competences", { idee: { pseudo: null, avatar: null, accordPseudo: null, ...ideeLina, notee: false }, autreIdeePossible: true, joueurs: choix(1), compte: { repondu: 1, total: 3 } }),
+    pb(0, "competences", { idee: { pseudo: "Lina", avatar: "🦊", accordPseudo: true, ...ideeLina, notee: true }, autreIdeePossible: true, joueurs: choix(2), compte: { repondu: 2, total: 3 } }),
     pb(1, "presentation"),
-    pb(1, "echange", { minuteurFin: maintenant + 120_000 }),
-    pb(1, "reponse", { minuteurFin: maintenant + 90_000, compte: { repondu: 2, total: 4 } }),
+    pb(1, "reflexion", minuteur(30)),
+    pb(1, "echange", minuteur(120)),
+    pb(1, "reponse", { ...minuteur(90), compte: { repondu: 2, total: 4 } }),
     pb(1, "competences", { attenteIA: true }),
-    pb(1, "competences", { idee: { pseudo: "Sam", avatar: "🐼", texte: "on poste l'affiche en story et on la colle à la boulangerie et au lycée", competence: { code: "6A107", libelle: "Utiliser les réseaux sociaux", riasec: ["C", "S"] }, notee: true } }),
+    pb(1, "competences", { idee: { pseudo: null, avatar: null, accordPseudo: false, texte: "on poste l'affiche en story et on la colle à la boulangerie et au lycée", competence: { code: "6A107", libelle: "Utiliser les réseaux sociaux", riasec: ["C", "S"] }, notee: true }, autreIdeePossible: true }),
+    { ...base, phase: "debrief", problemeIndex: 1, probleme: null, joueurs: joueurs(4), compte: null },
     { ...base, phase: "fin", problemeIndex: 1, probleme: null, joueurs: joueurs(4), compte: null, fin: { nbCompetencesTotal: 15 } },
   ];
 }
@@ -725,8 +897,9 @@ function demarrerEcran() {
       el.removeAttribute("aria-label");
       return;
     }
-    const i = vue.phase === "fin" ? n : vue.problemeIndex ?? 0;
-    el.setAttribute("aria-label", vue.phase === "fin" ? "Tous les épisodes sont faits" : `Épisode ${i + 1} sur ${n}`);
+    const toutFait = vue.phase === "fin" || vue.phase === "debrief";
+    const i = toutFait ? n : vue.problemeIndex ?? 0;
+    el.setAttribute("aria-label", toutFait ? "Tous les épisodes sont faits" : `Épisode ${i + 1} sur ${n}`);
     el.innerHTML = Array.from({ length: n }, (_, k) =>
       `<span class="etape-pb${k < i ? " faite" : k === i ? " en-cours" : ""}"></span>`).join("");
   }
@@ -813,7 +986,8 @@ function demarrerEcran() {
   function majCommandes(vue) {
     const liste = commandesPour(vue);
     const reglages = vue.phase === "accueil";
-    const signature = JSON.stringify([liste, reglages && local.reglages, vue.phase]);
+    const nbJoueurs = Array.isArray(vue.joueurs) ? vue.joueurs.length : 0;
+    const signature = JSON.stringify([liste, reglages && local.reglages, reglages && nbJoueurs, vue.phase]);
     if (signature === local.signatureCommandes) return;
     local.signatureCommandes = signature;
 
@@ -822,16 +996,7 @@ function demarrerEcran() {
     let html = liste.map((c) => `<button type="button" class="bouton ${c.principal ? "principal" : "discret"}"
         id="cmd-${c.id}" data-cmd="${c.id}" ${c.desactive ? "disabled" : ""}
         ${c.aide ? `title="${echapper(c.aide)}"` : ""}>${echapper(c.libelle)}</button>`).join("");
-    if (reglages) {
-      const opts = (valeurs, actuelle) => {
-        const liste = valeurs.includes(actuelle) ? valeurs : [...valeurs, actuelle].sort((a, b) => a - b);
-        return liste.map((v) => `<option value="${v}" ${v === actuelle ? "selected" : ""}>${libelleDuree(v)}</option>`).join("");
-      };
-      html += `<div class="reglages" role="group" aria-label="Réglages des durées">
-        <label for="reglage-echange">Discussion <select id="reglage-echange">${opts(OPTIONS_ECHANGE, local.reglages.dureeEchange)}</select></label>
-        <label for="reglage-reponse">Réponse <select id="reglage-reponse">${opts(OPTIONS_REPONSE, local.reglages.dureeReponse)}</select></label>
-      </div>`;
-    }
+    if (reglages) html += reglagesHtml(local.reglages, nbJoueurs);
     if (vue.phase === "fin") {
       html += '<a class="bouton principal" id="cmd-nouvelle" href="index.html">Nouvelle partie</a>';
     }
@@ -842,12 +1007,13 @@ function demarrerEcran() {
       const c = liste.find((x) => x.id === b.dataset.cmd);
       b.addEventListener("click", () => envoyer(c.message));
     }
-    for (const s of commandes.querySelectorAll("select")) {
-      s.addEventListener("change", () => {
-        const dureeEchange = Number($("reglage-echange").value);
-        const dureeReponse = Number($("reglage-reponse").value);
-        Object.assign(local.reglages, { dureeEchange, dureeReponse });
-        envoyer({ t: "reglages", dureeEchange, dureeReponse });
+    // Un seul réglage envoyé à la fois : la discussion et le nombre d'épisodes
+    // restent automatiques tant que l'animateur n'y touche pas.
+    for (const champ of commandes.querySelectorAll("[data-reglage]")) {
+      champ.addEventListener("change", () => {
+        const valeur = champ.type === "checkbox" ? champ.checked : champ.value;
+        const message = messageReglage(champ.dataset.reglage, valeur);
+        if (message) envoyer(message);
       });
     }
     if (focusId) {
@@ -1028,7 +1194,11 @@ function demarrerEcran() {
     };
     envoyerDemo = (message) => {
       if (message.t === "reglages") {
-        toast(`Réglages : discussion ${libelleDuree(message.dureeEchange)}, réponse ${libelleDuree(message.dureeReponse)}.`);
+        toast("Mode démo : le réglage n'est pas envoyé.");
+        return;
+      }
+      if (message.t === "autre_idee") {
+        toast("Mode démo : le MJ choisirait une autre idée parmi les réponses.");
         return;
       }
       // demarrer / suivant / fin_minuteur : on passe à l'étape suivante (en sautant

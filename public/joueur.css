@@ -181,3 +181,32 @@ body.avec-demo .toast { bottom: 80px; }
 
 /* Idée retenue : consigne pour la fiche papier */
 .consigne-fiche { margin: 0; padding: 0.8em 1em; border-radius: var(--rayon-petit); background: var(--accent-doux); font-weight: 600; }
+
+/* Cadre de la partie (pas un test noté, le MJ est une IA) */
+.tel-cadre { background: var(--surface); border: 1px solid var(--violet); border-radius: var(--rayon-petit); padding: 0.8em 1em; text-align: left; }
+.tel-cadre p { margin: 0; }
+
+/* Phrase de liaison avec l'épisode précédent */
+.tel-liaison { font-style: italic; color: var(--discret); border-left: 4px solid var(--violet); padding-left: 0.7em; text-align: left; }
+
+/* Note privée (réflexion, discussion) */
+.tel-note textarea { min-height: 4em; }
+
+/* « Je ne sais pas » : débuts de phrase et « Je passe ce tour » */
+.tel-aide { border: 2px dashed var(--violet); border-radius: var(--rayon-petit); padding: 0.8em 1em; }
+
+/* Avis sur la situation, accord pour le pseudo */
+.tel-choix-avis { flex-wrap: nowrap; gap: 0.6em; }
+.tel-choix-avis .bouton { flex: 1; padding-left: 0.5em; padding-right: 0.5em; }
+.tel-choix-avis [aria-pressed="true"] { background: var(--accent-doux); border-color: var(--accent); }
+.tel-preference, .tel-accord { border-top: 1px solid var(--bord); padding-top: 0.8em; }
+
+/* Idée du tour vue par les autres, reformulation de son idée */
+.tel-idee-du-tour .citation { margin: 0; }
+.tel-mon-idee { font-size: 1.1rem; font-weight: 600; }
+.carte-verifier { font-size: 0.85em; }
+.tel-questions { margin: 0; padding-left: 1.3em; display: grid; gap: 0.4em; font-weight: 600; }
+.tel-info-dictee { font-size: 0.8em; }
+
+/* Relais vers un adulte, en fin de partie */
+.tel-relais { border-top: 1px solid var(--bord); padding-top: 0.8em; color: var(--discret); text-align: center; }

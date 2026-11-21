@@ -25,22 +25,28 @@
     <section class="carte accent" aria-labelledby="titre-creer">
       <span class="icone" aria-hidden="true">🖥️</span>
       <h2 id="titre-creer">Créer une partie</h2>
-      <p class="aide">Pour l'animateur : ouvre l'écran commun (PC ou projecteur). Les joueurs rejoignent avec leur téléphone.</p>
+      <p class="aide">Pour l'animateur : ouvre l'écran commun (PC ou projecteur). Les joueurs rejoignent avec leur téléphone, ou une tablette du Centre s'ils n'en ont pas. Souvent recommandé : 3 à 5 joueurs (6 maximum).</p>
       <form id="form-creer" class="pile">
         <details class="options">
           <summary>Réglages de la partie</summary>
           <div class="champ">
-            <label for="nb-problemes">Nombre de problèmes</label>
-            <select id="nb-problemes" name="nbProblemes">
-              <option value="1">1 problème (≈ 10 min)</option>
-              <option value="2">2 problèmes (≈ 20 min)</option>
-              <option value="3" selected>3 problèmes (≈ 30 min)</option>
-              <option value="4">4 problèmes (≈ 40 min)</option>
-              <option value="5">5 problèmes (≈ 50 min)</option>
-              <option value="6">6 problèmes (≈ 1 h)</option>
+            <label for="nb-problemes">Nombre d'épisodes</label>
+            <select id="nb-problemes" name="nbProblemes" aria-describedby="aide-episodes">
+              <option value="auto" selected>Auto : 1 par joueur (3 à 6)</option>
+              <option value="1">1 épisode</option>
+              <option value="2">2 épisodes</option>
+              <option value="3">3 épisodes</option>
+              <option value="4">4 épisodes</option>
+              <option value="5">5 épisodes</option>
+              <option value="6">6 épisodes</option>
             </select>
+            <p class="discret" id="aide-episodes">3 épisodes : 3 types d'activités très différents ; 6 épisodes : les 6 types. Le jour des passations, 3 ou 4 épisodes ; en séance chez un partenaire, 6. La durée d'un épisode reste à chronométrer lors des premières parties.</p>
           </div>
-          <p class="discret">Les durées de discussion et de réponse se règlent ensuite sur l'écran commun.</p>
+          <label class="rangee" for="debrief" style="gap:0.5em">
+            <input type="checkbox" id="debrief" name="debrief" checked>
+            Débrief en groupe à la fin (avant la fiche)
+          </label>
+          <p class="discret">La réflexion en silence (30 s), la discussion (selon le nombre de joueurs) et la réponse (1 min 30) se règlent ensuite sur l'écran commun.</p>
         </details>
         <button type="submit" class="bouton principal grand large" id="bouton-creer">Créer une partie</button>
         <p class="message-erreur" id="erreur-creer" role="alert"></p>
@@ -84,12 +90,16 @@
       erreurCreer.textContent = "";
       boutonCreer.disabled = true;
       boutonCreer.textContent = "Création…";
-      const nbProblemes = Number(document.getElementById("nb-problemes").value) || 3;
+      // « Auto » : on n'envoie pas nbProblemes (autant d'épisodes que de joueurs,
+      // entre 3 et 6) ni la durée de discussion (selon le nombre de joueurs) : le serveur décide.
+      const choixEpisodes = document.getElementById("nb-problemes").value;
+      const reglages = { debrief: document.getElementById("debrief").checked };
+      if (choixEpisodes !== "auto") reglages.nbProblemes = Number(choixEpisodes);
       try {
         const rep = await fetch("/api/parties", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nbProblemes }),
+          body: JSON.stringify(reglages),
         });
         if (!rep.ok) throw new Error(`HTTP ${rep.status}`);
         const { code, cleEcran } = await rep.json();

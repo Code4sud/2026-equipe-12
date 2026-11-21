@@ -2,13 +2,14 @@
 // Aucune logique de jeu : seulement de la mise en forme à partir de la vue.
 
 /** Phases où un minuteur tourne (SPEC §3.1). */
-const PHASES_MINUTEUR = new Set(["echange", "reponse"]);
+const PHASES_MINUTEUR = new Set(["reflexion", "echange", "reponse"]);
 
 /** Durée nominale (s) du minuteur d'une phase d'après les réglages ; null si inconnue. */
 export function dureePhase(phase, reglages) {
   if (!reglages || typeof reglages !== "object") return null;
   const s = phase === "echange" ? reglages.dureeEchange
     : phase === "reponse" ? reglages.dureeReponse
+    : phase === "reflexion" ? reglages.dureeReflexion
     : null;
   return Number.isFinite(s) && s > 0 ? s : null;
 }
@@ -109,4 +110,121 @@ export function fermetureDefinitive(code) {
 export function decalageServeur(message, maintenant, ancien = 0) {
   const s = message?.serveur;
   return Number.isFinite(s) && Number.isFinite(maintenant) ? s - maintenant : ancien;
+}
+
+// ---------------------------------------------------------------------------
+// Textes et mises en forme partagés par l'écran commun et le téléphone
+// ---------------------------------------------------------------------------
+
+/**
+ * Annonce du cadre, avant de jouer (adaptation « nouveau-annonce-pas-un-test »,
+ * formulation corrigée par la critique psy, point 28), sans les mots interdits
+ * partout (SPEC §1).
+ */
+export const ANNONCE_CADRE = [
+  "Ce n'est pas un test noté.",
+  "Il n'y a pas de bonne réponse à trouver : on cherche ce que toi, tu ferais.",
+  "Les autres joueurs ne voient pas ta réponse. Si ton idée est choisie, elle sera reprise dans l'histoire.",
+  "Ce que tu écris est lu par une IA et sert à préparer ton entretien avec le psy.",
+];
+
+/** Le MJ est une IA (adaptation « nouveau-transparence-ia », AI Act art. 50). */
+export const MJ_EST_UNE_IA = "Le maître du jeu (MJ) est une intelligence artificielle. Il ne te note pas : il propose, et c'est toi qui gardes ou refuses chaque compétence, puis tu en parles avec le psy.";
+
+/** Les 3 questions du débrief (adaptation « nouveau-debriefing ») ; la 3e est écrite en privé. */
+export const QUESTIONS_DEBRIEF = [
+  "Quel moment de l'histoire t'a surpris ?",
+  "Quelle compétence de ta fiche te ressemble le plus ?",
+  "Raconte une fois, dans ta vraie vie, où tu l'as déjà utilisée.",
+];
+
+/** Message après « Je passe ce tour » (copie de MESSAGE_PASSE, src/texte.js). */
+export const MESSAGE_PASSE = "Pas de souci, l'histoire continue. Tu pourras proposer ton idée au prochain épisode.";
+
+/** Promesse sur les compétences privées (critique psy point 3) : jamais « au moins une ». */
+export const PROMESSE_COMPETENCE = "À chaque épisode, chacun a la même chance d'en recevoir une.";
+
+/** Ligne fixe vers un adulte, en fin de partie (adaptation « nouveau-relais-psychologue-fin-de-partie »). */
+export const RELAIS_ADULTE = "Si quelque chose te pèse, parles-en au psychologue ou au conseiller du Centre : il est là pour ça.";
+
+/**
+ * Découpe un texte en morceaux courts pour la synthèse vocale : une phrase par
+ * morceau, et une phrase trop longue est recoupée aux virgules puis aux mots.
+ * Chrome coupe en silence un énoncé de plus de ~15 s avec les voix réseau
+ * (« Google français ») : on enchaîne donc plusieurs petits énoncés.
+ */
+export function decouperPhrases(texte, max = 160) {
+  const regrouper = (morceaux, sep) => {
+    const out = [];
+    for (const m of morceaux) {
+      const dernier = out[out.length - 1];
+      if (dernier && (dernier + sep + m).length <= max) out[out.length - 1] = dernier + sep + m;
+      else out.push(m);
+    }
+    return out;
+  };
+  const phrases = String(texte ?? "").replace(/\s+/g, " ").trim().split(/(?<=[.!?…])\s+/).filter(Boolean);
+  return phrases.flatMap((ph) => {
+    if (ph.length <= max) return [ph];
+    return regrouper(ph.split(/(?<=[,;:])\s+/), " ").flatMap((bout) =>
+      bout.length <= max ? [bout] : regrouper(bout.split(" "), " "));
+  });
+}
+
+/** Texte d'un épisode à lire à voix haute : liaison (à partir du 2e), titre, situation, question. */
+export function texteEpisode(vue) {
+  const p = vue?.probleme;
+  if (!p) return "";
+  return [vue.liaison, p.titre, p.situation, p.question].filter(Boolean).join(". ").replace(/([.!?…])\s*\./g, "$1");
+}
+
+/** Début de phrase (amorce) à préremplir : « D'abord, je… » → « D'abord, je ». */
+export function texteAmorce(amorce) {
+  return String(amorce ?? "").replace(/[\s.…]+$/u, "").trim() + " ";
+}
+
+/**
+ * Phrase de la carte « Tu as proposé de … : c'est ce qu'on appelle « libellé ». »
+ * Pour ne pas répéter le libellé, la carte coupe la phrase autour de « libellé » :
+ * { avant: "Tu as proposé de … : c'est ce qu'on appelle", apres: "" }. null si la
+ * phrase ne contient pas le libellé entre guillemets (on l'affiche alors telle quelle).
+ */
+export function separerMots(mots, libelle) {
+  const m = String(mots ?? "");
+  const l = String(libelle ?? "").trim();
+  if (!m || !l) return null;
+  const cible = `« ${l} »`;
+  const i = m.indexOf(cible);
+  if (i < 0) return null;
+  const avant = m.slice(0, i).trim();
+  const apres = m.slice(i + cible.length).replace(/^[\s.!…]+$/u, "").trim();
+  return avant ? { avant, apres } : null;
+}
+
+/**
+ * Ce que le téléphone montre en phase `competences` :
+ *  - "attente"         : le MJ choisit encore l'idée du tour ;
+ *  - "mon-idee"        : c'est son idée (accord pour le pseudo, puis sa compétence) ;
+ *  - "passe"           : il a passé son tour (ou l'animateur est passé sans sa réponse) ;
+ *  - "competence"      : une compétence privée repérée dans sa réponse ;
+ *  - "idee"            : pas de compétence cette fois, on lui rappelle son idée ;
+ *  - "attente-retour"  : le MJ regarde encore ce que sa réponse montre.
+ */
+export function retourEpisode(vue) {
+  const moi = vue?.moi;
+  if (!moi || vue.phase !== "competences") return null;
+  if (vue.attenteIA || !vue.idee) return "attente";
+  if (moi.monIdee) return "mon-idee";
+  if (moi.jaiPasse || moi.sansReponse) return "passe";
+  if (moi.competenceDuProbleme && moi.retourPrive !== "idee") return "competence";
+  if (moi.retourPrive === "idee") return "idee";
+  return "attente-retour";
+}
+
+/** « Ton idée : … » : la reformulation du MJ, sinon sa réponse telle quelle. */
+export function texteMonIdee(moi) {
+  const r = typeof moi?.maReformulation === "string" ? moi.maReformulation.trim() : "";
+  if (r) return /[.!?…»]$/u.test(r) ? r : `${r}.`;
+  const rep = typeof moi?.maReponse === "string" ? moi.maReponse.trim() : "";
+  return rep ? `Ton idée : « ${rep} »` : "";
 }

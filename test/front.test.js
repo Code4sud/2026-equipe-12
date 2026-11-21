@@ -447,3 +447,254 @@ test("blocInteretsOrdonnes : types classés par ordre, description, compétences
   assert.ok(/Pas apparus pendant la partie/.test(html));
   assert.equal(blocInteretsOrdonnes([], ROME), "");
 });
+
+// ---------- Écran commun et téléphone : adaptations psy (21/11/2026) ----------
+
+import * as E from "../public/js/ecran.js";
+import {
+  separerMots, texteAmorce, retourEpisode, texteMonIdee, texteEpisode, decouperPhrases,
+  ANNONCE_CADRE, MJ_EST_UNE_IA, QUESTIONS_DEBRIEF, MESSAGE_PASSE, PROMESSE_COMPETENCE, RELAIS_ADULTE,
+} from "../public/js/joueur-outils.js";
+
+const INTERDITS = /\bfaux\b|\bfausse\b|mauvaise réponse|tu t'es trompé|\bscore\b|classement|undefined|\bnull\b/i;
+const JS_JOUEUR = lire("public/js/joueur.js");
+const JS_ECRAN = lire("public/js/ecran.js");
+
+test("textes partagés : cadre « pas un test noté », MJ = IA, promesse et relais sans sur-promesse", () => {
+  const cadre = ANNONCE_CADRE.join(" ");
+  assert.match(cadre, /Ce n'est pas un test noté/, "critique psy point 28");
+  assert.match(cadre, /lu par une IA/);
+  assert.match(cadre, /ne voient pas ta réponse/);
+  assert.match(MJ_EST_UNE_IA, /intelligence artificielle/);
+  assert.match(MJ_EST_UNE_IA, /il propose/);
+  assert.match(PROMESSE_COMPETENCE, /même chance/);
+  assert.doesNotMatch(PROMESSE_COMPETENCE, /au moins une/, "jamais « chacun repart avec au moins une »");
+  assert.match(RELAIS_ADULTE, /psychologue ou au conseiller/);
+  assert.equal(QUESTIONS_DEBRIEF.length, 3);
+  for (const t of [cadre, MJ_EST_UNE_IA, PROMESSE_COMPETENCE, RELAIS_ADULTE, MESSAGE_PASSE, ...QUESTIONS_DEBRIEF]) {
+    assert.doesNotMatch(t, INTERDITS, t);
+    assert.doesNotMatch(t, /\bvous\b/i, `tutoiement : ${t}`);
+  }
+});
+
+test("carte : la phrase « Tu as proposé de … : c'est ce qu'on appelle « libellé » » ne répète pas le libellé", () => {
+  const libelle = "Être force de proposition";
+  assert.deepEqual(
+    separerMots(`Tu as proposé de demander au boulanger : c'est ce qu'on appelle « ${libelle} ».`, libelle),
+    { avant: "Tu as proposé de demander au boulanger : c'est ce qu'on appelle", apres: "" },
+  );
+  assert.equal(separerMots("Tu as pensé à compter le stock.", libelle), null, "ancienne phrase : affichée telle quelle");
+  assert.equal(separerMots("", libelle), null);
+  assert.equal(separerMots(`« ${libelle} »`, libelle), null, "rien avant le libellé");
+  assert.match(JS_JOUEUR, /separerMots\(motsDe\(c\), libelle\)/);
+  assert.match(JS_JOUEUR, /à vérifier avec ton psy/, "critique psy point 2");
+  assert.match(JS_JOUEUR, /repérée hors scénario, à discuter avec ton psy/);
+  assert.match(JS_JOUEUR, /Ta trace \(tes mots\)/, "« trace » plutôt que « preuve »");
+  assert.doesNotMatch(JS_JOUEUR, /Ta preuve/);
+});
+
+test("« je ne sais pas » : amorces préremplies et « Je passe ce tour » dès le 1er refus", () => {
+  assert.equal(texteAmorce("D'abord, je…"), "D'abord, je ");
+  assert.equal(texteAmorce("Moi, je demanderais à…"), "Moi, je demanderais à ");
+  assert.equal(texteAmorce("J'irais voir..."), "J'irais voir ");
+  assert.match(JS_JOUEUR, /m\.code === "sans_reponse"/, "le code du refus déclenche l'aide");
+  assert.match(JS_JOUEUR, /data-action="amorce"/);
+  assert.match(JS_JOUEUR, /Je passe ce tour/);
+  assert.match(JS_JOUEUR, /envoyerAvecAttente\(\{ t: "passer" \}\)/);
+  assert.match(JS_JOUEUR, /moi\.jaiPasse/);
+  assert.match(MESSAGE_PASSE, /Pas de souci, l'histoire continue/);
+});
+
+test("retour privé du téléphone en phase competences (idée du tour, compétence privée, reformulation, passe)", () => {
+  const v = (moi, x = {}) => ({ phase: "competences", idee: { texte: "x" }, moi, ...x });
+  assert.equal(retourEpisode({ phase: "reponse", moi: {} }), null);
+  assert.equal(retourEpisode(v({}, { attenteIA: true })), "attente");
+  assert.equal(retourEpisode(v({}, { idee: null })), "attente");
+  assert.equal(retourEpisode(v({ monIdee: { accordPseudo: null }, competenceDuProbleme: { code: "A" } })), "mon-idee");
+  assert.equal(retourEpisode(v({ jaiPasse: true, retourPrive: "idee" })), "passe");
+  assert.equal(retourEpisode(v({ sansReponse: true, retourPrive: "idee" })), "passe");
+  assert.equal(retourEpisode(v({ retourPrive: "competence", competenceDuProbleme: { code: "A" } })), "competence");
+  assert.equal(retourEpisode(v({ retourPrive: "idee", maReponse: "y" })), "idee");
+  assert.equal(retourEpisode(v({ retourPrive: null, maReponse: "y" })), "attente-retour", "le MJ travaille encore");
+  assert.equal(texteMonIdee({ maReformulation: "Ton idée : demander au coach" }), "Ton idée : demander au coach.");
+  assert.equal(texteMonIdee({ maReformulation: null, maReponse: "je demande au coach" }), "Ton idée : « je demande au coach »");
+  assert.equal(texteMonIdee({}), "");
+  // Le téléphone : « Ce que ta réponse montre » sans 🎉, accord pour le pseudo, promesse.
+  assert.match(JS_JOUEUR, /Ce que ta réponse montre/);
+  assert.doesNotMatch(JS_JOUEUR, /🎉 Ton idée est retenue/);
+  assert.match(JS_JOUEUR, /On affiche ton pseudo sur l'écran \?/);
+  assert.match(JS_JOUEUR, /Non, reste discret/);
+  assert.match(JS_JOUEUR, /t: "afficher_pseudo", accord:/);
+  assert.match(JS_JOUEUR, /PROMESSE_COMPETENCE/);
+});
+
+test("téléphone : réflexion (note privée), préférence, débrief, réécouter, dictée, relais adulte", () => {
+  assert.match(JS_JOUEUR, /case "reflexion":/);
+  assert.match(JS_JOUEUR, /envoyerAvecAttente\(\{ t: "note", texte \}\)/);
+  assert.match(JS_JOUEUR, /Personne ne la verra/);
+  assert.match(JS_JOUEUR, /Ce genre de situation, tu aimerais en vivre dans un travail \?/);
+  assert.match(JS_JOUEUR, /t: "preference", valeur:/);
+  assert.match(JS_JOUEUR, /case "debrief":/);
+  assert.match(JS_JOUEUR, /envoyerAvecAttente\(\{ t: "debrief", texte \}\)/);
+  assert.match(JS_JOUEUR, /🔊 Réécouter l'épisode/);
+  assert.match(JS_JOUEUR, /Et toi, que fais-tu \?/, "consigne de réponse au tutoiement");
+  assert.match(JS_JOUEUR, /Déclic ne garde pas ta voix/);
+  assert.match(JS_JOUEUR, /processLocally/);
+  assert.match(JS_JOUEUR, /RELAIS_ADULTE/);
+  assert.match(JS_JOUEUR, /Un mot-clé suffit/, "recopie allégée sur la fiche papier");
+  assert.doesNotMatch(JS_JOUEUR, /tu vas en gagner pendant le jeu/, "plus de promesse non tenue");
+  assert.match(lire("public/confidentialite.html"), /dictée vocale/i);
+  assert.match(lire("public/confidentialite.html"), /ne garde pas ta voix/);
+});
+
+test("lecture à voix haute : liaison avant la situation, cadre rappelé avant le 1er épisode", () => {
+  const p = { titre: "Le titre", situation: "La situation.", question: "Que faites-vous ?" };
+  assert.equal(texteEpisode({ probleme: p }), "Le titre. La situation. Que faites-vous ?");
+  assert.equal(texteEpisode({ probleme: p, liaison: "Le budget est bouclé." }), "Le budget est bouclé. Le titre. La situation. Que faites-vous ?");
+  assert.equal(texteEpisode({ probleme: null }), "");
+  assert.match(E.texteALire({ phase: "presentation", problemeIndex: 0, probleme: p }), /^Ce n'est pas un test noté\./);
+  assert.doesNotMatch(E.texteALire({ phase: "presentation", problemeIndex: 1, probleme: p }), /test noté/);
+  assert.match(E.texteALire({ phase: "creation" }), /Ce n'est pas un test noté/);
+  assert.match(E.texteALire({ phase: "debrief" }), /Quel moment de l'histoire/);
+  assert.ok(decouperPhrases(E.texteALire({ phase: "creation" })).every((m) => m.length <= 160));
+});
+
+test("écran : l'idée du tour s'affiche sans pseudo tant que son auteur n'a pas dit oui", () => {
+  const idee = { texte: "on compare les prix", competence: { libelle: "Élaborer un budget", riasec: ["C"] }, notee: false };
+  const sans = E.rendreScene({ phase: "competences", problemeIndex: 0, idee: { ...idee, pseudo: null, avatar: null, accordPseudo: null }, joueurs: [] });
+  assert.match(sans, /Cette idée fait avancer l'histoire/);
+  assert.match(sans, /Son auteur l'écrit sur sa fiche papier/);
+  assert.match(sans, /chacun retrouve ce que sa réponse montre/);
+  assert.doesNotMatch(sans, /L'idée de /);
+  assert.doesNotMatch(sans, INTERDITS);
+  const avec = E.rendreScene({ phase: "competences", problemeIndex: 0, idee: { ...idee, pseudo: "Lina", avatar: "🦊", accordPseudo: true, notee: true } });
+  assert.match(avec, /L'idée de Lina/);
+  assert.match(avec, /Notée sur la fiche papier/);
+  // La clé de scène change quand le pseudo apparaît ou que la compétence est notée.
+  const v1 = { phase: "competences", problemeIndex: 0, idee: { ...idee, pseudo: null } };
+  assert.notEqual(E.cleScene(v1), E.cleScene({ ...v1, idee: { ...idee, pseudo: "Lina", accordPseudo: true } }));
+  assert.notEqual(E.cleScene(v1), E.cleScene({ ...v1, idee: { ...idee, pseudo: null, notee: true } }));
+  // Attente : le MJ est une IA, il propose, l'animateur valide.
+  assert.match(E.rendreScene({ phase: "competences", attenteIA: true }), /Le MJ est une IA : il propose/);
+});
+
+test("écran : bouton animateur « Choisir une autre idée » ; débrief avant la fin si réglé", () => {
+  const sansAutre = E.commandesPour({ phase: "competences", problemeIndex: 0, nbProblemes: 3, idee: {} });
+  assert.deepEqual(sansAutre.map((c) => c.id), ["suivant"]);
+  const avec = E.commandesPour({ phase: "competences", problemeIndex: 0, nbProblemes: 3, autreIdeePossible: true });
+  const autre = avec.find((c) => c.id === "autre_idee");
+  assert.ok(autre && !autre.principal, "bouton secondaire, jamais l'action principale de la télécommande");
+  assert.deepEqual(autre.message, { t: "autre_idee" });
+  assert.equal(E.commandesPour({ phase: "competences", problemeIndex: 2, nbProblemes: 3, reglages: { debrief: true } })[0].libelle, "Passer au débrief");
+  assert.equal(E.commandesPour({ phase: "debrief" })[0].message.t, "suivant");
+  assert.equal(E.commandesPour({ phase: "reflexion" })[0].libelle, "Lancer la discussion");
+  assert.equal(E.commandesPour({ phase: "presentation", reglages: { dureeReflexion: 30 } })[0].libelle, "Lancer la réflexion");
+  assert.equal(E.commandesPour({ phase: "presentation", reglages: { dureeReflexion: 0 } })[0].libelle, "Lancer la discussion");
+  assert.match(E.commandesPour({ phase: "echange" })[0].aide, /au moins une phrase/);
+  assert.match(E.commandesPour({ phase: "reponse" })[0].aide, /peut montrer une compétence/);
+  assert.doesNotMatch(E.commandesPour({ phase: "reponse" })[0].aide, /auront quand même une compétence/, "aide périmée retirée");
+});
+
+test("écran : réflexion silencieuse, tour de table, seul avec l'animateur, transparence IA", () => {
+  const reflexion = E.rendreScene({ phase: "reflexion", problemeIndex: 0, probleme: { titre: "T", question: "Q" }, minuteurDuree: 30_000 });
+  assert.match(reflexion, /30 secondes en silence : chacun réfléchit à ce qu&#39;il ferait|30 secondes en silence : chacun réfléchit à ce qu'il ferait/);
+  assert.match(reflexion, /On en parle juste après/);
+  assert.match(E.rendreScene({ phase: "reflexion", reglages: { dureeReflexion: 45 } }), /45 secondes en silence/);
+  assert.equal(E.dureePhase("reflexion", { dureeReflexion: 20 }), 20);
+  const groupe = E.rendreScene({ phase: "echange", joueurs: [{}, {}, {}] });
+  assert.match(groupe, /Tour de table/);
+  assert.match(groupe, /chacun dit son idée en une phrase, sans être coupé/i);
+  const seul = E.rendreScene({ phase: "echange", joueurs: [{}] });
+  assert.match(seul, /Réfléchis à voix haute avec l'animateur/);
+  assert.doesNotMatch(seul, /Tour de table/);
+  const reponse = E.rendreScene({ phase: "reponse" });
+  assert.match(reponse, /les autres joueurs ne la voient pas/);
+  assert.match(reponse, /Le maître du jeu est une IA : il propose, tu décides/);
+  assert.doesNotMatch(reponse, /seul le MJ la lit/);
+  const creation = E.rendreScene({ phase: "creation" });
+  assert.match(creation, /Ce n(&#39;|')est pas un test noté/);
+  assert.match(creation, /Le maître du jeu est une IA/);
+  assert.match(E.rendreScene({ phase: "presentation", problemeIndex: 0, probleme: {} }), /Ce n(&#39;|')est pas un test noté/);
+  const ep2 = E.rendreScene({ phase: "presentation", problemeIndex: 1, probleme: {}, liaison: "Le budget est bouclé <b>" });
+  assert.match(ep2, /class="liaison">Le budget est bouclé &lt;b&gt;/, "liaison affichée et échappée");
+  assert.doesNotMatch(ep2, /test noté/);
+});
+
+test("écran : avancement neutre (ordre d'arrivée, « ✍️ écrit… », personne mis en avant)", () => {
+  const vue = { phase: "reponse", compte: { repondu: 1, total: 3 }, joueurs: [
+    { pseudo: "Lina", avatar: "🦊", aFini: false }, { pseudo: "Sam", avatar: "🐼", aFini: true }, { pseudo: "Noa", avatar: "🦉", aFini: false },
+  ] };
+  const html = E.BLOCS.compte(vue);
+  assert.ok(html.indexOf("Lina") < html.indexOf("Sam") && html.indexOf("Sam") < html.indexOf("Noa"), "ordre d'arrivée conservé");
+  assert.equal((html.match(/✍️ écrit…/g) || []).length, 2);
+  assert.equal((html.match(/>✓</g) || []).length, 1);
+  assert.doesNotMatch(html, /class="attente"|dernier/);
+  assert.match(E.BLOCS.compte({ ...vue, phase: "competences" }), /ont fait leur choix/);
+  assert.match(lire("public/jeu.css"), /\.statuts-joueurs li\.en-cours \{/);
+});
+
+test("écran : accueil (3 à 5 joueurs conseillés, tablette de secours) et fin collective sans éloge général", () => {
+  const accueil = E.rendreScene({ phase: "accueil", code: "KDMZ", joueurs: [{ pseudo: "Lina", avatar: "🦊" }] }, { origine: "http://192.168.1.20:8787" });
+  assert.match(accueil, /Souvent recommandé : 3 à 5 joueurs \(6 maximum\)/);
+  assert.doesNotMatch(accueil, /2 ou plus, c'est mieux/);
+  assert.match(accueil, /tablette du Centre/);
+  assert.match(E.rendreScene({ phase: "accueil", code: "KDMZ", joueurs: [] }, { origine: "" }), /3 à 5 joueurs/);
+  const fin = E.rendreScene({ phase: "fin", fin: { nbCompetencesTotal: 7 } });
+  assert.match(fin, /Bravo l'équipe/);
+  assert.match(fin, /<strong>7<\/strong> compétences/);
+  assert.match(fin, /trace de vos propres mots/);
+  assert.doesNotMatch(fin, /Chacun a des talents/);
+  const debrief = E.rendreScene({ phase: "debrief" });
+  for (const q of QUESTIONS_DEBRIEF) assert.ok(debrief.includes(q.replace(/'/g, "&#39;")), q);
+  assert.doesNotMatch(JS_ECRAN, /bravo\. Mais/i, "plus de « bravo » dans la transition copiée");
+});
+
+test("réglages de l'écran : épisodes et discussion automatiques, réflexion, débrief ; un seul champ envoyé", () => {
+  const html = E.reglagesHtml({ nbProblemes: 4, nbProblemesAuto: true, dureeEchange: 120, dureeEchangeAuto: true, dureeReponse: 90, dureeReflexion: 30, debrief: false }, 4);
+  assert.match(html, /<option value="auto" selected>Auto : 4 \(1 par joueur, 3 à 6\)/);
+  assert.match(html, /<option value="auto" selected>Auto : 2 min \(selon le groupe\)/);
+  assert.match(html, /<option value="0" >Sans<\/option>/);
+  assert.match(html, /<option value="30" selected>30 s/);
+  assert.match(html, /<option value="90" selected>1 min 30 \(2-3 phrases\)/);
+  assert.match(html, /data-reglage="debrief" >/, "débrief décoché");
+  const manuel = E.reglagesHtml({ nbProblemes: 2, nbProblemesAuto: false, dureeEchange: 150, dureeEchangeAuto: false, debrief: true }, 5);
+  assert.match(manuel, /<option value="2" selected>2 épisodes/);
+  assert.doesNotMatch(manuel, /Auto : 2 min/);
+  assert.match(manuel, /<option value="150" selected>2 min 30/);
+  assert.match(manuel, /data-reglage="debrief" checked/);
+  assert.match(E.reglagesHtml({}, 1), /Auto : 3 /, "1 joueur → 3 épisodes");
+  assert.match(E.reglagesHtml({}, 8), /Auto : 6 /);
+  assert.deepEqual(E.messageReglage("nbProblemes", "auto"), { t: "reglages", nbProblemes: null });
+  assert.deepEqual(E.messageReglage("nbProblemes", "5"), { t: "reglages", nbProblemes: 5 });
+  assert.deepEqual(E.messageReglage("dureeReflexion", "0"), { t: "reglages", dureeReflexion: 0 });
+  assert.deepEqual(E.messageReglage("dureeEchange", "150"), { t: "reglages", dureeEchange: 150 });
+  assert.equal(E.messageReglage("dureeEchange", "auto"), null, "l'automatique est déjà actif");
+  assert.deepEqual(E.messageReglage("debrief", true), { t: "reglages", debrief: true });
+  assert.equal(E.messageReglage("inconnu", 1), null);
+  assert.doesNotMatch(JS_ECRAN, /envoyer\(\{ t: "reglages", dureeEchange, dureeReponse \}\)/, "on n'écrase plus la discussion automatique");
+});
+
+test("démo de l'écran et du téléphone : nouvelles scènes (réflexion, idée sans nom, autre idée, liaison, débrief)", () => {
+  const vues = E.vuesDemo(0);
+  for (const p of ["reflexion", "debrief"]) assert.ok(vues.some((v) => v.phase === p), p);
+  assert.ok(vues.some((v) => v.phase === "competences" && v.idee && v.idee.pseudo === null && v.autreIdeePossible));
+  assert.ok(vues.some((v) => v.phase === "presentation" && v.liaison));
+  assert.ok(vues.some((v) => v.phase === "echange" && v.joueurs.length === 1));
+  for (const v of vues) assert.doesNotMatch(E.rendreScene(v, { origine: "http://x" }), INTERDITS, v.phase);
+  assert.match(JS_JOUEUR, /\["Réflexion en silence"/);
+  assert.match(JS_JOUEUR, /\["C'est ton idée : pseudo \?"/);
+  assert.match(JS_JOUEUR, /\["Ce que ta réponse montre"/);
+  assert.match(JS_JOUEUR, /\["Réponse : « je ne sais pas »"/);
+  assert.match(JS_JOUEUR, /\["Débrief"/);
+});
+
+test("index.html : épisodes automatiques par défaut (nbProblemes omis), débrief proposé, pas de durée inventée", () => {
+  const index = lire("public/index.html");
+  assert.match(index, /<option value="auto" selected>Auto : 1 par joueur \(3 à 6\)<\/option>/);
+  assert.doesNotMatch(index, /≈ \d+ min|≈ 1 h/, "durées par épisode non mesurées retirées");
+  assert.match(index, /if \(choixEpisodes !== "auto"\) reglages\.nbProblemes = Number\(choixEpisodes\)/);
+  assert.doesNotMatch(index, /dureeEchange/, "la discussion reste automatique");
+  assert.match(index, /id="debrief" name="debrief" checked/);
+  assert.match(index, /3 à 5 joueurs \(6 maximum\)/);
+  assert.match(index, /tablette du Centre/);
+});
