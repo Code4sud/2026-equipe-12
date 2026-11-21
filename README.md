@@ -6,21 +6,21 @@ Projet réalisé à Nice les 18, 19 et 20 novembre 2026, sur le thème **« L'or
 
 ## Le projet
 
-Sujet 4 : le détecteur du potentiel caché. **Déclic est un jeu de rôle des compétences** : chaque jeune joue son propre rôle face à des problèmes du quotidien (l'histoire du tournoi du quartier, du budget à la caisse de la buvette). Un maître du jeu (MJ) IA révèle les compétences qu'il montre, et chacun repart avec sa fiche pour l'entretien avec le psychologue du travail ou le conseiller.
+Sujet 4 : le détecteur du potentiel caché. **Déclic est un jeu de rôle des compétences** : chaque jeune joue son propre rôle face à des problèmes du quotidien (l'histoire du tournoi du quartier, du budget à la caisse de la buvette). Un maître du jeu (MJ) IA repère les compétences que montrent ses propres mots, et chacun repart avec sa fiche pour l'entretien avec le psychologue du travail ou le conseiller.
 
 Une partie se joue à 1 à 6 joueurs autour d'un **écran commun**, chacun avec **son téléphone** (QR code, rien à installer) et une **fiche personnage papier** :
 
 1. **Création du personnage** : chacun raconte 1 ou 2 choses qu'il a déjà faites ; le MJ en tire ses premières compétences, qu'il garde ou refuse.
 2. **Une histoire, « Le tournoi du quartier »** : 6 épisodes qui s'enchaînent (le budget, l'affiche, une embrouille dans l'équipe, le téléphone mystère, le jour J, la caisse de la buvette), un par profil RIASEC. Chaque épisode s'affiche sur l'écran commun ; chacun valide « J'ai lu », le groupe discute à voix haute (minuteur), puis chacun répond **en privé** sur son téléphone.
-3. **Il n'y a ni bonne ni mauvaise réponse.** Seuls « je ne sais pas » et la violence sont refusés, au joueur concerné seulement, qui réécrit sa réponse.
-4. **L'idée du tour** : le MJ IA retient l'idée qui fait avancer l'histoire et l'affiche sur l'écran, avec le pseudo de son auteur et ses propres mots. Ce joueur reçoit la compétence sur son téléphone et **l'écrit sur sa fiche papier**. À idées comparables, le MJ préfère quelqu'un qui n'a pas encore été retenu : chacun a sa chance.
+3. **Il n'y a ni bonne ni mauvaise réponse.** Seuls « je ne sais pas » et la violence sont refusés, au joueur concerné seulement : il réécrit sa réponse, aidé par des débuts de phrase (« Moi, je demanderais à… », « D'abord, je… », « J'irais voir… »), ou passe ce tour sans reproche.
+4. **L'idée du tour** : le MJ IA propose l'idée qui fait avancer l'histoire et l'affiche sur l'écran avec ses propres mots (le pseudo seulement si l'auteur est d'accord). Ce joueur reçoit la compétence sur son téléphone et **l'écrit sur sa fiche papier**. Tant qu'un joueur pas encore retenu a écrit une vraie réponse, le MJ choisit **obligatoirement** parmi eux, et la longueur d'une réponse n'est pas un critère. Chaque autre réponse peut aussi recevoir, **en privé**, une compétence repérée, seulement si elle contient une action précise et citable : chacun a la même chance d'en recevoir une. Entre deux épisodes, une phrase de liaison reprend l'idée retenue.
 5. À la fin : une **fiche imprimable** (3 pages A4) qui **complète le Rapport des Possibles** du Centre, sur son modèle : les compétences révélées avec leurs preuves, les intérêts RIASEC classés par ordre, et le champ des possibles rangé par les 5 zones de métiers du rapport.
 
 Garde-fous :
 - les réponses sont privées : l'écran commun montre **qui** a répondu ; seule l'idée retenue est affichée, avec le pseudo de son auteur ;
 - pas de bonne ni de mauvaise réponse : personne n'est jamais jugé ;
-- le MJ ne choisit que dans une liste fermée de compétences ROME 4.0 par problème, et la preuve doit être une citation exacte du joueur ;
-- un MJ de secours déterministe prend le relais si l'IA ne répond pas : la partie ne bloque jamais ;
+- le MJ ne choisit que dans une liste fermée de compétences ROME 4.0 par problème (ou, si aucune ne convient, parmi les 16 savoir-être, marqués « hors scénario »), et la trace doit être une citation exacte du joueur ; la carte dit « Tu as proposé de … : c'est ce qu'on appelle « … » », jamais « tu es » ni un superlatif, et rien sur la santé, l'origine, la famille, la religion, les opinions ou la vie sexuelle (contrôlé côté serveur) ;
+- un MJ de secours déterministe prend le relais si l'IA ne répond pas : la partie ne bloque jamais ; il ne mesure pas la qualité (réponse sérieuse et en lien avec le sujet, priorité à qui n'a pas encore été retenu) et départage les ex aequo par un tirage au hasard enregistré ;
 - pas de score, pas de verdict : le jeune valide chaque compétence ;
 - rien n'est conservé : la partie est effacée une heure après la fin.
 

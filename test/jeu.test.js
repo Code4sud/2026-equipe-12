@@ -411,7 +411,10 @@ test("épisode : presentation → echange → reponse → l'idée du tour (sans 
   e = r.etat;
   assert.deepEqual(Object.keys(e.attribution), ["a"], "une seule idée du tour");
   // Puis une compétence privée possible pour chaque AUTRE réponse (effet attribuer).
-  assert.deepEqual(r.effets, [{ type: "attribuer", problemeIndex: 0, probleme: e.catalogue[p0], reponses: [{ joueurId: "b", texte: "Je rassure mon pote" }] }]);
+  assert.deepEqual(r.effets.filter((x) => x.type === "attribuer"), [{ type: "attribuer", problemeIndex: 0, probleme: e.catalogue[p0], reponses: [{ joueurId: "b", texte: "Je rassure mon pote" }] }]);
+  // Et la phrase de liaison vers l'épisode suivant, qui reprend l'idée du tour (src/mj.js, lier).
+  const lier = r.effets.find((x) => x.type === "lier");
+  assert.deepEqual([lier.problemeIndex, lier.essai, lier.idee], [1, 0, "Je l'éteins tout de suite"], "effet lier");
   assert.equal(e.privees[0], "attente");
   assert.equal(e.joueurs.b.competences.filter((c) => c.problemeIndex === 0).length, 0);
   // L'idée du tour est montrée à tout le monde, d'abord SANS pseudo (décision §2).
@@ -1173,4 +1176,54 @@ test("débrief (réglage) : après le dernier épisode, réponse privée faculta
   assert.deepEqual(r.effets, [{ type: "nettoyer", fin: T0 + 5 + 60 * 60 * 1000 }]);
   // Sans le réglage : directement la fin.
   assert.equal(ok(avecDeux({}), E({ t: "suivant" })).etat.phase, "fin");
+});
+
+// ───────────────────────── MJ IA : liaison, reformulation, savoir-être, départage ─────────────────────────
+
+test("lot MJ : phrase de liaison vers l'épisode suivant (transition fixe en repli), reformulation privée, savoir-être hors scénario, départage enregistré", () => {
+  let e = jusquaReponse(partieEnPresentation());
+  e = ok(e, J("a", { t: "reponse", texte: "Je l'éteins tout de suite" })).etat;
+  e = ok(e, J("b", { t: "reponse", texte: "Je ferais un truc" })).etat;
+  assert.equal(e.phase, "competences");
+  // L'idée du tour : un savoir-être hors scénario, choisi par le MJ de secours après un tirage.
+  const departage = { exAequo: ["a", "b"], graine: 7, tire: "a" };
+  let r = ok(e, { t: "attribution_faite", problemeIndex: 0, essai: 0, joueurId: "a", competence: { ...compJeu("6D101", "Je l'éteins tout de suite"), horsScenario: true }, departage });
+  e = r.etat;
+  assert.equal(e.joueurs.a.competences.find((c) => c.problemeIndex === 0).horsScenario, true, "« repérée hors scénario » sur la fiche");
+  assert.deepEqual(e.tirages[0].departage, departage, "tirage entre ex aequo enregistré");
+  const lier = r.effets.find((x) => x.type === "lier");
+  assert.deepEqual([lier.problemeIndex, lier.essai, lier.idee, lier.suivant.id], [1, 0, "Je l'éteins tout de suite", e.problemes[1]]);
+  ko(e, { t: "liaison_faite", problemeIndex: 1, essai: 3, texte: "Liaison d'un autre essai." }); // périmée
+  ko({ ...e, phase: "accueil" }, { t: "liaison_faite", problemeIndex: 1, essai: 0, texte: "x", role: "joueur" }); // interne : jamais d'un client
+  e = ok(e, { t: "liaison_faite", problemeIndex: 1, essai: 0, texte: "Le téléphone est sauvé : place à la suite." }).etat;
+  // Pas d'action citable pour b : « Ton idée : … » écrite par le MJ, montrée à lui seul.
+  e = ok(e, { t: "competences_privees", problemeIndex: 0, competences: { b: { reformulation: "Ton idée : faire quelque chose" } } }).etat;
+  assert.equal(vue(e, "joueur", "b").moi.retourPrive, "idee");
+  assert.equal(vue(e, "joueur", "b").moi.maReformulation, "Ton idée : faire quelque chose");
+  assert.equal(vue(e, "joueur", "a").moi.maReformulation, null);
+  assert.ok(!JSON.stringify(vue(e, "ecran")).includes("Ton idée"), "jamais à l'écran");
+  assert.equal(vue(e, "ecran").liaison, null, "pas de liaison au 1er épisode");
+  e = ok(e, J("a", { t: "afficher_pseudo", accord: false })).etat;
+  e = ok(e, J("a", { t: "garder_competence", garder: true })).etat;
+  assert.equal(e.phase, "presentation");
+  assert.equal(e.problemeIndex, 1);
+  assert.equal(vue(e, "ecran").liaison, "Le téléphone est sauvé : place à la suite.");
+  assert.equal(vue(e, "joueur", "b").liaison, "Le téléphone est sauvé : place à la suite.");
+  ko(e, { t: "liaison_faite", problemeIndex: 1, essai: 0, texte: "Trop tard." }); // l'épisode est commencé
+  // Sans phrase du MJ : la transition fixe de l'épisode, sinon « L'histoire continue. ».
+  delete e.liaisons[1];
+  assert.equal(vue(e, "ecran").liaison, e.catalogue[e.problemes[1]].transition?.trim() || "L'histoire continue.");
+});
+
+test("lot MJ : « Choisir une autre idée » efface la liaison préparée pour l'ancienne idée", () => {
+  let e = jusquaReponse(partieEnPresentation());
+  e = ok(e, J("a", { t: "reponse", texte: "Je l'éteins tout de suite" })).etat;
+  e = ok(e, J("b", { t: "reponse", texte: "Je le mets dans le riz" })).etat;
+  e = ok(e, { t: "attribution_faite", problemeIndex: 0, essai: 0, joueurId: "a", competence: compJeu("6D111", "Je l'éteins tout de suite") }).etat;
+  assert.deepEqual(e.liaisons[1], { essai: 0, texte: null });
+  e = ok(e, E({ t: "autre_idee" })).etat;
+  assert.equal(e.liaisons[1], undefined);
+  ko(e, { t: "liaison_faite", problemeIndex: 1, essai: 0, texte: "Reprend l'ancienne idée." });
+  const r = ok(e, { t: "attribution_faite", problemeIndex: 0, essai: 1, joueurId: "b", competence: compJeu("6D111", "Je le mets dans le riz") });
+  assert.equal(r.effets.find((x) => x.type === "lier").idee, "Je le mets dans le riz");
 });

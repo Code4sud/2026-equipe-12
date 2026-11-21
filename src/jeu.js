@@ -18,6 +18,7 @@ import {
   normCitation,
   normaliserPseudo,
   refusReponse,
+  transitionFixe,
 } from "./texte.js";
 
 export const AVATARS = ["🦊", "🐼", "🦁", "🐸", "🐙", "🦉", "🐢", "🐝", "🦄", "🐧", "🐯", "🐨"];
@@ -76,6 +77,7 @@ const INTERNES = new Set([
   "analyse_faite",
   "attribution_faite",
   "competences_privees",
+  "liaison_faite",
   "erreur_ia",
   "connexion",
   "deconnexion",
@@ -212,6 +214,10 @@ export function creerEtat({
     essaisChoix: {},
     exclus: {},
     privees: {},
+    // Phrase de liaison vers l'épisode i (écrite par le MJ après l'idée du tour
+    // de l'épisode i-1) : { [i]: { essai, texte|null } }. Sans texte, la
+    // transition fixe de l'épisode s'affiche (src/texte.js, transitionFixe).
+    liaisons: {},
     finA: null,
   };
 }
@@ -462,6 +468,9 @@ function competenceJeu(c, problemeIndex, { idee }) {
     // idee:true = l'idée du tour (publique) ; false = compétence privée, montrée
     // seulement sur le téléphone de son auteur.
     idee: idee === true,
+    // Savoir-être choisi faute de compétence de l'épisode (src/mj.js) : la fiche
+    // l'affiche « repérée hors scénario, à discuter avec ton psy ».
+    horsScenario: c.horsScenario === true,
     gardee: null,
   };
 }
@@ -809,6 +818,7 @@ H.autre_idee = { role: "ecran", f(e) {
   for (const c of e.joueurs[id].competences) if (c.problemeIndex === pi) c.idee = false;
   if (e.joueurs[id].reponses[pi]) e.joueurs[id].reponses[pi].retour = "competence";
   e.essaisChoix[pi] = essaiCourant(e) + 1;
+  if (e.liaisons) delete e.liaisons[pi + 1];
   e.attribution = null;
   e.idee = null;
   const choisir = effetChoisir(e);
@@ -841,6 +851,7 @@ H.attribution_faite = { f(e, ev) {
   }
   e.attribution = {};
   const effets = [];
+  let lier = null;
   if (!j || !texte || !c || !c.code) {
     e.idee = { joueurId: null, accordPseudo: null };
   } else {
@@ -848,6 +859,29 @@ H.attribution_faite = { f(e, ev) {
     j.competences = j.competences.filter((x) => x.problemeIndex !== pi).concat([comp]);
     e.attribution[j.id] = { ...comp };
     e.idee = { joueurId: j.id, accordPseudo: null };
+    // Phrase de liaison vers l'épisode suivant, qui reprend cette idée (sans
+    // pseudo) ; la transition fixe s'affiche tant qu'elle n'est pas arrivée.
+    if (pi + 1 < e.problemes.length) {
+      const essai = essaiCourant(e);
+      e.liaisons = e.liaisons ?? {};
+      e.liaisons[pi + 1] = { essai, texte: null };
+      lier = {
+        type: "lier",
+        problemeIndex: pi + 1,
+        essai,
+        precedent: problemeCourant(e),
+        suivant: e.catalogue[e.problemes[pi + 1]] ?? null,
+        idee: comp.preuve,
+      };
+    }
+  }
+  // Ex aequo du MJ de secours : tirage au hasard enregistré, pour pouvoir le vérifier.
+  if (ev.departage && Array.isArray(ev.departage.exAequo) && e.tirages?.[pi]) {
+    e.tirages[pi].departage = {
+      exAequo: ev.departage.exAequo.filter((id) => typeof id === "string"),
+      graine: Number.isInteger(ev.departage.graine) ? ev.departage.graine : null,
+      tire: typeof ev.departage.tire === "string" ? ev.departage.tire : null,
+    };
   }
   // Compétences privées : une seule fois par épisode.
   if (e.privees[pi] === undefined) {
@@ -857,6 +891,7 @@ H.attribution_faite = { f(e, ev) {
       effets.push(attribuer);
     } else e.privees[pi] = "fait";
   }
+  if (lier) effets.push(lier);
   return effets;
 } };
 
@@ -878,10 +913,27 @@ H.competences_privees = { f(e, ev) {
       r.retour = "competence";
     } else {
       r.retour = "idee"; // pas d'action citable : on lui rappelle simplement son idée
+      // Reformulation « Ton idée : … » écrite par le MJ (contrôlée dans src/mj.js) ;
+      // sans elle, le téléphone montre sa réponse.
+      const ref = c && typeof c.reformulation === "string" ? c.reformulation.trim() : "";
+      if (ref && longueur(ref) <= 200) r.reformulation = ref;
     }
   }
   e.privees[pi] = "fait";
   if (e.phase === "competences" && pi === e.problemeIndex && episodeBoucle(e)) return problemeSuivant(e, ev.__maintenant);
+  return [];
+} };
+
+// Phrase de liaison vers l'épisode `problemeIndex` : acceptée seulement si elle
+// correspond à l'idée du tour encore affichée (même essai) et si l'épisode n'a pas
+// encore commencé (on ne change pas le texte pendant la lecture).
+H.liaison_faite = { f(e, ev) {
+  const i = ev.problemeIndex;
+  const l = Number.isInteger(i) ? e.liaisons?.[i] : null;
+  if (!l || (ev.essai !== undefined && ev.essai !== l.essai)) return "Liaison périmée.";
+  if (e.problemeIndex === null || i <= e.problemeIndex) return "Liaison arrivée trop tard.";
+  if (ev.texte !== null && (typeof ev.texte !== "string" || !ev.texte.trim() || longueur(ev.texte) > 200)) return "Liaison invalide.";
+  l.texte = ev.texte === null ? null : ev.texte.trim();
   return [];
 } };
 
@@ -1001,6 +1053,9 @@ function partiesCommunes(e) {
     problemeIndex: e.problemeIndex,
     nbProblemes: e.problemes.length,
     probleme: avecProbleme ? vueProbleme(p) : null,
+    // Phrase qui relie l'épisode au précédent (à partir du 2e) : celle du MJ, sinon
+    // la transition fixe de l'épisode.
+    liaison: avecProbleme && e.problemeIndex > 0 ? e.liaisons?.[e.problemeIndex]?.texte ?? transitionFixe(p) : null,
     minuteurFin: PHASES_MINUTEUR.has(e.phase) ? e.minuteurFin : null,
     // Début et durée totale du minuteur (ms) : le cercle reste juste après une
     // reconnexion. Le client corrige son horloge avec `serveur` (heure du serveur
@@ -1087,6 +1142,9 @@ export function vue(etat, role, joueurId) {
       // Retour privé de l'épisode : "competence" (ce que ta réponse montre) ou
       // "idee" (pas de compétence cette fois : on lui rappelle son idée) ; null = en attente.
       retourPrive: etat.attribution && !monIdee ? r?.retour ?? null : null,
+      // Quand retourPrive vaut "idee" : « Ton idée : … » écrite par le MJ, ou null
+      // (le téléphone montre alors maReponse).
+      maReformulation: etat.attribution && !monIdee && r?.retour === "idee" ? r?.reformulation ?? null : null,
       peutDonnerPreference: apresReponse && etat.problemeIndex !== null,
       competenceDuProbleme: competenceDuProbleme ? { ...competenceDuProbleme } : null,
       // Compétences encore sans réponse (gardee: null), hors celle du problème en

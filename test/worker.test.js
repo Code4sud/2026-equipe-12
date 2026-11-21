@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { register } from "node:module";
 import { readFileSync } from "node:fs";
+import { AMORCES } from "../src/texte.js";
 
 // Bouchon de "cloudflare:workers" (seule la classe DurableObject est utilisée).
 const BOUCHON = "export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }";
@@ -333,13 +334,16 @@ test("Partie : init unique, fiche, partie complète en mode mock sans fuite vers
   await envoyer(ecran, { t: "fin_minuteur" }); // l'animateur lance la suite
   assert.equal(partie.etat.phase, "reponse");
 
-  const SECRET_A = "Je demande de l'aide à un pote zorglubA";
+  // Épisode « budget » : chaque réponse contient une action citable (mots-clés
+  // « prix » / « compar » et « ensemble »), le MJ de secours peut donc en repérer une.
+  const SECRET_A = "Je compare les prix avec un pote zorglubA";
   const SECRET_B = "On cherche une solution ensemble zorglubB";
   await envoyer(a, { t: "reponse", texte: SECRET_A });
   // « Je ne sais pas » : refusé pour ce joueur seulement (il réécrit).
   await envoyer(b, { t: "reponse", texte: "je sais pas" });
   assert.equal(b.recus.at(-1).t, "erreur");
   assert.match(b.recus.at(-1).message, /Toutes les idées comptent/);
+  assert.deepEqual(b.recus.at(-1).amorces, AMORCES, "les débuts de phrase arrivent avec le refus");
   assert.equal(partie.etat.phase, "reponse");
   await envoyer(b, { t: "reponse", texte: SECRET_B });
   // Toutes les réponses sont là : le MJ choisit l'idée du tour.
@@ -883,20 +887,23 @@ test("Partie : rotation stricte côté serveur — un choix hors des joueurs pas
   assert.equal((await respecterRotation({ joueurId: "joueur-aaaa-1111" }, { probleme, reponses }, [])).joueurId, "joueur-aaaa-1111");
 });
 
-test("Partie : compétences privées — un appel par joueur via mj.attribuer, repli sur le mock, erreur → chacun garde son idée", async () => {
+test("Partie : compétences privées — mj.attribuerPrivee, repli sur le mock, erreur → chacun garde son idée", async () => {
   const ctx = fauxContexte();
   const partie = new Partie(ctx, { MJ_MODE: "mock" });
   await ctx.pret;
   const probleme = HISTOIRE_DO.find((p) => p.id === "caisse-buvette");
   const effet = { type: "attribuer", problemeIndex: 1, probleme, reponses: [{ joueurId: "joueur-bbbb-2222", texte: "Je note chaque vente sur un carnet" }] };
   let recu = null;
-  partie.mj = { attribuer: async (entree) => { recu = entree; throw new Error("réseau"); } };
+  partie.mj = { attribuerPrivee: async (entree) => { recu = entree; throw new Error("réseau"); } };
   const ev = await partie.calculerIA(effet);
-  assert.deepEqual(Object.keys(recu.historique), ["joueur-bbbb-2222"]);
-  assert.deepEqual(recu.historique["joueur-bbbb-2222"], { reponses: ["Je note chaque vente sur un carnet"], choix: null });
+  assert.deepEqual(recu.reponses, effet.reponses, "les réponses de l'épisode, une par joueur");
   assert.equal(ev.t, "competences_privees");
   assert.equal(ev.problemeIndex, 1);
+  // « note » + « vente » : une action citable → compétence de l'épisode (MJ de secours).
   assert.ok(probleme.competences.some((c) => c.code === ev.competences["joueur-bbbb-2222"].code), "mock : code de l'épisode");
+  // Une réponse sans action citable : pas de compétence, juste son idée.
+  const vague = await partie.calculerIA({ ...effet, reponses: [{ joueurId: "joueur-bbbb-2222", texte: "Je ferais un truc bien pour tout le monde" }] });
+  assert.deepEqual(vague.competences["joueur-bbbb-2222"], { reformulation: null });
   // IA et mock en échec : erreur_ia propre aux compétences privées.
   const evenements = [];
   partie.calculerIA = async () => { throw new Error("tout est en panne"); };

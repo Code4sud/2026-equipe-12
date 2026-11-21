@@ -313,6 +313,8 @@ async function main() {
   v = (await ecran.attendreVue((v) => v.phase === "presentation" && v.problemeIndex === 1, "le problème 2")).vue;
   const p2 = PROBLEMES.get(v.probleme?.id);
   exiger(p2, `problème 2 connu : ${v.probleme?.id}`);
+  // Phrase de liaison avec l'épisode 1 (écrite par le MJ, sinon la transition fixe).
+  verifier(typeof v.liaison === "string" && v.liaison.length > 0, `épisode 2 relié au précédent : « ${v.liaison} »`);
   ecran.envoyer({ t: "suivant" });
   await ecran.attendreVue((v) => v.phase === "reflexion" && v.problemeIndex === 1, "la réflexion 2");
   ecran.envoyer({ t: "suivant" }); // l'animateur écourte la réflexion
@@ -326,7 +328,10 @@ async function main() {
     joueurs[1].envoyer({ t: "reponse", texte });
     const m = await joueurs[1].attendre((x) => x.t === "erreur", `le refus de « ${texte} »`, depuis);
     verifier(motif.test(m.message ?? ""), `« ${texte} » refusé à ce joueur seulement : « ${m.message} »`);
-    if (/Toutes/.test(motif.source)) verifier(m.code === "sans_reponse", "code « sans_reponse » : le téléphone propose des débuts de phrase et « Je passe ce tour »");
+    if (/Toutes/.test(motif.source)) {
+      verifier(m.code === "sans_reponse", "code « sans_reponse » : le téléphone propose des débuts de phrase et « Je passe ce tour »");
+      verifier(Array.isArray(m.amorces) && m.amorces.length === 3, `débuts de phrase envoyés : ${(m.amorces ?? []).join(" / ")}`);
+    }
   }
   joueurs[1].envoyer({ t: "reponse", texte: reponses2[1] });
   // Le 3e joueur ne répond pas : l'animateur passe.

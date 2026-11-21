@@ -20,10 +20,11 @@
 // (redémarrage du DO, rechargement de wrangler dev, déploiement), l'alarme
 // relance l'étape avec le MJ mock à l'échéance : la partie ne reste jamais bloquée.
 import { DurableObject } from "cloudflare:workers";
-import { appliquer, creerEtat, effetsIAEnAttente, MAX_JOUEURS, vue } from "./jeu.js";
+import { appliquer, creerEtat, effetsIAEnAttente, graineDe, MAX_JOUEURS, vue } from "./jeu.js";
 import { creerMJ, mjMock } from "./mj.js";
 import { analyser, versCompetenceDepart } from "./analyse.js";
 import { problemes, rome } from "./donnees.js";
+import { AMORCES } from "./texte.js";
 
 const ROLES = new Set(["ecran", "joueur"]);
 
@@ -450,7 +451,10 @@ export class Partie extends DurableObject {
     const { etat, effets, erreur, code } = appliquer(avant, evenement, maintenant);
     if (erreur) {
       // `code` (ex. "sans_reponse") : le téléphone propose des débuts de phrase et « Je passe ce tour ».
-      if (origine) envoyer(origine, code ? { t: "erreur", message: erreur, code } : { t: "erreur", message: erreur });
+      // Les débuts de phrase sont envoyés avec le code (src/texte.js, AMORCES).
+      const message = code ? { t: "erreur", message: erreur, code } : { t: "erreur", message: erreur };
+      if (code === "sans_reponse") message.amorces = [...AMORCES];
+      if (origine) envoyer(origine, message);
       else console.log(`[partie ${avant.code}] événement ignoré (${evenement.t}) : ${erreur}`);
       return false;
     }
@@ -485,6 +489,11 @@ export class Partie extends DurableObject {
           this.gardes[cleIA(effet)] = maintenant + DELAI_GARDE_IA_MS;
           gardesChangees = true;
           // Non bloquant : les autres messages continuent d'être traités pendant l'appel IA.
+          this.ctx.waitUntil(this.lancerIA(effet));
+          break;
+        case "lier":
+          // Phrase de liaison : facultative (la transition fixe s'affiche sinon),
+          // donc pas de chien de garde.
           this.ctx.waitUntil(this.lancerIA(effet));
           break;
         default:
@@ -541,13 +550,14 @@ export class Partie extends DurableObject {
       evenement = await this.calculerIA(effet);
     } catch (err) {
       console.error(`[partie] échec IA (${effet.type}) :`, err?.message ?? err);
-      if (effet.type === "analyser_recit") evenement = { t: "erreur_ia", joueurId: effet.joueurId };
+      if (effet.type === "lier") evenement = null; // la transition fixe reste affichée
+      else if (effet.type === "analyser_recit") evenement = { t: "erreur_ia", joueurId: effet.joueurId };
       // Compétences privées : chacun garde son idée, sans compétence cette fois.
       else if (effet.type === "attribuer") evenement = { t: "erreur_ia", tache: "attribuer", problemeIndex: effet.problemeIndex };
       else evenement = { t: "erreur_ia" }; // idée du tour : pas d'idée retenue, l'histoire continue
     }
     // Les résultats périmés (autre tour, autre problème, autre phase) sont refusés par jeu.js.
-    await this.traiter(evenement);
+    if (evenement) await this.traiter(evenement);
     await this.retirerGarde(effet);
   }
 
@@ -591,7 +601,15 @@ export class Partie extends DurableObject {
       case "choisir": {
         // L'idée du tour : le MJ choisit une réponse (réponses déjà mélangées par
         // jeu.js, tirage enregistré), son auteur reçoit la compétence.
-        const entree = { probleme: effet.probleme, reponses: effet.reponses ?? [], pseudos: this.pseudos() };
+        // obligatoires : rotation stricte (le MJ IA doit choisir parmi eux) ; graine :
+        // tirage du MJ de secours entre ex aequo, propre à la partie et à l'essai.
+        const entree = {
+          probleme: effet.probleme,
+          reponses: effet.reponses ?? [],
+          pseudos: this.pseudos(),
+          obligatoires: effet.obligatoires ?? [],
+          graine: graineDe(this.etat?.code ?? "", this.etat?.graine ?? 0, effet.problemeIndex, effet.essai ?? 0, "departage"),
+        };
         let choix;
         try {
           choix = await mj.choisir(entree);
@@ -602,22 +620,33 @@ export class Partie extends DurableObject {
         choix = await respecterRotation(choix, entree, effet.obligatoires);
         const ev = { t: "attribution_faite", problemeIndex: effet.problemeIndex, joueurId: choix?.joueurId ?? null, competence: choix?.competence ?? null };
         if (Number.isInteger(effet.essai)) ev.essai = effet.essai;
+        if (choix?.departage) ev.departage = choix.departage; // tirage entre ex aequo, enregistré
         return ev;
       }
       case "attribuer": {
-        // Compétences privées : une par autre réponse, si elle contient une action
-        // citable (jeu.js le vérifie ; sinon le joueur garde simplement son idée).
-        // Un appel à l'IA par joueur (mj.attribuer) : jamais la réponse d'un autre dans le prompt.
-        const historique = Object.fromEntries((effet.reponses ?? []).map((r) => [r.joueurId, { reponses: [r.texte], choix: null }]));
-        const entree = { probleme: effet.probleme, historique, pseudos: this.pseudos() };
+        // Compétences privées : une par autre réponse, SEULEMENT si elle contient une
+        // action précise et citable (mj.attribuerPrivee ; jeu.js revérifie la
+        // citation) ; sinon { reformulation } : le joueur retrouve son idée.
+        // Un appel à l'IA par joueur : jamais la réponse d'un autre dans le prompt.
+        const entree = { probleme: effet.probleme, reponses: effet.reponses ?? [], pseudos: this.pseudos() };
         let competences;
         try {
-          competences = await mj.attribuer(entree);
+          competences = await mj.attribuerPrivee(entree);
         } catch (err) {
           console.warn("[partie] compétences privées impossibles, bascule sur le mock :", err?.message ?? err);
-          competences = await mjMock({ rome }).attribuer(entree);
+          competences = await mjMock({ rome }).attribuerPrivee(entree);
         }
         return { t: "competences_privees", problemeIndex: effet.problemeIndex, competences: competences ?? {} };
+      }
+      case "lier": {
+        // Phrase de liaison vers l'épisode suivant (null = transition fixe).
+        let texte = null;
+        try {
+          texte = await mj.lier({ precedent: effet.precedent, suivant: effet.suivant, idee: effet.idee, pseudos: this.pseudos() });
+        } catch (err) {
+          console.warn("[partie] liaison impossible, transition fixe :", err?.message ?? err);
+        }
+        return { t: "liaison_faite", problemeIndex: effet.problemeIndex, essai: effet.essai, texte: typeof texte === "string" ? texte : null };
       }
       default:
         throw new Error(`Effet IA inconnu : ${effet.type}`);

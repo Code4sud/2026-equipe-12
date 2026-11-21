@@ -59,10 +59,11 @@ async function jouerPartie() {
         app({ t: "analyse_faite", joueurId: e.joueurId, competences: res.competences.slice(0, 3).map(versCompetenceDepart) });
       } else if (e.type === "choisir") {
         const choix = await mj.choisir(e);
-        app({ t: "attribution_faite", problemeIndex: e.problemeIndex, essai: e.essai, joueurId: choix?.joueurId ?? null, competence: choix?.competence ?? null });
+        app({ t: "attribution_faite", problemeIndex: e.problemeIndex, essai: e.essai, joueurId: choix?.joueurId ?? null, competence: choix?.competence ?? null, departage: choix?.departage ?? undefined });
       } else if (e.type === "attribuer") {
-        const historique = Object.fromEntries(e.reponses.map((r) => [r.joueurId, { reponses: [r.texte], choix: null }]));
-        app({ t: "competences_privees", problemeIndex: e.problemeIndex, competences: await mj.attribuer({ probleme: e.probleme, historique }) });
+        app({ t: "competences_privees", problemeIndex: e.problemeIndex, competences: await mj.attribuerPrivee({ probleme: e.probleme, reponses: e.reponses }) });
+      } else if (e.type === "lier") {
+        app({ t: "liaison_faite", problemeIndex: e.problemeIndex, essai: e.essai, texte: await mj.lier(e) });
       }
     }
   };
