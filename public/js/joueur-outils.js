@@ -93,6 +93,26 @@ export function libelleValiderDepart(choix) {
 }
 
 /**
+ * Cartes à montrer dans l'outil solo (outil.js) : `max` propositions pas encore
+ * tranchées au plus à la fois, les suivantes après décision ; une carte déjà
+ * tranchée reste visible. `choix[i]` : null (pas tranché) ou une valeur.
+ * Renvoie l'ensemble des index visibles (adaptation `max-3-competences-depart`).
+ */
+export function cartesVisibles(choix, max = 4) {
+  const liste = Array.isArray(choix) ? choix : [];
+  const visibles = new Set();
+  let enAttente = 0;
+  liste.forEach((v, i) => {
+    if (v !== null && v !== undefined) visibles.add(i);
+    else if (enAttente < max) {
+      visibles.add(i);
+      enAttente++;
+    }
+  });
+  return visibles;
+}
+
+/**
  * Codes de fermeture après lesquels le téléphone NE se reconnecte PAS (SPEC §2.3) :
  * 4001 partie effacée, 4002 page ouverte ailleurs, 4008 trop de messages,
  * 4009 partie déjà commencée. Le message `erreur` reçu juste avant est affiché.

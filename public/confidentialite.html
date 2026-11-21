@@ -42,12 +42,12 @@
     <ul>
       <li>Le récit et les réponses sont envoyés à l'API d'<strong>OpenAI</strong> (modèle <code>gpt-5-nano</code>) pour proposer des compétences du référentiel ROME 4.0.</li>
       <li><strong>Les pseudos ne sont jamais envoyés</strong> : dans la demande, les joueurs s'appellent J1, J2, J3…</li>
-      <li>Le serveur contrôle chaque réponse de l'IA : compétence prise dans une liste fermée, preuve citée mot pour mot, aucun pseudo. Sinon, un maître du jeu de secours, sans IA, prend le relais.</li>
+      <li>Le serveur contrôle chaque réponse de l'IA : compétence prise dans une liste fermée, trace (ta phrase) citée mot pour mot, aucun pseudo. Sinon, un maître du jeu de secours, sans IA, prend le relais.</li>
       <li>OpenAI est un sous-traitant établi aux États-Unis. Pour un déploiement réel, ce transfert devrait être encadré (clauses contractuelles types ou Data Privacy Framework), ou remplacé par un modèle hébergé en Europe ou un modèle open weight.</li>
     </ul>
 
     <h2>La dictée vocale</h2>
-    <p>Si tu appuies sur <strong>🎙️ Dicter</strong>, ton navigateur peut envoyer ta voix à son service de reconnaissance vocale (par exemple celui de Google ou d'Apple) pour la transformer en texte. Quand le navigateur sait le faire sur le téléphone lui-même, Déclic le lui demande. Déclic ne reçoit que le texte et <strong>ne garde pas ta voix</strong>. Tu peux toujours écrire au clavier.</p>
+    <p>Si tu appuies sur <strong>🎙️ Dicter</strong> (ou <strong>🎙️ Parler au lieu d'écrire</strong> dans la version solo), ton navigateur peut envoyer ta voix à son service de reconnaissance vocale (par exemple celui de Google ou d'Apple) pour la transformer en texte. Quand le navigateur sait le faire sur le téléphone lui-même, Déclic le lui demande. Déclic ne reçoit que le texte et <strong>ne garde pas ta voix</strong>. Tu peux toujours écrire au clavier.</p>
 
     <h2>Pas de décision automatique</h2>
     <p>L'IA ne note pas, ne classe pas et ne décide de rien sur le jeune (article 22 du RGPD). Il n'y a ni score ni verdict : le jeune <strong>garde ou refuse</strong> chaque compétence, et c'est le psychologue ou le conseiller qui mène l'entretien.</p>
@@ -64,9 +64,10 @@
 
     <h2>Qui voit quoi</h2>
     <ul>
-      <li><strong>L'écran commun</strong> montre qui a répondu, jamais ce qu'il a répondu. Seule l'idée retenue à chaque épisode est affichée, avec le pseudo de son auteur.</li>
-      <li><strong>Chaque joueur</strong> voit ses propres réponses et ses compétences.</li>
-      <li><strong>La fiche</strong> d'un joueur s'ouvre avec un lien qui contient un identifiant aléatoire propre à ce joueur.</li>
+      <li><strong>L'écran commun</strong> montre qui a répondu, jamais ce qu'il a répondu. Seule l'idée retenue à chaque épisode est affichée, d'abord sans nom ; le pseudo de son auteur n'apparaît que s'il dit oui sur son téléphone.</li>
+      <li><strong>Chaque joueur</strong> voit ses propres réponses et ses compétences. Une compétence repérée dans sa réponse s'affiche seulement sur son téléphone.</li>
+      <li><strong>La fiche</strong> d'un joueur s'ouvre avec un lien qui contient un identifiant aléatoire propre à ce joueur. Le jeune l'apporte à son entretien s'il le souhaite.</li>
+      <li><strong>Le psychologue ou le conseiller</strong> voit, sur la fiche imprimée, les compétences gardées avec les phrases du jeune, ses avis sur les épisodes, sa réponse au débrief et les épisodes où il a préféré passer son tour. Le groupe ne voit jamais ces informations.</li>
       <li><strong>Hébergement</strong> : Cloudflare (Workers et Durable Objects).</li>
     </ul>
 

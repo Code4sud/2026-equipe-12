@@ -1,32 +1,46 @@
 // Typologie RIASEC (Holland) : constantes, calculs et blocs HTML partagés entre
 // l'outil solo (outil.js), la fiche personnage (fiche.js) et le téléphone (joueur.js).
-// France Travail attribue un code majeur et parfois un code mineur à chaque
-// macro-compétence du ROME 4.0. On s'en sert comme repère, jamais comme résultat
-// de test : pas de score, pas de pourcentage.
+// Le fichier des compétences du ROME 4.0 (France Travail, feuille « REF - Macro »)
+// contient un code RIASEC majeur et parfois un mineur pour 357 macro-compétences
+// sur 506. L'origine et la méthode de ces codes ne sont pas documentées
+// publiquement (critique psy, point 8) : la fiche du jeu ne s'en sert donc pas,
+// elle prend le type RIASEC de l'épisode (voir fiche.js). L'outil solo, qui n'a
+// pas d'épisode, les garde comme simple repère, en le disant. Jamais de score,
+// jamais de pourcentage.
 // Fonctions pures, utilisables dans le navigateur et dans Node.
 
 export const ORDRE_RIASEC = ["R", "I", "A", "S", "E", "C"];
 
 export const RIASEC = {
   R: { nom: "Réaliste", verbe: "Faire, réparer, construire", couleur: "#c8743a",
+       activites: "Des activités concrètes et pratiques : se servir de ses mains, d'outils ou de machines, souvent dehors.",
        description: "Tu aimes les activités concrètes et pratiques : te servir de tes mains, d'outils ou de machines, souvent dehors. Tu préfères faire plutôt que réfléchir longtemps.",
        question: "Qu'est-ce qui te plaît quand tu fais quelque chose de tes mains ? Tu te verrais plutôt en atelier, dehors, sur un chantier ?" },
   I: { nom: "Investigateur", verbe: "Chercher, comprendre", couleur: "#3a7bc8",
+       activites: "Des activités où l'on observe, cherche et comprend comment les choses marchent.",
        description: "Tu aimes observer, chercher et comprendre comment les choses marchent, et résoudre des problèmes.",
        question: "Quand tu ne sais pas faire un truc, comment tu t'y prends pour trouver ? Qu'est-ce que tu aimes comprendre ?" },
   A: { nom: "Artistique", verbe: "Créer, imaginer, s'exprimer", couleur: "#a24fc0",
+       activites: "Des activités où l'on crée, imagine et s'exprime : dessin, musique, écriture, vidéo…",
        description: "Tu aimes créer, imaginer et t'exprimer avec de la liberté : dessin, musique, écriture, vidéo…",
        question: "Qu'est-ce que tu as déjà créé dont tu es fier·e ? Tu aimerais que ton travail laisse de la place à ton style ?" },
   S: { nom: "Social", verbe: "Aider, accompagner, transmettre", couleur: "#2e9b6a",
+       activites: "Des activités avec et pour les autres : aider, écouter, expliquer, prendre soin.",
        description: "Tu aimes être avec les autres et pour les autres : aider, écouter, expliquer, prendre soin.",
        question: "Qu'est-ce que tu ressens quand tu aides quelqu'un ? Tu préfères aider des enfants, des jeunes, des adultes, des personnes âgées ?" },
   E: { nom: "Entreprenant", verbe: "Convaincre, organiser, mener", couleur: "#d8a019",
+       activites: "Des activités où l'on prend des initiatives, convainc, organise et entraîne les autres vers un but.",
        description: "Tu aimes prendre des initiatives, convaincre, organiser et entraîner les autres vers un but.",
        question: "Quand tu organises un truc ou que tu convaincs quelqu'un, qu'est-ce qui te motive ? Tu aimes prendre des décisions ?" },
   C: { nom: "Conventionnel", verbe: "Gérer, classer, être précis", couleur: "#5f6b85",
+       activites: "Des activités organisées et précises : ranger, compter, suivre une méthode, éviter les erreurs.",
        description: "Tu aimes quand c'est organisé et précis : ranger, compter, suivre une méthode, ne pas faire d'erreur.",
        question: "Ça te plaît quand les choses sont bien rangées, comptées, sans erreur ? Dans quelles situations tu es le plus carré·e ?" },
 };
+
+/** Texte d'origine des codes RIASEC du ROME (outil solo) : source réelle, méthode non vérifiée. */
+export const INTRO_RIASEC_ROME =
+  "Le fichier des compétences du ROME 4.0 (France Travail) donne un code RIASEC à 357 compétences sur 506. On ne sait pas comment ces codes ont été établis : c'est un simple repère, à croiser avec le profil d'intérêts du questionnaire du Centre, pas un résultat de test.";
 
 // Savoir-être du ROME sans code RIASEC (ex. 6D102 « Avoir l'esprit d'équipe ») :
 // ils servent dans tous les métiers.
@@ -146,7 +160,7 @@ export function blocRiasec(competences, rome, o = {}) {
   const libelle = o.libelle ?? ((c) => c.libelle ?? c.libelle_rome ?? codeDe(c));
   const titre = o.titre ?? "Repères d'intérêts (RIASEC)";
   const intro = o.intro ??
-    "France Travail attribue un code RIASEC à la plupart des compétences du ROME (357 sur 506). Voici à quels types d'intérêts se rattachent ces compétences. C'est un repère à croiser avec le profil d'intérêts du questionnaire du Centre, pas un résultat de test.";
+    INTRO_RIASEC_ROME;
   const absent = o.absent ?? "Pas encore apparu, ce qui ne veut pas dire absent.";
   const dominantsIntro = o.dominantsIntro ?? "Ce qui ressort surtout :";
   const { parType, dominants } = reperesRiasec(competences, rome);
@@ -173,32 +187,45 @@ export function blocRiasec(competences, rome, o = {}) {
 }
 
 /**
- * Intérêts « classés par ordre », comme dans le Rapport des Possibles : les types
- * qui ressortent des compétences, du plus présent au moins présent, avec une
- * description et les compétences qui les montrent. Aucun score affiché.
+ * Partie 2 de la fiche : les types d'activités (RIASEC) où le jeune a montré des
+ * compétences pendant le jeu, du plus présent au moins présent, avec les
+ * compétences qui les montrent. Ce n'est PAS un profil d'intérêts (adaptation
+ * `interets-classes-par-ordre`, critique psy points 4 et 6) : ce sont des
+ * activités, décrites sans « tu aimes ». Aucun score affiché.
+ * @param {object} [o]
+ * @param {string[]|null} [o.joues]  types des épisodes joués : les types non joués
+ *   ne sont pas classés (« pas d'épisode de ce type »), et la fiche dit
+ *   « X types sur 6 » (adaptation `defaut-3-episodes-couverture-riasec`).
+ * @param {string} [o.titre] [o.intro]  textes (échappés ici)
  */
 export function blocInteretsOrdonnes(competences, rome, o = {}) {
-  const libelle = o.libelle ?? ((c) => c.libelle ?? c.libelle_rome ?? codeDe(c));
+  const libelle = o.libelle ?? ((c) => c.libelle ?? c.libelle_rome ?? indexMacros(rome).get(codeDe(c))?.libelle ?? codeDe(c));
   const { parType } = reperesRiasec(competences, rome);
   const presents = ORDRE_RIASEC
     .filter((k) => parType[k].majeur.length || parType[k].mineur.length)
     .sort((a, b) => parType[b].majeur.length - parType[a].majeur.length || parType[b].mineur.length - parType[a].mineur.length);
   if (!presents.length) return "";
-  const absents = ORDRE_RIASEC.filter((k) => !presents.includes(k));
+  const joues = Array.isArray(o.joues) ? ORDRE_RIASEC.filter((k) => o.joues.includes(k) || presents.includes(k)) : null;
+  const absents = ORDRE_RIASEC.filter((k) => !presents.includes(k) && (!joues || joues.includes(k)));
+  const nonJoues = joues ? ORDRE_RIASEC.filter((k) => !joues.includes(k)) : [];
   const items = presents.map((k) => {
     const t = RIASEC[k];
     const comps = [...parType[k].majeur, ...parType[k].mineur].map((c) => echapper(libelle(c)));
     return `<li class="interet" style="--type:${t.couleur}">
-        <p><span class="puce-type" aria-hidden="true">${k}</span> <strong>${t.nom}</strong></p>
-        <p>${echapper(t.description)}</p>
-        <p class="discret">Tes compétences : ${comps.join(" · ")}</p>
+        <p><span class="puce-type" aria-hidden="true">${k}</span> <strong>${t.nom}</strong> <span class="discret">· ${t.verbe}</span></p>
+        <p>${echapper(t.activites)}</p>
+        <p class="discret">Compétences montrées : ${comps.join(" · ")}</p>
       </li>`;
   }).join("");
+  const intro = o.intro ??
+    "Les mêmes six types (RIASEC) que dans ton Rapport des Possibles. Cet ordre vient des compétences que tu as montrées pendant la partie, pas de tes goûts. Ce n'est pas ton profil d'intérêts : celui-là est dans ton Rapport des Possibles. Si les deux diffèrent, c'est une bonne question pour ton entretien.";
   return `<section class="bloc bloc-interets">
-    <h3>${echapper(o.titre ?? "Tes intérêts, classés par ordre")}</h3>
-    <p class="discret">${echapper(o.intro ?? "Les mêmes six profils (RIASEC) que dans ton Rapport des Possibles. Ici, ils viennent des compétences que tu as montrées : c'est un repère à comparer avec ton rapport, pas un résultat de test.")}</p>
+    <h3>${echapper(o.titre ?? "Les types d'activités où tu as montré des compétences pendant le jeu")}</h3>
+    <p class="discret">${echapper(intro)}</p>
+    ${joues ? `<p class="discret">Types d'activités explorés dans cette partie : ${joues.length} sur 6.</p>` : ""}
     <ol class="interets">${items}</ol>
     ${absents.length ? `<p class="discret">Pas apparus pendant la partie, ce qui ne veut pas dire absents : ${absents.map((k) => RIASEC[k].nom).join(", ")}.</p>` : ""}
+    ${nonJoues.length ? `<p class="discret">Pas d'épisode de ce type dans cette partie : ${nonJoues.map((k) => RIASEC[k].nom).join(", ")}.</p>` : ""}
   </section>`;
 }
 

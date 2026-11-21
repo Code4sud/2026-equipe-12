@@ -14,7 +14,7 @@ Une partie se joue à 1 à 6 joueurs autour d'un **écran commun**, chacun avec 
 2. **Une histoire, « Le tournoi du quartier »** : 6 épisodes qui s'enchaînent (le budget, l'affiche, une embrouille dans l'équipe, le téléphone mystère, le jour J, la caisse de la buvette), un par profil RIASEC. Chaque épisode s'affiche sur l'écran commun ; chacun valide « J'ai lu », le groupe discute à voix haute (minuteur), puis chacun répond **en privé** sur son téléphone.
 3. **Il n'y a ni bonne ni mauvaise réponse.** Seuls « je ne sais pas » et la violence sont refusés, au joueur concerné seulement : il réécrit sa réponse, aidé par des débuts de phrase (« Moi, je demanderais à… », « D'abord, je… », « J'irais voir… »), ou passe ce tour sans reproche.
 4. **L'idée du tour** : le MJ IA propose l'idée qui fait avancer l'histoire et l'affiche sur l'écran avec ses propres mots (le pseudo seulement si l'auteur est d'accord). Ce joueur reçoit la compétence sur son téléphone et **l'écrit sur sa fiche papier**. Tant qu'un joueur pas encore retenu a écrit une vraie réponse, le MJ choisit **obligatoirement** parmi eux, et la longueur d'une réponse n'est pas un critère. Chaque autre réponse peut aussi recevoir, **en privé**, une compétence repérée, seulement si elle contient une action précise et citable : chacun a la même chance d'en recevoir une. Entre deux épisodes, une phrase de liaison reprend l'idée retenue.
-5. À la fin : une **fiche imprimable** (3 pages A4) qui **complète le Rapport des Possibles** du Centre, sur son modèle : les compétences révélées avec leurs preuves, les intérêts RIASEC classés par ordre, et le champ des possibles rangé par les 5 zones de métiers du rapport.
+5. À la fin : une **fiche imprimable** (4 à 5 pages A4) qui **complète le Rapport des Possibles** du Centre, sur son modèle : les compétences **repérées** avec leur trace (les propres mots du jeune) et une question sur son vécu, les **types d'activités** où il a montré des compétences (le type RIASEC de chaque épisode ; ce n'est pas son profil d'intérêts, qui reste celui du rapport), des métiers à explorer rangés par les 5 zones du rapport (indicatif, sans étiquette de proximité), ses prochains pas à écrire à la main, une notice et un encart pour le psychologue (amorces de reflet, relances ouvertes, épisodes où il a préféré passer). Elle n'est pas un diplôme : le jeune l'apporte à son entretien s'il le souhaite.
 
 Garde-fous :
 - les réponses sont privées : l'écran commun montre **qui** a répondu ; seule l'idée retenue est affichée, avec le pseudo de son auteur ;
@@ -71,7 +71,7 @@ Le détail est sur la page [`confidentialite.html`](public/confidentialite.html)
 
 ## Données
 
-- **ROME 4.0** (France Travail, open data) : 506 macro-compétences, codes RIASEC.
+- **ROME 4.0** (France Travail, open data) : 506 macro-compétences. Le fichier contient aussi des codes RIASEC (colonnes U et V de la feuille « REF - Macro ») dont l'origine et la méthode n'ont pas pu être vérifiées : la fiche du jeu prend le type RIASEC de l'épisode, et l'outil solo présente ces codes comme un simple repère.
 - **O\*NET 31.0** (USDOL/ETA, CC BY 4.0) : profils RIASEC des métiers, titres et descriptions traduits en français.
 - **ESCO v1.2** (Union européenne, CC BY 4.0) : intitulés et compétences essentielles en français, via la correspondance ESCO ↔ O\*NET.
 

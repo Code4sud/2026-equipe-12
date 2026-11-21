@@ -1,6 +1,15 @@
-// Métiers à découvrir : rapprochement déterministe (sans IA) entre les intérêts
-// mis en pratique par le jeune (codes RIASEC de ses compétences validées) et le
-// profil RIASEC des métiers O*NET. Utilisable dans le navigateur et dans Node.
+// Métiers à découvrir : rapprochement déterministe (sans IA) entre les types
+// d'activités où le jeune a montré des compétences (codes RIASEC de ses
+// compétences gardées) et le profil RIASEC des métiers O*NET. Utilisable dans le
+// navigateur et dans Node.
+//
+// La proximité (cosinus de profils centrés) sert seulement à TRIER : elle n'est
+// jamais affichée, ni en chiffre ni en étiquette (« très proche », « proche »…).
+// Les seuils de Lewis et Morris (0,426 / 0,729) ont été établis pour des scores de
+// l'O*NET Interest Profiler, pas pour un profil tiré de 3 à 6 compétences : on ne
+// les reprend pas (critique psy, points 4 et 5). Les seuils ci-dessous (0,5 et
+// 0,35) sont des choix de conception, sans valeur de mesure : la fiche présente
+// ces métiers comme des pistes « indicatives ».
 
 const ORDRE = ["R", "I", "A", "S", "E", "C"];
 
@@ -52,7 +61,10 @@ export function metiersProches(poids, metiers, { nbAccessibles = 5, nbLongs = 3,
  * Métiers proches du profil, rangés par zone de préparation (1 à 5), comme le
  * « champ des possibles » du Rapport des Possibles : au plus `parZone` métiers
  * par zone, seulement s'ils ressemblent assez au profil (proximité ≥ `seuil`).
- * Une zone peut rester vide. null si le profil est vide.
+ * Une zone peut rester vide. null si le profil est vide. 2 métiers par zone sur la
+ * fiche (`parZone`) : choix de conception, pour ne pas noyer le jeune (Chernev
+ * 2015 : l'effet de la surcharge de choix dépend des préférences incertaines ;
+ * Scheibehenne 2010 trouve un effet moyen proche de zéro, c'est une nuance).
  */
 export function metiersParZone(poids, metiers, { parZone = 3, seuil = 0.35 } = {}) {
   const jeune = ORDRE.map((k) => poids[k] || 0);

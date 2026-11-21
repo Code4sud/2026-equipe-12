@@ -67,6 +67,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   background: var(--surface); border: 2px solid var(--bord); border-radius: var(--rayon);
   padding: 16px; display: flex; flex-direction: column; gap: 8px; transition: border-color .15s, background .15s;
 }
+.carte[hidden] { display: none; }
 .carte[data-choix="garde"] { border-color: var(--vert); background: var(--vert-fond); }
 .carte[data-choix="retire"] { opacity: 0.55; background: var(--rouge-fond); }
 .carte .situation { margin: 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-fonce); font-weight: 700; }
@@ -193,6 +194,21 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .zone { margin: 10px 0 4px; break-inside: avoid; }
 .zone h4 { margin: 6px 0 2px; }
 .encart-lien { margin: 6px 0; padding: 8px 12px; border-radius: 10px; background: var(--citation); font-size: 0.95em; }
+/* Question sur le vécu, notice psy, plan d'action à la main, ligne vers un adulte. */
+.question-vecu { font-size: 0.9rem; font-style: italic; }
+.notice-psy { border: 1px dashed var(--bord); border-radius: var(--rayon); padding: 2px 14px 8px; margin-top: 14px; font-size: 0.88rem; }
+.notice-psy h3 { margin-top: 10px !important; font-size: 1rem; }
+.notice-psy p { margin: 4px 0; }
+.preferences { margin: 8px 0; }
+.plan-action .ligne-a-ecrire { display: flex; align-items: flex-end; gap: 8px; margin: 10px 0; }
+.plan-action .ligne-a-ecrire .trait { flex: 1; border-bottom: 1.5px solid var(--bord); min-height: 1.6em; }
+.fiche-pied p { margin: 4px 0; }
+.fiche-pied .relais { font-weight: 600; color: var(--texte); }
+
+@media print {
+  .notice-psy, .plan-action { break-inside: avoid; }
+  .plan-action .ligne-a-ecrire { margin: 7mm 0 0; }
+}
 
 @media print {
   .bloc-metiers .metiers { grid-template-columns: 1fr 1fr; gap: 6px; }
